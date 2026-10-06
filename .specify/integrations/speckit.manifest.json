@@ -1,6 +1,6 @@
 {
   "integration": "speckit",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "installed_at": "2026-09-26T10:24:30.829485+00:00",
   "files": {
     ".specify/templates/checklist-template.md": "70bbc48e884fab372ffb09e83e78ff983e28b69caebf8cd9964a02b6836683ac",
@@ -11,11 +11,11 @@
     ".specify/.gitignore": "8c908410d177a1ef3d0dee16d7ad55f2ac3333df3104c4d4adee1c9b82f1dbc1",
     ".specify/scripts/python/check_prerequisites.py": "368e364d1e08e67ae7c19b46b4e41a35596d6a9468ca7cb391c23e7bf0ae1b88",
     ".specify/scripts/python/setup_tasks.py": "9133333ba0971723d165d5575493404b43ec8d227e96ddbd3a9f63ad2cf174fe",
-    ".specify/scripts/python/common.py": "3b725269c30f4992c6d12a39f74ab735a3fbffd283e286ca16e42d37222af850",
+    ".specify/scripts/python/common.py": "ae2331bc1fd4da497c4e3a36076f7239ae2d2a7766de89bdc2b59711eb9a84b5",
     ".specify/scripts/python/setup_plan.py": "4371353b509ff352da27846e6e68d495fce2f9eeda87c28a39f8dc9d5354e438",
     ".specify/scripts/python/resolve_template.py": "2e80e872519609b21480e16f1b1ad7620e4469b4faf88af1ecefa8f778c768a0",
     ".specify/scripts/python/create_new_feature.py": "4494c7b6eb142331bc9582a5e933952c9256b3790c707c7dfd7fd88f41a8774a",
-    ".specify/scripts/bash/common.sh": "60a6610536c71949aca803e8508bca89461d954d1de270d9f3e180ee3d677e44",
+    ".specify/scripts/bash/common.sh": "c58791cee381f2d92d7f770498f40122335024eb01e9371e06061b58805e6f06",
     ".specify/scripts/bash/setup-plan.sh": "d0bd298c026446f3c63167130d65e49e4aa4485de6bef18bcdfd57b19aa0de96",
     ".specify/scripts/bash/setup-tasks.sh": "0350b2def158c4dc333cd888fc5a3b10785b3d5c2cf936f93e910242ea9d507d",
     ".specify/scripts/bash/check-prerequisites.sh": "13be175548848bd84e96a90cf9be87665c2e68603b2eaa3e19187e7ca8b4fcb0",

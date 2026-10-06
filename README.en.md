@@ -14,6 +14,7 @@ automnt is a native, lightweight SMB auto-mounting tool for macOS that matches n
 - **Compiler-Free Binary Self-Updates**: Directly downloads precompiled binaries from GitHub Releases, validates them in a sandbox, and transactionally updates in place without requiring local Xcode or Swift developer tools.
 - **Self-Health Check and Healing**: The executable inspects its binary path, shell profile entry, and LaunchAgent status on launch, automatically healing broken components.
 - **Zero External Dependencies**: Implemented purely in native Swift, compiled to a standalone executable optimized for Apple silicon.
+- **Interactive Terminal Menus (3.2.0)**: Setup and configuration use arrow-key navigation and Enter to choose, with Space for multi-selection, scrolling for long lists, and Escape to cancel. Configuration edits are staged in memory and written only when you choose **Save and exit**.
 
 # Quick Start
 
@@ -68,11 +69,12 @@ Launch the setup wizard:
 automnt --init
 ```
 
-The wizard guides you through:
-1. **[1/4] Active SMB Mount Discovery**: Detects currently mounted SMB shares, allowing multi-selection with Space; hostnames are extracted automatically for reachability probes.
-2. **[2/4] Tailscale Peer Discovery**: Automatically enumerates online Tailscale peers if running, simplifying remote network profile configuration.
-3. **[3/4] Software Update Policy**: Configures the update channel (`off`, `notify`, or `auto`). Default is `off`.
-4. **[4/4] Save & LaunchAgent Deployment**: Writes `automnt.plist` and registers the event-driven background service.
+The wizard uses terminal menus to configure hosts and the update policy:
+
+- Detected hosts and actions such as **Add manually**, **Skip**, and **Finish** appear in one radio list. Move with the arrow keys or `j`/`k`, then press `Enter`; already configured hosts are disabled.
+- After choosing a host, enter an optional friendly name and select its currently mounted SMB shares. Press `Space` to toggle a share, `a` to select or clear all, and `Enter` to submit. An empty name uses the host address.
+- Press `Escape` in a menu or text prompt to cancel the current step. The wizard does not save an incomplete setup.
+- Choose an update policy and whether to install the LaunchAgent. In a non-interactive pipeline, selection menus fall back to numbered text input; enter a valid number to choose an option or press Enter to cancel.
 
 > [!IMPORTANT]
 > **Existing Configuration Protection**
@@ -87,11 +89,9 @@ Manage mount targets, probe hosts, and update preferences using the interactive 
 automnt --config
 ```
 
-The control center supports:
-- 📁 **Mount Targets**: Batch-import active mounts, manually enter custom SMB targets, remove targets;
-- 🚦 **Network Profiles**: Reorder evaluation priority, edit target host/port, configure retry parameters;
-- ⚙️ **Daemon Management**: Inspect LaunchAgent status, view logs, reload or repair the background service;
-- 🔄 **Update Settings**: Toggle update channels, check for new releases immediately.
+The main menu combines configured hosts and management actions in one radio list. Move with the arrow keys and press `Enter` to manage a host's shares or choose an action. Select shares with `Space` and submit them with `Enter`. Reordering takes two steps: choose a host, then its destination priority. Before deleting a host or all hosts, move the focus to the confirmation item, press `Space` to select it, then press `Enter`; pressing `Enter` without that explicit selection cancels safely.
+
+Changes are held in an in-memory working copy for the current session. Choose **Save and exit** to write them to the configuration file, or press `Escape` to discard all unsaved changes.
 
 # CLI Interface Reference
 

@@ -11,6 +11,10 @@ macOS 原生轻量级网络存储（SMB）自动化挂载工具。基于目标�
 
 A native, lightweight network storage (SMB) automation tool for macOS. Powered by target host TCP 445 reachability probing and event-driven daemon evaluation, providing silent, password-free, and bounded cleanup volume mounting.
 
+交互式终端菜单（3.2.0）为初始化与日常配置提供方向键选择、空格多选、长列表滚动和 Esc 取消；配置修改仅在明确选择保存并退出后写入。
+
+Interactive terminal menus (3.2.0) provide arrow-key selection, Space multi-selection, scrolling for long lists, and Escape cancellation during setup and configuration. Configuration changes are written only after choosing Save and exit.
+
 仅支持 macOS 27.0 或更高版本的 Apple silicon（arm64）；不支持 Intel Mac。项目以 macOS 27 SDK 和新 API 为优先目标，不维护旧 macOS 或 Intel 的兼容代码；代码保持精简，且继续支持必要的配置升级迁移。
 
 Supports macOS 27.0 or later on Apple silicon (arm64) only. The project prioritizes the macOS 27 SDK and APIs, keeps the implementation concise, and does not maintain compatibility code for older macOS releases or Intel Macs. Forward configuration migrations remain supported.

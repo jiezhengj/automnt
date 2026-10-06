@@ -217,7 +217,7 @@ func runCommandDiscardingOutputWithTimeout(
 
 // MARK: - 版本与数据结构定义
 
-let automntVersion = "3.1.0"
+let automntVersion = "3.2.0"
 let minimumSupportedMacOSMajorVersion = 27
 let minimumSupportedMacOSVersion = "\(minimumSupportedMacOSMajorVersion).0"
 let githubRepo = "jiezhengj/automnt"
@@ -975,7 +975,10 @@ func saveConfig(
 // MARK: - 主机可达性探测器与网络辅助函数
 
 struct HostReachabilityProbe {
+    static var testOverride: ((String, Int, Int) -> Bool)? = nil
+
     static func canConnect(host: String, port: Int = 445, timeoutMs: Int = 1000) -> Bool {
+        if let testOverride { return testOverride(host, port, timeoutMs) }
         guard !host.isEmpty else { return false }
         var hints = addrinfo()
         hints.ai_family = AF_UNSPEC
@@ -1357,37 +1360,250 @@ func remoteSMBAcceptanceURL(_ urlString: String, peers: [DiscoveredTailscalePeer
 
 // MARK: - 终端 ANSI 交互式菜单组件
 
-struct SelectionOption {
+enum KeyAction: Equatable {
+    case up, down, enter, space, selectAll, escape, interrupt, backspace, character(UInt8), unknown
+}
+
+struct SelectionItem {
+    let id: String
     let title: String
     let subtitle: String?
+    let isEnabled: Bool
+
+    init(id: String? = nil, title: String, subtitle: String? = nil, isEnabled: Bool = true) {
+        self.id = id ?? title
+        self.title = title
+        self.subtitle = subtitle
+        self.isEnabled = isEnabled
+    }
+}
+
+typealias SelectionOption = SelectionItem
+
+struct RollingViewportState {
+    let totalCount: Int
+    let capacity: Int
+    private(set) var startIndex: Int
+    private(set) var cursorIndex: Int
+
+    init(totalCount: Int, capacity: Int, defaultIndex: Int = 0) {
+        self.totalCount = max(0, totalCount)
+        self.capacity = max(1, capacity)
+        self.cursorIndex = min(max(0, defaultIndex), max(0, totalCount - 1))
+        self.startIndex = defaultIndex >= capacity
+            ? max(0, min(defaultIndex - capacity + 1, max(0, totalCount - capacity)))
+            : 0
+        normalize()
+    }
+
+    var endIndex: Int { min(totalCount, startIndex + capacity) }
+    var visibleRange: Range<Int> { startIndex..<endIndex }
+    var canScrollUp: Bool { startIndex > 0 }
+    var canScrollDown: Bool { endIndex < totalCount }
+    var cursorOffset: Int { cursorIndex - startIndex }
+    var itemsAbove: Int { startIndex }
+    var itemsBelow: Int { max(0, totalCount - endIndex) }
+
+    mutating func move(by delta: Int, wraps: Bool = true) {
+        guard totalCount > 0 else { return }
+        var next = cursorIndex + delta
+        if wraps {
+            next = (next % totalCount + totalCount) % totalCount
+        } else {
+            next = min(max(0, next), totalCount - 1)
+        }
+        cursorIndex = next
+        normalize()
+    }
+
+    private mutating func normalize() {
+        guard totalCount > 0 else { startIndex = 0; cursorIndex = 0; return }
+        cursorIndex = min(max(0, cursorIndex), totalCount - 1)
+        let maxStart = max(0, totalCount - capacity)
+        startIndex = min(max(0, startIndex), maxStart)
+        if cursorIndex < startIndex { startIndex = cursorIndex }
+        if cursorIndex >= startIndex + capacity { startIndex = cursorIndex - capacity + 1 }
+        startIndex = min(startIndex, maxStart)
+    }
+}
+
+private var terminalSignalRestoreTermios = termios()
+private var terminalSignalRestoreEnabled: Int32 = 0
+private var terminalSignalCursorHidden: Int32 = 0
+private let terminalSignalCursorSequence: (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8) = (27, 91, 63, 50, 53, 104)
+
+private func terminalSignalHandler(_ signalNumber: Int32) {
+    if terminalSignalRestoreEnabled != 0 {
+        _ = tcsetattr(STDIN_FILENO, TCSANOW, &terminalSignalRestoreTermios)
+        if terminalSignalCursorHidden != 0 {
+            withUnsafePointer(to: terminalSignalCursorSequence) { pointer in
+                _ = write(STDOUT_FILENO, pointer, 6)
+            }
+        }
+    }
+    let exitCode: Int32 = signalNumber == SIGTERM ? 143 : (signalNumber == SIGHUP ? 129 : 130)
+    _exit(exitCode)
 }
 
 struct TerminalUI {
+    static var mockKeySequence: [KeyAction]? = nil
+    static var mockInputBytes: [UInt8]? = nil
+    static var mockPendingInputResults: [Bool]? = nil
+    static var mockedPollTimeouts: [Int] = []
+    static var lastRenderedLineCount = 0
+    static var lastRenderedVisibleRange: Range<Int>?
+    static var originalTermios: termios?
+    static var signalHandlersInstalled = false
+    static var termiosTestMode = false
+    static var mockOriginalTermios: termios?
+    static var mockRawTermios: termios?
+    static var mockRestoredTermios: termios?
+    static var mockTermiosOriginalAfterRestore: termios?
+    static var mockOriginalTermiosBytes: [UInt8]?
+    static var termiosLastRestoreMatchedOriginal = false
+    static var cursorHidden = false {
+        didSet { terminalSignalCursorHidden = cursorHidden ? 1 : 0 }
+    }
+    static var mockInputActive: Bool { mockKeySequence != nil }
+
+    static func restoreTerminal() {
+        if termiosTestMode {
+            termiosLastRestoreMatchedOriginal = false
+            mockRestoredTermios = mockOriginalTermios
+            mockTermiosOriginalAfterRestore = mockOriginalTermios
+            let restoredBytes = mockRestoredTermios.map { withUnsafeBytes(of: $0) { Array($0) } }
+            termiosLastRestoreMatchedOriginal = restoredBytes == mockOriginalTermiosBytes
+            mockOriginalTermios = nil
+            mockOriginalTermiosBytes = nil
+            cursorHidden = false
+            return
+        }
+        if cursorHidden {
+            let showCursor: (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8) = (27, 91, 63, 50, 53, 104)
+            withUnsafePointer(to: showCursor) { pointer in
+                _ = write(STDOUT_FILENO, pointer, 6)
+            }
+            cursorHidden = false
+        }
+        if var original = originalTermios {
+            _ = tcsetattr(STDIN_FILENO, TCSANOW, &original)
+            originalTermios = nil
+            terminalSignalRestoreEnabled = 0
+        }
+        fflush(stdout)
+    }
+
     static func setRawMode(_ enable: Bool) {
-        var raw = termios()
-        tcgetattr(STDIN_FILENO, &raw)
+        if !termiosTestMode, isTTYOverride == true {
+            originalTermiosSnapshot = nil
+            restoredTermiosSnapshot = nil
+        }
+        if termiosTestMode {
+            if enable {
+                var original = termios()
+                _ = withUnsafeMutableBytes(of: &original) { bytes in bytes.initializeMemory(as: UInt8.self, repeating: 0) }
+                mockOriginalTermios = original
+                mockOriginalTermiosBytes = withUnsafeBytes(of: original) { Array($0) }
+                var raw = original
+                raw.c_lflag &= ~tcflag_t(ECHO | ICANON | ISIG)
+                withUnsafeMutableBytes(of: &raw.c_cc) { controlChars in
+                    controlChars[Int(VMIN)] = 1
+                    controlChars[Int(VTIME)] = 0
+                }
+                mockRawTermios = raw
+            } else {
+                restoreTerminal()
+            }
+            return
+        }
         if enable {
-            raw.c_lflag &= ~tcflag_t(ECHO | ICANON)
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)
+            guard originalTermios == nil else { return }
+            var original = termios()
+            guard tcgetattr(STDIN_FILENO, &original) == 0 else { return }
+            originalTermios = original
+            if isTTYOverride == true { originalTermiosSnapshot = original }
+            terminalSignalRestoreTermios = original
+            terminalSignalRestoreEnabled = 1
+            var raw = original
+            raw.c_lflag &= ~tcflag_t(ECHO | ICANON | ISIG)
+            withUnsafeMutableBytes(of: &raw.c_cc) { controlChars in
+                controlChars[Int(VMIN)] = 1 // Return after at least one byte.
+                controlChars[Int(VTIME)] = 0 // Do not add a read timeout.
+            }
+            if isTTYOverride == true { restoredTermiosSnapshot = raw }
+            guard tcsetattr(STDIN_FILENO, TCSANOW, &raw) == 0 else {
+                originalTermios = nil
+                terminalSignalRestoreEnabled = 0
+                return
+            }
+            if !signalHandlersInstalled {
+                _ = signal(SIGINT, terminalSignalHandler)
+                _ = signal(SIGTERM, terminalSignalHandler)
+                _ = signal(SIGHUP, terminalSignalHandler)
+                signalHandlersInstalled = true
+            }
         } else {
-            raw.c_lflag |= tcflag_t(ECHO | ICANON)
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)
+            restoreTerminal()
         }
     }
 
     static func readByte() -> UInt8? {
+        if var bytes = mockInputBytes {
+            guard !bytes.isEmpty else { return nil }
+            let byte = bytes.removeFirst()
+            mockInputBytes = bytes
+            return byte
+        }
         var b: UInt8 = 0
         let n = read(STDIN_FILENO, &b, 1)
-        if n <= 0 {
-            return nil
-        }
-        return b
+        return n > 0 ? b : nil
     }
 
     static func hasPendingInput(timeoutMs: Int = 0) -> Bool {
+        if var results = mockPendingInputResults {
+            mockedPollTimeouts.append(timeoutMs)
+            guard !results.isEmpty else { return false }
+            let result = results.removeFirst()
+            mockPendingInputResults = results
+            return result
+        }
         var pfd = pollfd(fd: STDIN_FILENO, events: Int16(POLLIN), revents: 0)
         let res = poll(&pfd, 1, Int32(timeoutMs))
         return res > 0 && (pfd.revents & Int16(POLLIN)) != 0
+    }
+
+    static func decodeArrowSequence(prefix: UInt8, suffix: UInt8) -> KeyAction? {
+        guard prefix == 91 || prefix == 79 else { return nil }
+        switch suffix {
+        case 65: return .up
+        case 66: return .down
+        default: return nil
+        }
+    }
+
+    static func readKey() -> KeyAction? {
+        if var queue = mockKeySequence {
+            guard !queue.isEmpty else { return nil }
+            let next = queue.removeFirst()
+            mockKeySequence = queue
+            return next
+        }
+        guard let byte = readByte() else { return nil }
+        switch byte {
+        case 3: return .interrupt
+        case 10, 13: return .enter
+        case 32: return .space
+        case 8, 127: return .backspace
+        case 27:
+            guard hasPendingInput(timeoutMs: 50) else { return .escape }
+            guard let prefix = readByte(), prefix == 91 || prefix == 79 else { return .unknown }
+            guard hasPendingInput(timeoutMs: 10), let suffix = readByte() else { return .escape }
+            return decodeArrowSequence(prefix: prefix, suffix: suffix) ?? .unknown
+        case 97, 65: return .selectAll
+        case 106, 74: return .down
+        case 107, 75: return .up
+        default: return byte >= 32 ? .character(byte) : .unknown
+        }
     }
 }
 
@@ -1395,12 +1611,21 @@ struct TerminalUI {
 
 var mockLineInput: String? = nil
 var mockLineInputs: [String]? = nil
+var lastLineInputWasEscaped = false
+var lastLineInputReachedEOF = false
+var originalTermiosSnapshot: termios?
+var restoredTermiosSnapshot: termios?
+var lastSelectionWasEscaped = false
+var lastSelectionReachedEOF = false
 
 func promptLineWithEsc(prompt: String, defaultValue: String? = nil) -> String? {
+    lastLineInputWasEscaped = false
+    lastLineInputReachedEOF = false
     if mockLineInputs != nil && !mockLineInputs!.isEmpty {
         let next = mockLineInputs!.removeFirst()
         if next == "\u{1B}" { // 模拟 Esc 放弃
             print("\r\u{1B}[K" + tr("(已取消)", "(Cancelled)"))
+            lastLineInputWasEscaped = true
             return nil
         }
         let trimmed = next.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1412,6 +1637,7 @@ func promptLineWithEsc(prompt: String, defaultValue: String? = nil) -> String? {
     if let mock = mockLineInput {
         if mock == "\u{1B}" { // 模拟 Esc 放弃
             print("\r\u{1B}[K" + tr("(已取消)", "(Cancelled)"))
+            lastLineInputWasEscaped = true
             return nil
         }
         let trimmed = mock.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1424,7 +1650,10 @@ func promptLineWithEsc(prompt: String, defaultValue: String? = nil) -> String? {
     if !isInteractiveTerminal() {
         print(prompt, terminator: "")
         fflush(stdout)
-        guard let line = readLine() else { return nil }
+        guard let line = readLine() else {
+            lastLineInputReachedEOF = true
+            return nil
+        }
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty, let def = defaultValue {
             return def
@@ -1444,6 +1673,7 @@ func promptLineWithEsc(prompt: String, defaultValue: String? = nil) -> String? {
     while true {
         guard let b = TerminalUI.readByte() else {
             // STDIN 流终止 (EOF) 或错误，安全退出并返回 nil
+            lastLineInputReachedEOF = true
             return nil
         }
         if b == 27 { // ASCII 27: Esc 键
@@ -1457,6 +1687,7 @@ func promptLineWithEsc(prompt: String, defaultValue: String? = nil) -> String? {
             }
             // 独立 Esc 键：立即清除当前行并安全返回 nil
             print("\r\u{1B}[K" + tr("(已取消)", "(Cancelled)"))
+            lastLineInputWasEscaped = true
             return nil
         } else if b == 10 || b == 13 { // 回车键
             print("")
@@ -1550,124 +1781,281 @@ func discoverCandidateHosts() -> [DiscoveredHostGroup] {
     }
 }
 
-func promptInteractiveCheckbox(title: String, options: [SelectionOption]) -> [Int]? {
-    guard isatty(STDIN_FILENO) != 0, !options.isEmpty else { return [] }
-    print(title)
-    var selected = Set<Int>()
-    var cursor = 0
-
-    TerminalUI.setRawMode(true)
-    defer {
-        TerminalUI.setRawMode(false)
-        print("\u{001B}[?25h")
-    }
-    print("\u{001B}[?25l")
-
-    func render() {
-        print("\u{001B}[\(options.count)A", terminator: "")
-        for (i, opt) in options.enumerated() {
-            let isCurrent = (i == cursor)
-            let isChecked = selected.contains(i)
-            let pointer = isCurrent ? "> " : "  "
-            let box = isChecked ? "[x] " : "[ ] "
-            let line = "\(pointer)\(box)\(opt.title)" + (opt.subtitle.map { " (\($0))" } ?? "")
-            print("\u{001B}[2K\(line)")
-        }
-    }
-
-    for _ in options { print("") }
-    render()
-
-    while true {
-        guard let b = TerminalUI.readByte() else { return nil }
-        if b == 10 || b == 13 {
-            break
-        } else if b == 32 {
-            if selected.contains(cursor) { selected.remove(cursor) }
-            else { selected.insert(cursor) }
-            render()
-        } else if b == 106 {
-            cursor = (cursor + 1) % options.count
-            render()
-        } else if b == 107 {
-            cursor = (cursor - 1 + options.count) % options.count
-            render()
-        } else if b == 97 {
-            if selected.count == options.count { selected.removeAll() }
-            else { selected = Set(0..<options.count) }
-            render()
-        } else if b == 27 {
-            guard let b2 = TerminalUI.readByte() else { return nil }
-            if b2 == 91 {
-                guard let b3 = TerminalUI.readByte() else { return nil }
-                if b3 == 65 {
-                    cursor = (cursor - 1 + options.count) % options.count
-                    render()
-                } else if b3 == 66 {
-                    cursor = (cursor + 1) % options.count
-                    render()
-                }
-            } else {
-                return nil
-            }
-        }
-    }
-    return Array(selected).sorted()
+func terminalSelectionCapacity() -> Int {
+    guard isInteractiveTerminal() else { return 12 }
+    var size = winsize()
+    guard ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == 0, size.ws_row > 0 else { return 12 }
+    return max(1, min(12, Int(size.ws_row) - 6))
 }
 
-func promptInteractiveRadio(title: String, options: [SelectionOption], defaultIndex: Int = 0) -> Int? {
-    guard isatty(STDIN_FILENO) != 0, !options.isEmpty else { return defaultIndex }
-    print(title)
-    var cursor = defaultIndex
+func selectionCapacity(usingInjectedKeys injected: Bool) -> Int {
+    injected ? 12 : terminalSelectionCapacity()
+}
 
-    TerminalUI.setRawMode(true)
-    defer {
-        TerminalUI.setRawMode(false)
-        print("\u{001B}[?25h")
-    }
-    print("\u{001B}[?25l")
-
-    func render() {
-        print("\u{001B}[\(options.count)A", terminator: "")
-        for (i, opt) in options.enumerated() {
-            let isCurrent = (i == cursor)
-            let pointer = isCurrent ? "> " : "  "
-            let radio = isCurrent ? "(o) " : "( ) "
-            let line = "\(pointer)\(radio)\(opt.title)" + (opt.subtitle.map { " (\($0))" } ?? "")
-            print("\u{001B}[2K\(line)")
+func renderSelectionFrame(title: String, options: [SelectionItem], viewport: RollingViewportState,
+                          selected: Set<Int>, explicit: Bool, checkedIndex: Int = 0, multiple: Bool = false) {
+    let capacity = viewport.capacity
+    var rows: [String] = []
+    rows.append(title)
+    rows.append(viewport.canScrollUp
+        ? tr("▲ 向上还有 \(viewport.itemsAbove) 项", "▲ \(viewport.itemsAbove) items above") : "")
+    for visibleIndex in 0..<capacity {
+        if viewport.startIndex + visibleIndex < viewport.totalCount {
+            let index = viewport.startIndex + visibleIndex
+            let item = options[index]
+            let pointer = index == viewport.cursorIndex ? "❯ " : "  "
+            let state: String
+            if explicit { state = index == checkedIndex ? "(o) " : "( ) " }
+            else if multiple { state = selected.contains(index) ? "[x] " : "[ ] " }
+            else { state = "" }
+            let enabled = item.isEnabled ? "" : tr(" [✓] 已配置", " [✓] already configured")
+            rows.append(pointer + state + item.title + (item.subtitle.map { " (\($0))" } ?? "") + enabled)
+        } else {
+            rows.append("")
         }
     }
+    rows.append(viewport.canScrollDown
+        ? tr("▼ 向下还有 \(viewport.itemsBelow) 项", "▼ \(viewport.itemsBelow) items below") : "")
+    rows.append(explicit
+        ? tr("(上下键移动光标，空格键切换单选状态，回车确认，Esc 取消)", "(Arrow keys move the cursor, Space switches selection, Enter confirms, Esc cancels)")
+        : multiple
+            ? tr("(上下键移动，空格翻转单项，a 全选/清空，回车提交，Esc 取消)", "(Arrow keys move, Space toggles an item, a selects all/none, Enter submits, Esc cancels)")
+            : tr("(上下键移动，回车确定，Esc 取消)", "(Arrow keys move, Enter confirms, Esc cancels)"))
 
-    for _ in options { print("") }
-    render()
+    let physicalLines = rows.flatMap { $0.components(separatedBy: "\n") }
+    let eraseCount = TerminalUI.lastRenderedLineCount
+    if eraseCount > 0 {
+        print("\u{001B}[\(eraseCount)A", terminator: "")
+    }
+    for line in physicalLines { print("\u{001B}[2K\(line)") }
+    // Any lines previously occupied beyond the new frame (e.g. notice lines
+    // printed under the frame) must be erased too, then the cursor returns.
+    let staleTail = eraseCount - physicalLines.count
+    if staleTail > 0 {
+        for _ in 0..<staleTail { print("\u{001B}[2K") }
+        print("\u{001B}[\(staleTail)A", terminator: "")
+    }
+    fflush(stdout)
+    TerminalUI.lastRenderedLineCount = physicalLines.count
+    TerminalUI.lastRenderedVisibleRange = viewport.visibleRange
+}
 
+func clearSelectionFrame() {
+    guard TerminalUI.lastRenderedLineCount > 0 else { return }
+    print("\u{001B}[\(TerminalUI.lastRenderedLineCount)A", terminator: "")
+    for _ in 0..<TerminalUI.lastRenderedLineCount {
+        print("\u{001B}[2K")
+    }
+    TerminalUI.lastRenderedLineCount = 0
+    TerminalUI.lastRenderedVisibleRange = nil
+    fflush(stdout)
+}
+
+func printSelectionNotice(_ text: String) {
+    // Fixed-line-budget compensation: notice lines are printed below the live
+    // frame, so the next repaint must retreat over them as well.
+    print(text)
+    fflush(stdout)
+    TerminalUI.lastRenderedLineCount += text.components(separatedBy: "\n").count
+}
+
+func runSelectionFallback(title: String, options: [SelectionItem], multiple: Bool) -> [Int]? {
+    lastSelectionReachedEOF = false
+    print(title)
+    for (index, option) in options.enumerated() {
+        let disabled = option.isEnabled ? "" : tr(" [已配置，不能选择]", " [already configured, unavailable]")
+        print("  [\(index + 1)] \(option.title)" + (option.subtitle.map { " (\($0))" } ?? "") + disabled)
+    }
     while true {
-        guard let b = TerminalUI.readByte() else { return nil }
-        if b == 10 || b == 13 {
-            break
-        } else if b == 106 {
-            cursor = (cursor + 1) % options.count
-            render()
-        } else if b == 107 {
-            cursor = (cursor - 1 + options.count) % options.count
-            render()
-        } else if b == 27 {
-            guard let b2 = TerminalUI.readByte() else { return nil }
-            if b2 == 91 {
-                guard let b3 = TerminalUI.readByte() else { return nil }
-                if b3 == 65 {
-                    cursor = (cursor - 1 + options.count) % options.count
-                    render()
-                } else if b3 == 66 {
-                    cursor = (cursor + 1) % options.count
-                    render()
-                }
-            } else {
-                return nil
+        print(tr("请输入编号\(multiple ? "（多个编号用逗号分隔）" : "")；直接回车取消：", "Enter \(multiple ? "comma-separated indices" : "an index"); press Enter to cancel: "), terminator: "")
+        fflush(stdout)
+        let line: String?
+        if let mocks = mockLineInputs, !mocks.isEmpty {
+            line = mockLineInputs!.removeFirst()
+        } else if let mock = mockLineInput {
+            line = mock
+        } else {
+            line = readLine()
+        }
+        guard let line else {
+            lastSelectionReachedEOF = true
+            return nil
+        }
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty && trimmed != "\u{1B}" else {
+            print(tr("(已取消)", "(Cancelled)"))
+            return nil
+        }
+        if let selection = parseSelectionFallback(trimmed, options: options, multiple: multiple), !selection.isEmpty {
+            guard multiple else { return selection }
+            return selection.reduce(into: [Int]()) { unique, index in
+                if !unique.contains(index) { unique.append(index) }
             }
         }
+        print(tr("输入无效，请输入列表中可选项目的编号。", "Invalid input; enter the number of an available item."))
+        if mockLineInputs != nil && mockLineInputs!.isEmpty { return nil }
+        if mockLineInput != nil { return nil }
     }
-    return cursor
+}
+
+func parseSelectionFallback(_ line: String, options: [SelectionItem], multiple: Bool) -> [Int]? {
+    guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+    let values = line.split(separator: ",").compactMap { part -> Int? in
+        guard let value = Int(part.trimmingCharacters(in: .whitespaces)), value > 0 else { return nil }
+        return value - 1
+    }
+    let valid = values.filter { options.indices.contains($0) && options[$0].isEnabled }
+    return multiple ? valid : valid.first.map { [$0] }
+}
+
+func promptInteractiveCheckbox(title: String, options: [SelectionItem], initiallySelected: Set<Int> = []) -> [Int]? {
+    lastSelectionWasEscaped = false
+    lastSelectionReachedEOF = false
+    guard !options.isEmpty else { return [] }
+    let injected = TerminalUI.mockInputActive
+    guard isInteractiveTerminal() || injected else { return runSelectionFallback(title: title, options: options, multiple: true) }
+    var selected = Set(initiallySelected.filter { options.indices.contains($0) && options[$0].isEnabled })
+    let initialCursor = options.firstIndex(where: \.isEnabled) ?? 0
+    var viewport = RollingViewportState(totalCount: options.count, capacity: selectionCapacity(usingInjectedKeys: injected), defaultIndex: initialCursor)
+    TerminalUI.lastRenderedLineCount = 0
+    TerminalUI.lastRenderedVisibleRange = nil
+    if !injected {
+        TerminalUI.setRawMode(true)
+        print("\u{001B}[?25l", terminator: "")
+        TerminalUI.cursorHidden = true
+    }
+    defer {
+        if !injected {
+            print("\u{001B}[?25h", terminator: "")
+            TerminalUI.setRawMode(false)
+        }
+        fflush(stdout)
+    }
+    renderSelectionFrame(title: title, options: options, viewport: viewport, selected: selected, explicit: false, multiple: true)
+    while let key = TerminalUI.readKey() {
+        switch key {
+        case .up: viewport.move(by: -1); renderSelectionFrame(title: title, options: options, viewport: viewport, selected: selected, explicit: false, multiple: true)
+        case .down: viewport.move(by: 1); renderSelectionFrame(title: title, options: options, viewport: viewport, selected: selected, explicit: false, multiple: true)
+        case .space:
+            if options[viewport.cursorIndex].isEnabled {
+                if selected.contains(viewport.cursorIndex) { selected.remove(viewport.cursorIndex) } else { selected.insert(viewport.cursorIndex) }
+            }
+            renderSelectionFrame(title: title, options: options, viewport: viewport, selected: selected, explicit: false, multiple: true)
+        case .selectAll:
+            let enabled = Set(options.indices.filter { options[$0].isEnabled })
+            selected = selected == enabled ? [] : enabled
+            renderSelectionFrame(title: title, options: options, viewport: viewport, selected: selected, explicit: false, multiple: true)
+        case .enter: return selected.sorted()
+        case .escape:
+            lastSelectionWasEscaped = true
+            clearSelectionFrame()
+            print(tr("(已取消)", "(Cancelled)"))
+            return nil
+        case .interrupt: TerminalUI.setRawMode(false); exit(130)
+        default: continue
+        }
+    }
+    lastSelectionReachedEOF = true
+    return nil
+}
+
+func promptInteractiveRadio(title: String, options: [SelectionItem], defaultIndex: Int = 0, disabledHint: String? = nil) -> Int? {
+    lastSelectionWasEscaped = false
+    lastSelectionReachedEOF = false
+    guard !options.isEmpty else { return nil }
+    let injected = TerminalUI.mockInputActive
+    guard isInteractiveTerminal() || injected else {
+        return runSelectionFallback(title: title, options: options, multiple: false)?.first
+    }
+    let initial = options.indices.contains(defaultIndex) && options[defaultIndex].isEnabled
+        ? defaultIndex : (options.firstIndex(where: \.isEnabled) ?? 0)
+    var viewport = RollingViewportState(totalCount: options.count, capacity: selectionCapacity(usingInjectedKeys: injected), defaultIndex: initial)
+    TerminalUI.lastRenderedLineCount = 0
+    TerminalUI.lastRenderedVisibleRange = nil
+    if !injected {
+        TerminalUI.setRawMode(true)
+        print("\u{001B}[?25l", terminator: "")
+        TerminalUI.cursorHidden = true
+    }
+    defer {
+        if !injected {
+            print("\u{001B}[?25h", terminator: "")
+            TerminalUI.setRawMode(false)
+        }
+        fflush(stdout)
+    }
+    renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: false)
+    while let key = TerminalUI.readKey() {
+        switch key {
+        case .up: viewport.move(by: -1); renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: false)
+        case .down: viewport.move(by: 1); renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: false)
+        case .enter:
+            guard options[viewport.cursorIndex].isEnabled else {
+                printSelectionNotice("\n" + (disabledHint ?? tr("该项目已配置，不能重复选择。", "This item is already configured and cannot be selected again.")))
+                continue
+            }
+            return viewport.cursorIndex
+        case .escape:
+            lastSelectionWasEscaped = true
+            clearSelectionFrame()
+            print(tr("(已取消)", "(Cancelled)"))
+            return nil
+        case .interrupt: TerminalUI.setRawMode(false); exit(130)
+        default: continue
+        }
+    }
+    lastSelectionReachedEOF = true
+    return nil
+}
+
+func promptExplicitConfirmation(title: String, options: [SelectionItem]) -> Int? {
+    lastSelectionWasEscaped = false
+    lastSelectionReachedEOF = false
+    guard options.count >= 2 else { return nil }
+    let injected = TerminalUI.mockInputActive
+    guard isInteractiveTerminal() || injected else {
+        print(title)
+        print(tr("非交互模式下已安全取消。", "Canceled safely in non-interactive mode."))
+        return nil
+    }
+    var viewport = RollingViewportState(totalCount: options.count, capacity: selectionCapacity(usingInjectedKeys: injected))
+    var checkedIndex = 0
+    TerminalUI.lastRenderedLineCount = 0
+    TerminalUI.lastRenderedVisibleRange = nil
+    if !injected {
+        TerminalUI.setRawMode(true)
+        print("\u{001B}[?25l", terminator: "")
+        TerminalUI.cursorHidden = true
+    }
+    defer {
+        if !injected {
+            print("\u{001B}[?25h", terminator: "")
+            TerminalUI.setRawMode(false)
+        }
+        fflush(stdout)
+    }
+    renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: true, checkedIndex: checkedIndex)
+    while let key = TerminalUI.readKey() {
+        switch key {
+        case .up: viewport.move(by: -1); renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: true, checkedIndex: checkedIndex)
+        case .down: viewport.move(by: 1); renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: true, checkedIndex: checkedIndex)
+        case .space:
+            checkedIndex = viewport.cursorIndex == checkedIndex ? 0 : viewport.cursorIndex
+            renderSelectionFrame(title: title, options: options, viewport: viewport, selected: [], explicit: true, checkedIndex: checkedIndex)
+        case .enter:
+            if checkedIndex == 0 { return nil }
+            return checkedIndex
+        case .escape:
+            lastSelectionWasEscaped = true
+            clearSelectionFrame()
+            print(tr("(已取消)", "(Cancelled)"))
+            return nil
+        case .interrupt: TerminalUI.setRawMode(false); exit(130)
+        default: continue
+        }
+    }
+    lastSelectionReachedEOF = true
+    return nil
 }
 
 // MARK: - 初始化向导 (--init) 与日常配置管理 (--config)
@@ -1683,30 +2071,21 @@ func handleCandidateHostConfiguration(candidate: DiscoveredHostGroup) -> HostCon
     let trimmedAlias = aliasInput.trimmingCharacters(in: .whitespacesAndNewlines)
     let alias: String? = trimmedAlias.isEmpty ? nil : trimmedAlias
 
-    print(tr("\n请选择需要自动挂载的共享文件夹:", "\nSelect shared folders to mount automatically:"))
-    for (idx, mount) in candidate.mounts.enumerated() {
+    let shareOptions = candidate.mounts.map { mount in
         let stdMountPoint = deriveStandardMountPoint(from: mount.smbURL) ?? "/Volumes/\(mount.shareName)"
-        print("  [ ] \(idx + 1). \(mount.shareName) (\(redactedSMBURL(mount.smbURL)) -> \(stdMountPoint))")
+        return SelectionItem(id: mount.smbURL, title: mount.shareName,
+                             subtitle: "\(redactedSMBURL(mount.smbURL)) → \(stdMountPoint)")
     }
-
-    let selectionPrompt = tr("\n输入编号切换选择 (例如 '1 2' 或 'all', 回车确认, 按 Esc 取消): ",
-                             "\nEnter numbers to select (e.g. '1 2' or 'all', Enter to confirm, Esc to cancel): ")
-    guard let selInput = promptLineWithEsc(prompt: selectionPrompt) else {
+    guard let selectedList = promptInteractiveCheckbox(
+        title: tr("\n请选择需要自动挂载的共享文件夹：", "\nSelect shared folders to mount automatically:"),
+        options: shareOptions,
+        initiallySelected: Set(shareOptions.indices)
+    ) else {
         print(tr("(已取消主机配置)", "(Host configuration canceled)"))
         return nil
     }
-    let trimmedSel = selInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    var selectedIndices: Set<Int> = []
-    if trimmedSel == "all" || trimmedSel.isEmpty {
-        selectedIndices = Set(0..<candidate.mounts.count)
-    } else {
-        let tokens = trimmedSel.split(separator: " ").compactMap { Int($0) }
-        for t in tokens where t >= 1 && t <= candidate.mounts.count {
-            selectedIndices.insert(t - 1)
-        }
-    }
-
-    if selectedIndices.isEmpty {
+    let selectedIndices = Set(selectedList)
+    guard !selectedIndices.isEmpty else {
         print(tr("未选择任何共享文件夹，已取消该主机配置。", "No shares selected, canceled host configuration."))
         return nil
     }
@@ -1716,16 +2095,6 @@ func handleCandidateHostConfiguration(candidate: DiscoveredHostGroup) -> HostCon
         let stdMountPoint = deriveStandardMountPoint(from: mount.smbURL) ?? "/Volumes/\(mount.shareName)"
         let checkMark = selectedIndices.contains(idx) ? "[✓]" : "[ ]"
         print("  \(checkMark) \(idx + 1). \(mount.shareName) (\(redactedSMBURL(mount.smbURL)) -> \(stdMountPoint))")
-    }
-
-    let confirmPrompt = tr("确认添加上述共享？[Y/n]: ", "Confirm adding these shares? [Y/n]: ")
-    guard let confirmInput = promptLineWithEsc(prompt: confirmPrompt, defaultValue: "Y") else {
-        return nil
-    }
-    let trimmedConfirm = confirmInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    if !trimmedConfirm.isEmpty && trimmedConfirm != "y" && trimmedConfirm != "yes" {
-        print(tr("已放弃添加上述共享。", "Discarded adding shares."))
-        return nil
     }
 
     var shares: [SMBShareConfig] = []
@@ -1751,17 +2120,25 @@ func handleCandidateHostConfiguration(candidate: DiscoveredHostGroup) -> HostCon
     )
 }
 
+var lastManualHostAliasWasEscaped = false
+
 func handleManualHostEntry(existingHosts: [HostConfig]) -> HostConfig? {
+    lastManualHostAliasWasEscaped = false
     print(tr("\n--- 手动添加主机 ---", "\n--- Manually Add Host ---"))
     let hostPrompt = tr("请输入主机 IP 地址或域名 (按 Esc 取消): ", "Enter host IP or domain (Esc to cancel): ")
     guard let hostInput = promptLineWithEsc(prompt: hostPrompt) else { return nil }
     let host = hostInput.trimmingCharacters(in: .whitespacesAndNewlines)
     if host.isEmpty { return nil }
 
-    let aliasPrompt = tr("请输入该主机的人类友好别名 (直接回车保持默认 [\(host)], 按 Esc 跳过): ",
-                         "Enter alias for host (Enter for default [\(host)], Esc to skip): ")
-    let aliasInput = promptLineWithEsc(prompt: aliasPrompt)
-    let trimmedAlias = aliasInput?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let aliasPrompt = tr("请输入该主机的人类友好别名 (直接回车保持默认 [\(host)], 按 Esc 取消当前主机并返回新增方式选择): ",
+                         "Enter alias for host (Enter for default [\(host)], Esc to cancel this host and return to add method selection): ")
+    guard let aliasInput = promptLineWithEsc(prompt: aliasPrompt) else {
+        lastManualHostAliasWasEscaped = lastLineInputWasEscaped
+        lastLineInputReachedEOF = lastLineInputReachedEOF || (!lastLineInputWasEscaped && !isInteractiveTerminal())
+        print(tr("已取消手动主机录入。", "Manual host entry canceled."))
+        return nil
+    }
+    let trimmedAlias = aliasInput.trimmingCharacters(in: .whitespacesAndNewlines)
     let alias: String? = trimmedAlias.isEmpty ? nil : trimmedAlias
 
     print(tr("正在测试主机 \(host) 的 SMB 服务端口 (445)...", "Testing SMB service port (445) on \(host)..."))
@@ -1776,10 +2153,13 @@ func handleManualHostEntry(existingHosts: [HostConfig]) -> HostConfig? {
         ⚠️ Warning: Cannot connect to TCP port 445 on \(host) (timeout or unreachable).
         The host may be offline or unreachable on this network.
         """))
-        let offlineConfirm = tr("是否仍然添加该主机？[y/N]: ", "Add this offline host anyway? [y/N]: ")
-        guard let offlineInput = promptLineWithEsc(prompt: offlineConfirm, defaultValue: "N") else { return nil }
-        let c = offlineInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if c != "y" && c != "yes" {
+        let offlineOptions = [
+            SelectionItem(id: "cancel", title: tr("取消添加", "Cancel adding")),
+            SelectionItem(id: "add", title: tr("仍然添加离线主机", "Add the offline host anyway"))
+        ]
+        guard let offlineIndex = promptInteractiveRadio(
+            title: tr("是否仍然添加该主机？", "Add this offline host anyway?"), options: offlineOptions
+        ), offlineOptions[offlineIndex].id == "add" else {
             print(tr("已取消添加未连通主机。", "Canceled adding unreachable host."))
             return nil
         }
@@ -1800,10 +2180,13 @@ func handleManualHostEntry(existingHosts: [HostConfig]) -> HostConfig? {
 
     let stdMountPoint = deriveStandardMountPoint(from: rawURL) ?? "/Volumes/share"
     print(tr("标准目标挂载点将设置为: \(stdMountPoint)", "Standard mount point will be set to: \(stdMountPoint)"))
-    let confirmPrompt = tr("确认添加该共享？[Y/n]: ", "Confirm adding this share? [Y/n]: ")
-    guard let confirmInput = promptLineWithEsc(prompt: confirmPrompt, defaultValue: "Y") else { return nil }
-    let trimmedConfirm = confirmInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    if !trimmedConfirm.isEmpty && trimmedConfirm != "y" && trimmedConfirm != "yes" {
+    let confirmOptions = [
+        SelectionItem(id: "confirm", title: tr("确认添加该共享", "Add this share")),
+        SelectionItem(id: "cancel", title: tr("取消并返回", "Cancel and return"))
+    ]
+    guard let confirmIndex = promptInteractiveRadio(
+        title: tr("确认添加该共享？", "Add this share?"), options: confirmOptions
+    ), confirmOptions[confirmIndex].id == "confirm" else {
         print(tr("已取消添加共享。", "Canceled adding share."))
         return nil
     }
@@ -1843,95 +2226,117 @@ func runInitWizard(offerServiceInstallation: Bool = true) -> Bool {
     print(tr("正在检测系统当前挂载的网络存储...", "Detecting currently mounted network storage..."))
     var candidateHosts = discoverCandidateHosts()
     var configuredHosts: [HostConfig] = []
+    var selectedChannel = "off"
+    var shouldInstallService = false
+    var returnToHostSelection = true
 
-    while true {
-        if candidateHosts.isEmpty {
-            print(tr("\n未检测到系统当前挂载的网络存储。", "\nNo active mounted network storage detected."))
-        } else {
-            print(tr("\n检测到以下候选主机：\n", "\nDiscovered the following candidate hosts:\n"))
-            for (idx, candidate) in candidateHosts.enumerated() {
-                let num = idx + 1
-                if candidate.isConfigured {
+    wizardFlow: while true {
+        if returnToHostSelection {
+            hostSelection: while true {
+                let options = candidateHosts.enumerated().map { index, candidate in
                     let matching = configuredHosts.first(where: { $0.host == candidate.host })
                     let aliasText = matching?.alias.map { " [\($0)]" } ?? ""
                     let count = matching?.shares.count ?? candidate.mounts.count
-                    print(tr("  [✓] \(num). \(candidate.host)\(aliasText) (已配置 \(count) 个共享)",
-                             "  [✓] \(num). \(candidate.host)\(aliasText) (\(count) shares configured)"))
-                } else {
-                    print(tr("  [\(num)] \(candidate.host) (检测到 \(candidate.mounts.count) 个已挂载共享)",
-                             "  [\(num)] \(candidate.host) (\(candidate.mounts.count) mounted shares detected)"))
+                    let subtitle = candidate.isConfigured
+                        ? tr("\(count) 个共享已配置", "\(count) shares configured")
+                        : tr("检测到 \(count) 个已挂载共享", "\(count) mounted shares detected")
+                    return SelectionItem(id: "host:\(index)", title: candidate.host + aliasText,
+                                         subtitle: subtitle, isEnabled: !candidate.isConfigured)
+                } + [
+                    SelectionItem(id: "manual", title: tr("手动添加新主机地址", "Manually add a host address")),
+                    SelectionItem(id: "skip", title: tr("跳过主机配置", "Skip host configuration"),
+                                  subtitle: tr("稍后通过 automnt --config 配置", "Configure later via automnt --config")),
+                    SelectionItem(id: "done", title: tr("完成主机配置并继续", "Finish host configuration and continue"))
+                ]
+                guard let selected = promptInteractiveRadio(
+                    title: tr("\n请选择操作：", "\nChoose an action:"), options: options,
+                    disabledHint: tr("该主机已完成配置", "This host is already configured")
+                ) else {
+                    if lastSelectionWasEscaped {
+                        print(tr("已取消向导。", "Setup wizard canceled."))
+                    } else {
+                        print(tr("输入已结束，向导未完成。", "Input ended; setup was not completed."))
+                    }
+                    return false
+                }
+                let selectionID = options[selected].id
+                if selectionID == "skip" {
+                    print(tr("已跳过主机配置。", "Skipped host configuration."))
+                    break hostSelection
+                } else if selectionID == "done" {
+                    break hostSelection
+                } else if selectionID == "manual" {
+                    if let newHost = handleManualHostEntry(existingHosts: configuredHosts) {
+                        configuredHosts.append(newHost)
+                        if let cIdx = candidateHosts.firstIndex(where: { $0.host == newHost.host }) {
+                            candidateHosts[cIdx].isConfigured = true
+                        }
+                    } else if lastLineInputWasEscaped {
+                        continue hostSelection
+                    } else if lastLineInputReachedEOF {
+                        return false
+                    }
+                } else if selectionID.hasPrefix("host:"),
+                          let candidateIdx = Int(selectionID.dropFirst("host:".count)),
+                          candidateHosts.indices.contains(candidateIdx) {
+                    let candidate = candidateHosts[candidateIdx]
+                    if let hostConfig = handleCandidateHostConfiguration(candidate: candidate) {
+                        configuredHosts.append(hostConfig)
+                        candidateHosts[candidateIdx].isConfigured = true
+                        let aliasDisplay = hostConfig.alias ?? hostConfig.host
+                        print(tr("已暂存主机 [\(aliasDisplay)] 的配置。", "Staged configuration for host [\(aliasDisplay)]."))
+                    } else if lastLineInputWasEscaped || lastSelectionWasEscaped {
+                        continue hostSelection
+                    } else if lastLineInputReachedEOF || lastSelectionReachedEOF {
+                        return false
+                    }
                 }
             }
+            returnToHostSelection = false
         }
 
-        print(tr("""
-
-        操作选项：
-          [m] 手动添加新主机地址
-          [s] 跳过主机配置 (稍后通过 automnt --config 配置)
-          [d] 完成主机配置并进入下一步
-        """, """
-
-        Options:
-          [m] Manually add host address
-          [s] Skip host configuration (configure later via automnt --config)
-          [d] Complete host configuration and proceed to next step
-        """))
-
-        let promptHint = candidateHosts.isEmpty ? "[m / s / d]" : "[1-\(candidateHosts.count) / m / s / d]"
-        let promptText = tr("请选择操作 \(promptHint) (按 Esc 退出向导): ", "Select option \(promptHint) (Press Esc to exit): ")
-        guard let input = promptLineWithEsc(prompt: promptText) else {
-            print(tr("已取消向导。", "Setup wizard canceled."))
-            return false
-        }
-        let choice = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if choice == "s" {
-            print(tr("已跳过主机配置。", "Skipped host configuration."))
-            break
-        } else if choice == "d" {
-            break
-        } else if choice == "m" {
-            if let newHost = handleManualHostEntry(existingHosts: configuredHosts) {
-                configuredHosts.append(newHost)
-                if let cIdx = candidateHosts.firstIndex(where: { $0.host == newHost.host }) {
-                    candidateHosts[cIdx].isConfigured = true
+        print(tr("\n[2/3] 软件更新策略设置", "\n[2/3] Software Update Channel"))
+        let channelOptions = [
+            SelectionItem(id: "off", title: "off", subtitle: tr("关闭自动检查（可手动运行 automnt --update）", "Disable checks; update manually with automnt --update")),
+            SelectionItem(id: "notify", title: "notify", subtitle: tr("发现新版本时发送系统通知", "Send a system notification when an update is available")),
+            SelectionItem(id: "auto", title: "auto", subtitle: tr("自动下载并安装预编译更新", "Download and install prebuilt updates automatically"))
+        ]
+        policyFlow: while true {
+            guard let channelIndex = promptInteractiveRadio(
+                title: tr("选择更新策略：", "Choose update policy:"), options: channelOptions
+            ) else {
+                if lastSelectionWasEscaped {
+                    print(tr("已返回主机选择选单；配置尚未保存。", "Returned to host selection; configuration was not saved."))
+                    returnToHostSelection = true
+                    break policyFlow
                 }
+                print(tr("输入已结束，向导未完成；配置尚未保存。", "Input ended; setup was not completed and no configuration was saved."))
+                return false
             }
-        } else if let num = Int(choice), num >= 1, num <= candidateHosts.count {
-            let candidateIdx = num - 1
-            if candidateHosts[candidateIdx].isConfigured {
-                print(tr("该主机已配置，不可重复选择，请选择其他候选主机或点选 [d] 完成。",
-                         "Host already configured. Select another or enter 'd' to finish."))
-                continue
-            }
-            let candidate = candidateHosts[candidateIdx]
-            if let hostConfig = handleCandidateHostConfiguration(candidate: candidate) {
-                configuredHosts.append(hostConfig)
-                candidateHosts[candidateIdx].isConfigured = true
-                let aliasDisplay = hostConfig.alias ?? hostConfig.host
-                print(tr("已保存主机 [\(aliasDisplay)] 的配置。", "Saved configuration for host [\(aliasDisplay)]."))
-            }
-        } else {
-            print(tr("无效的选择，请重新输入。", "Invalid choice, please re-enter."))
-        }
-    }
+            selectedChannel = channelOptions[channelIndex].id
+            guard offerServiceInstallation else { break policyFlow }
 
-    print(tr("\n[2/3] 软件更新策略设置", "\n[2/3] Software Update Channel"))
-    print(tr("""
-      [1] off    - 关闭自动检查 (推荐，零网络请求，手动运行 'automnt --update')
-      [2] notify - 发现新版本时发送系统通知，由您手动执行更新
-      [3] auto   - 发现新版本时自动下载预编译二进制并平滑升级
-    """, """
-      [1] off    - Disable auto-checks (Recommended, update manually via 'automnt --update')
-      [2] notify - Send system notification on new version, update manually
-      [3] auto   - Auto-download prebuilt binary and update silently
-    """))
-    let channelChoice = promptLineWithEsc(prompt: tr("请选择更新策略 [1-3] (默认 1): ", "Select update policy [1-3] (Default 1): "), defaultValue: "1")
-    let selectedChannel: String
-    switch channelChoice?.trimmingCharacters(in: .whitespacesAndNewlines) {
-    case "2", "notify": selectedChannel = "notify"
-    case "3", "auto": selectedChannel = "auto"
-    default: selectedChannel = "off"
+            let deployOptions = [
+                SelectionItem(id: "deploy", title: tr("立即部署 LaunchAgent", "Install LaunchAgent now"),
+                              subtitle: tr("网络变化时自动探测并挂载共享", "Automatically evaluate mounts when network state changes")),
+                SelectionItem(id: "skip", title: tr("仅保存配置", "Save configuration only"),
+                              subtitle: tr("不注册后台服务", "Do not register a background service"))
+            ]
+            guard let deployIndex = promptInteractiveRadio(
+                title: tr("是否立即部署后台服务？", "Install the background service now?"), options: deployOptions
+            ) else {
+                if lastSelectionWasEscaped {
+                    print(tr("已返回更新策略选单。", "Returned to update policy selection."))
+                    continue policyFlow
+                }
+                print(tr("输入已结束，向导未完成；配置尚未保存。", "Input ended; setup was not completed and no configuration was saved."))
+                return false
+            }
+            shouldInstallService = deployOptions[deployIndex].id == "deploy"
+            break policyFlow
+        }
+        if returnToHostSelection { continue wizardFlow }
+        break wizardFlow
     }
 
     let config = AutomntConfig(
@@ -1943,41 +2348,26 @@ func runInitWizard(offerServiceInstallation: Bool = true) -> Bool {
         hosts: configuredHosts,
         profiles: []
     )
-    let saved = saveConfig(config)
-    guard saved else {
+    guard saveConfig(config) else {
         fputs(tr("✗ 保存配置失败。\n", "✗ Failed to save configuration.\n"), stderr)
         return false
     }
     print(tr("\n✓ 恭喜！automnt 配置已顺利完成！", "\n✓ Configuration completed successfully!"))
 
-    if offerServiceInstallation {
-        print(tr("""
-        \n是否立即部署并在用户登录时自动运行后台守护服务？
-          - 选择 [Y]: 自动安装 LaunchAgent，当网络环境变化时自动触发顺位挂载探测。
-          - 选择 [n]: 仅保存配置文件，不向系统注册任何后台常驻服务。
-        """, """
-        \nDeploy background event-driven LaunchAgent daemon now?
-          - Select [Y]: Automatically install LaunchAgent to mount shares upon network change.
-          - Select [n]: Save config only, do not register background service.
-        """))
-        let deployPrompt = tr("请确认部署意愿 [Y/n] (默认 Y): ", "Confirm deployment intention [Y/n] (Default Y): ")
-        let deployChoice = promptLineWithEsc(prompt: deployPrompt, defaultValue: "Y")
-        if let choice = deployChoice?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-           choice == "y" || choice == "yes" {
-            print("")
-            installLaunchAgent()
-        } else {
-            print(tr("  ✓ 已跳过后台服务部署。", "  ✓ Skipped background service deployment."))
-            let activeConfigURL = getActiveConfigURL()
-            print(tr("  配置已成功保存至: \(activeConfigURL.path)", "  Config successfully saved to: \(activeConfigURL.path)"))
-            print(tr("  后续可通过运行 'automnt' 手动执行挂载，或使用 'automnt --config' 管理配置。\n",
-                     "  You can run 'automnt' anytime to mount manually, or 'automnt --config' to manage.\n"))
-        }
+    if offerServiceInstallation && shouldInstallService {
+        print("")
+        installLaunchAgent()
+    } else if offerServiceInstallation {
+        print(tr("  ✓ 已跳过后台服务部署。", "  ✓ Skipped background service deployment."))
+        let activeConfigURL = getActiveConfigURL()
+        print(tr("  配置已成功保存至: \(activeConfigURL.path)", "  Config successfully saved to: \(activeConfigURL.path)"))
+        print(tr("  后续可通过运行 'automnt' 手动执行挂载，或使用 'automnt --config' 管理配置。\n",
+                 "  You can run 'automnt' anytime to mount manually, or 'automnt --config' to manage.\n"))
     }
     return true
 }
 
-func runInitCommand(resetExistingConfig: Bool = false) -> Bool {
+func runInitCommand(resetExistingConfig: Bool = false, offerServiceInstallation: Bool = true) -> Bool {
     let activeConfigURL = getActiveConfigURL()
     let inspection = inspectConfigFile(at: activeConfigURL)
 
@@ -2001,11 +2391,11 @@ func runInitCommand(resetExistingConfig: Bool = false) -> Bool {
     }
 
     guard isInteractiveTerminal() else {
-        fputs(tr("✗ 当前没有可用配置且输入不是交互终端；请在 Terminal 中运行 `automnt --init`。\n",
-                 "✗ No usable config exists and stdin is not interactive; run `automnt --init` in Terminal.\n"), stderr)
-        return false
+        fputs(tr("当前输入不是交互终端；初始化向导使用编号列表，输入有效编号继续，直接回车取消。完成向导后会保存配置。\n",
+                 "Input is not interactive; setup uses numbered lists. Enter a valid number to continue or press Enter to cancel. Completing the wizard saves the config.\n"), stderr)
+        return runInitWizard(offerServiceInstallation: false)
     }
-    return runInitWizard()
+    return runInitWizard(offerServiceInstallation: offerServiceInstallation)
 }
 
 func prepareManagementConfigURL() -> URL? {
@@ -2091,340 +2481,221 @@ func pauseForUser() {
     _ = readLine()
 }
 
+func hostShareManagementOptions(for hostConfig: HostConfig) -> [SelectionItem] {
+    let configuredShares = hostConfig.shares.map { share in
+        SelectionItem(id: share.smbURL, title: share.name,
+                      subtitle: "\(share.mountPoint) · \(share.enabled ? tr("启用", "Enabled") : tr("禁用", "Disabled"))",
+                      isEnabled: false)
+    }
+    return configuredShares + [
+        SelectionItem(id: "add", title: tr("追加共享", "Add shares")),
+        SelectionItem(id: "delete", title: tr("批量删除共享", "Delete shares in batch")),
+        SelectionItem(id: "toggle", title: tr("批量切换启用状态", "Toggle shares in batch")),
+        SelectionItem(id: "back", title: tr("返回上一级", "Return to previous menu"))
+    ]
+}
+
 func manageHostShares(hostConfig: inout HostConfig, allHosts: [HostConfig]) {
     while true {
         let hostDisplay = hostConfig.alias.map { "\($0) (\(hostConfig.host))" } ?? hostConfig.host
-        print(tr("\n--- 主机管理: \(hostDisplay) ---", "\n--- Host Management: \(hostDisplay) ---"))
-        print(tr("当前从属共享:", "Current shares:"))
-        if hostConfig.shares.isEmpty {
-            print(tr("  (当前未配置任何共享)", "  (No shares configured)"))
-        } else {
-            for (idx, share) in hostConfig.shares.enumerated() {
-                let status = share.enabled ? tr("启用", "Enabled") : tr("禁用", "Disabled")
-                print("  [\(idx + 1)] \(share.name) (\(share.mountPoint)) [\(status)]")
-            }
-        }
-
-        print(tr("""
-
-        操作：
-          [a] 从当前挂载卷追加共享 / 手动输入路径
-          [d] 删除/移除指定共享
-          [t] 切换启用/禁用状态
-          [b] 返回上一级菜单 (或按 Esc)
-        """, """
-
-        Actions:
-          [a] Append share from active mount / manual input
-          [d] Remove specified share
-          [t] Toggle enabled/disabled state
-          [b] Return to parent menu (or press Esc)
-        """))
-
-        let promptText = tr("请选择操作: ", "Select action: ")
-        guard let input = promptLineWithEsc(prompt: promptText) else { return }
-        let action = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-
-        if action == "b" {
-            return
-        } else if action == "a" {
-            print(tr("\n选择追加共享方式：\n  [1] 从当前挂载卷追加\n  [2] 手动录入共享路径\n",
-                     "\nSelect method:\n  [1] Append from active mounted volumes\n  [2] Manually enter share path\n"))
-            let mPrompt = tr("请选择 [1/2] (默认 1, 按 Esc 取消): ", "Select [1/2] (Default 1, Esc to cancel): ")
-            guard let mChoice = promptLineWithEsc(prompt: mPrompt, defaultValue: "1") else { continue }
-            let method = mChoice.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if method == "2" {
-                let pathPrompt = tr("请输入从属 SMB 共享路径: ", "Enter SMB share path: ")
-                guard let pathInput = promptLineWithEsc(prompt: pathPrompt) else { continue }
-                let rawURL = pathInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                if rawURL.isEmpty { continue }
-
-                // 防呆检测：检查是否已存在于该主机名下
-                let sName = extractShareName(from: rawURL) ?? "share"
-                let stdMount = deriveStandardMountPoint(from: rawURL) ?? "/Volumes/\(sName)"
-                if hostConfig.shares.contains(where: { $0.smbURL.lowercased() == rawURL.lowercased() || $0.mountPoint == stdMount }) {
-                    print(tr("提示：共享路径 \(rawURL) 已存在于该主机名下，已自动忽略重复添加。",
-                             "Notice: Share path \(rawURL) already exists under this host, duplicate ignored."))
-                    continue
+        let options = hostShareManagementOptions(for: hostConfig)
+        guard let choice = promptInteractiveRadio(
+            title: tr("\n主机管理：\(hostDisplay)", "\nHost management: \(hostDisplay)"), options: options,
+            disabledHint: tr("该共享已配置，此行为信息展示项", "This share is already configured; this row is informational")
+        ) else { return }
+        let action = options[choice].id
+        if action == "back" { return }
+        if action.hasPrefix("smb://") {
+            continue
+        } else if action == "add" {
+            let sourceOptions = [
+                SelectionItem(id: "mounted", title: tr("从当前挂载卷追加", "Add from active mounts")),
+                SelectionItem(id: "manual", title: tr("手动录入共享路径", "Enter a share path manually"))
+            ]
+            guard let sourceIndex = promptInteractiveRadio(title: tr("选择追加方式：", "Choose how to add shares:"), options: sourceOptions) else { continue }
+            if sourceOptions[sourceIndex].id == "manual" {
+                guard let path = promptLineWithEsc(prompt: tr("请输入 SMB 共享路径：", "Enter SMB share URL: ")) else { continue }
+                let rawURL = path.trimmingCharacters(in: .whitespacesAndNewlines)
+                let name = extractShareName(from: rawURL) ?? "share"
+                let mount = deriveStandardMountPoint(from: rawURL) ?? "/Volumes/\(name)"
+                guard validateMountTargetURL(rawURL) == nil else { print(tr("无效的 SMB 共享路径。", "Invalid SMB share URL.")); continue }
+                guard !hostConfig.shares.contains(where: { $0.smbURL.lowercased() == rawURL.lowercased() || $0.mountPoint == mount }) else {
+                    print(tr("该共享已存在。", "This share is already configured.")); continue
                 }
-
-                if let err = validateMountTargetURL(rawURL) {
-                    print("✗ \(err)")
-                    continue
-                }
-
-                print(tr("标准目标挂载点将设置为: \(stdMount)", "Standard mount point will be set to: \(stdMount)"))
-                let confirmPrompt = tr("确认添加该共享？[Y/n]: ", "Confirm adding this share? [Y/n]: ")
-                guard let confirm = promptLineWithEsc(prompt: confirmPrompt, defaultValue: "Y") else { continue }
-                let tc = confirm.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                if tc == "y" || tc == "yes" {
-                    hostConfig.shares.append(SMBShareConfig(name: sName, smbURL: rawURL, mountPoint: stdMount, enabled: true))
-                    print(tr("\n提示：对于手动添加的新网络共享，请确保已在 macOS 系统中成功连接过一次并勾选“在我的钥匙串中记住此密码”，认证凭据将由系统钥匙串自动安全管理。",
-                             "\nNote: For manually added network shares, ensure you have connected at least once in macOS and checked 'Remember password in Keychain'. Credentials are managed securely by Keychain."))
-                    print(tr("已添加共享 [\(sName)]。", "Added share [\(sName)]."))
-                }
+                hostConfig.shares.append(SMBShareConfig(name: name, smbURL: rawURL, mountPoint: mount, enabled: true))
             } else {
-                let candidateMounts = discoverCandidateHosts().first(where: { $0.host == hostConfig.host })?.mounts ?? []
-                if candidateMounts.isEmpty {
-                    print(tr("系统未在该主机下检测到已挂载卷宗，请选择手动录入。",
-                             "No active mounts detected for this host. Please enter manually."))
-                    continue
+                let mounts = discoverCandidateHosts().first(where: { $0.host == hostConfig.host })?.mounts ?? []
+                let existing = Set(hostConfig.shares.map { smbResourceIdentity($0.smbURL) })
+                let candidates = mounts.filter { !existing.contains(smbResourceIdentity($0.smbURL)) }
+                guard !candidates.isEmpty else { print(tr("没有可追加的新挂载共享。", "No new mounted shares are available.")); continue }
+                let items = candidates.map { SelectionItem(id: $0.smbURL, title: $0.shareName, subtitle: redactedSMBURL($0.smbURL)) }
+                guard let selected = promptInteractiveCheckbox(title: tr("选择要追加的共享：", "Select shares to add:"), options: items), !selected.isEmpty else { continue }
+                for index in selected where candidates.indices.contains(index) {
+                    let mount = candidates[index]
+                    hostConfig.shares.append(SMBShareConfig(name: mount.shareName, smbURL: mount.smbURL,
+                        mountPoint: deriveStandardMountPoint(from: mount.smbURL) ?? "/Volumes/\(mount.shareName)", enabled: true))
                 }
-                print(tr("\n发现以下已挂载的共享卷宗：", "\nDiscovered mounted share volumes:"))
-                for (idx, m) in candidateMounts.enumerated() {
-                    let stdMount = deriveStandardMountPoint(from: m.smbURL) ?? "/Volumes/\(m.shareName)"
-                    print("  [\(idx + 1)] \(m.shareName) (\(redactedSMBURL(m.smbURL)) -> \(stdMount))")
-                }
-                let pickPrompt = tr("请选择要追加的共享编号 [1-\(candidateMounts.count)] (按 Esc 取消): ",
-                                    "Select share to add [1-\(candidateMounts.count)] (Esc to cancel): ")
-                guard let pInput = promptLineWithEsc(prompt: pickPrompt),
-                      let pIdx = Int(pInput.trimmingCharacters(in: .whitespacesAndNewlines)),
-                      pIdx >= 1 && pIdx <= candidateMounts.count else { continue }
-                let chosen = candidateMounts[pIdx - 1]
-                let stdMount = deriveStandardMountPoint(from: chosen.smbURL) ?? "/Volumes/\(chosen.shareName)"
-                if hostConfig.shares.contains(where: { $0.smbURL.lowercased() == chosen.smbURL.lowercased() || $0.mountPoint == stdMount }) {
-                    print(tr("提示：共享路径 \(chosen.smbURL) 已存在于该主机名下，已自动忽略重复添加。",
-                             "Notice: Share path \(chosen.smbURL) already exists under this host, duplicate ignored."))
-                    continue
-                }
-                hostConfig.shares.append(SMBShareConfig(name: chosen.shareName, smbURL: chosen.smbURL, mountPoint: stdMount, enabled: true))
-                print(tr("已添加共享 [\(chosen.shareName)]。", "Added share [\(chosen.shareName)]."))
             }
-        } else if action == "d" {
-            if hostConfig.shares.isEmpty {
-                print(tr("当前无共享可删除。", "No shares to delete."))
-                continue
+        } else if action == "delete" || action == "toggle" {
+            guard !hostConfig.shares.isEmpty else { print(tr("当前没有共享。", "No shares configured.")); continue }
+            let items = hostConfig.shares.map { SelectionItem(id: $0.smbURL, title: $0.name, subtitle: $0.mountPoint) }
+            guard let selected = promptInteractiveCheckbox(title: action == "delete" ? tr("选择要删除的共享：", "Select shares to delete:") : tr("选择要切换状态的共享：", "Select shares to toggle:"), options: items), !selected.isEmpty else { continue }
+            if action == "delete" {
+                for index in selected.sorted(by: >) where hostConfig.shares.indices.contains(index) { hostConfig.shares.remove(at: index) }
+            } else {
+                for index in selected where hostConfig.shares.indices.contains(index) { hostConfig.shares[index].enabled.toggle() }
             }
-            let delPrompt = tr("请输入要删除的共享编号 [1-\(hostConfig.shares.count)] (按 Esc 取消): ",
-                               "Enter share number to delete [1-\(hostConfig.shares.count)] (Esc to cancel): ")
-            guard let delInput = promptLineWithEsc(prompt: delPrompt),
-                  let delIdx = Int(delInput.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  delIdx >= 1 && delIdx <= hostConfig.shares.count else { continue }
-            let removed = hostConfig.shares.remove(at: delIdx - 1)
-            print(tr("已从主机移除共享 [\(removed.name)]。", "Removed share [\(removed.name)] from host."))
-        } else if action == "t" {
-            if hostConfig.shares.isEmpty {
-                print(tr("当前无共享可切换状态。", "No shares to toggle."))
-                continue
-            }
-            let togglePrompt = tr("请输入要切换状态的共享编号 [1-\(hostConfig.shares.count)] (按 Esc 取消): ",
-                                  "Enter share number to toggle [1-\(hostConfig.shares.count)] (Esc to cancel): ")
-            guard let tInput = promptLineWithEsc(prompt: togglePrompt),
-                  let tIdx = Int(tInput.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  tIdx >= 1 && tIdx <= hostConfig.shares.count else { continue }
-            hostConfig.shares[tIdx - 1].enabled.toggle()
-            let newState = hostConfig.shares[tIdx - 1].enabled ? tr("启用", "Enabled") : tr("禁用", "Disabled")
-            print(tr("共享 [\(hostConfig.shares[tIdx - 1].name)] 状态已切换为: [\(newState)]",
-                     "Share [\(hostConfig.shares[tIdx - 1].name)] toggled to: [\(newState)]"))
-        } else {
-            print(tr("无效的选择，请重新输入。", "Invalid choice, please re-enter."))
         }
     }
 }
 
 func manageUpdateChannel(config: inout AutomntConfig) {
-    print(tr("\n软件更新策略设置：", "\nSoftware Update Channel:"))
-    print(tr("""
-      [1] off    - 关闭自动检查
-      [2] notify - 新版本系统通知提醒
-      [3] auto   - 后台静默下载并自动升级
-    """, """
-      [1] off    - Disable auto-checks
-      [2] notify - Notify only
-      [3] auto   - Auto silent update
-    """))
-    let prompt = tr("请选择更新策略 [1-3] (按 Esc 取消): ", "Select update policy [1-3] (Esc to cancel): ")
-    guard let input = promptLineWithEsc(prompt: prompt) else { return }
-    let choice = input.trimmingCharacters(in: .whitespacesAndNewlines)
-    switch choice {
-    case "1", "off":
-        config.updateChannel = "off"
-        print(tr("✓ 更新信道已修改为: off", "✓ Update channel set to: off"))
-    case "2", "notify":
-        config.updateChannel = "notify"
-        print(tr("✓ 更新信道已修改为: notify", "✓ Update channel set to: notify"))
-    case "3", "auto":
-        config.updateChannel = "auto"
-        print(tr("✓ 更新信道已修改为: auto", "✓ Update channel set to: auto"))
-    default:
-        print(tr("未识别的策略，未做修改。", "Unrecognized policy, unchanged."))
-    }
+    let options = [
+        SelectionItem(id: "off", title: "off", subtitle: tr("关闭自动检查", "Disable automatic checks")),
+        SelectionItem(id: "notify", title: "notify", subtitle: tr("发现更新时发送系统通知", "Send a system notification when an update is available")),
+        SelectionItem(id: "auto", title: "auto", subtitle: tr("自动下载并安装更新", "Download and install updates automatically"))
+    ]
+    guard let index = promptInteractiveRadio(title: tr("选择更新策略：", "Choose update policy:"), options: options,
+                                             defaultIndex: options.firstIndex(where: { $0.id == config.updateChannel }) ?? 0) else { return }
+    config.updateChannel = options[index].id
+    let selectedChannel = config.updateChannel ?? "off"
+    print(tr("✓ 更新信道已暂存为: \(selectedChannel)", "✓ Update channel staged as: \(selectedChannel)"))
 }
 
 func manageConfiguration() {
     guard let configURL = prepareManagementConfigURL(),
-          var config = loadConfig(from: configURL) else { return }
+          var workingConfig = loadConfig(from: configURL) else { return }
 
     while true {
-        let hostsHint = config.hosts.isEmpty
-            ? tr("  (当前未配置任何主机)", "  (No hosts configured)")
-            : config.hosts.enumerated().map { (idx, h) in
-                let aliasText = h.alias.map { " [\($0)]" } ?? ""
-                let enabledSharesCount = h.shares.filter { $0.enabled }.count
-                return tr("  顺位 \(idx + 1): \(h.host)\(aliasText) (启用的共享: \(enabledSharesCount) 个)",
-                          "  Priority \(idx + 1): \(h.host)\(aliasText) (Enabled shares: \(enabledSharesCount))")
-            }.joined(separator: "\n")
-
-        let maxChoice = max(1, config.hosts.count)
-        print(tr("""
-        === automnt 日常配置管理 ===
-        活动配置文件: \(configURL.path) (规范版本: \(config.version))
-
-        当前配置的主机顺位列表 (探测时按由高到低排他执行):
-        \(hostsHint)
-
-        管理操作：
-          [1-\(maxChoice)] 进入指定主机管理其从属共享
-          [a]   新增主机 (扫描当前挂载 / 手动录入)
-          [m]   调整主机顺位优先级
-          [d]   删除主机 (支持清空所有主机)
-          [u]   修改自动更新检查策略
-          [q]   保存并退出 (按 Esc 等同放弃未保存修改退出)
-        """, """
-        === automnt Daily Configuration Management ===
-        Active config: \(configURL.path) (Schema version: \(config.version))
-
-        Configured hosts priority pipeline (probed top-down with short-circuit):
-        \(hostsHint)
-
-        Actions:
-          [1-\(maxChoice)] Enter host to manage shares
-          [a]   Add new host (Scan current mounts / Manual entry)
-          [m]   Reorder host priority
-          [d]   Delete host (Supports deleting all hosts)
-          [u]   Modify update channel
-          [q]   Save and exit (Esc discards unsaved changes)
-        """))
-
-        let prompt = tr("请选择操作 [1-\(maxChoice) / a / m / d / u / q]: ",
-                        "Select action [1-\(maxChoice) / a / m / d / u / q]: ")
-        guard let input = promptLineWithEsc(prompt: prompt) else {
-            print(tr("已放弃未保存修改并退出。", "Discarded unsaved changes and exited."))
+        print(tr("按 Esc 放弃未保存修改并退出。", "Press Esc to discard unsaved changes and exit."))
+        let hostOptions = workingConfig.hosts.enumerated().map { index, host in
+            let alias = host.alias.map { " [\($0)]" } ?? ""
+            let enabledCount = host.shares.filter(\.enabled).count
+            return SelectionItem(id: "host:\(index)", title: host.host + alias,
+                subtitle: tr("\(host.shares.count) 个共享，\(enabledCount) 个启用", "\(host.shares.count) shares, \(enabledCount) enabled"))
+        }
+        let actions = [
+            SelectionItem(id: "add", title: tr("新增主机", "Add host")),
+            SelectionItem(id: "reorder", title: tr("调整主机顺位", "Reorder hosts")),
+            SelectionItem(id: "delete", title: tr("删除主机", "Delete hosts")),
+            SelectionItem(id: "channel", title: tr("修改更新策略", "Change update policy")),
+            SelectionItem(id: "save", title: tr("保存并退出", "Save and exit"),
+                          subtitle: tr("写入本次会话的所有修改", "Write all changes from this session"))
+        ]
+        let options = hostOptions + actions
+        guard let selected = promptInteractiveRadio(
+            title: tr("\n=== automnt 日常配置管理 ===\n活动配置：\(configURL.path)\n主机顺位：",
+                      "\n=== automnt Daily Configuration ===\nActive config: \(configURL.path)\nHost priority:"),
+            options: options
+        ) else {
+            print(tr("已放弃本次会话的所有未保存修改。", "Discarded all unsaved changes from this session."))
             return
         }
-        let action = input.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let action = options[selected].id
 
-        if action == "q" {
-            _ = saveConfig(config, to: configURL)
-            print(tr("✓ 配置已保存并退出。", "✓ Configuration saved and exited."))
-            return
-        } else if action == "a" {
-            print(tr("\n新增主机接入方式：\n  [1] 扫描当前挂载网络存储\n  [2] 手动录入新主机\n",
-                     "\nAdd host method:\n  [1] Scan active mounted storage\n  [2] Manually enter new host\n"))
-            let methodChoice = promptLineWithEsc(prompt: tr("请选择 [1/2] (默认 1, 按 Esc 取消): ", "Select [1/2] (Default 1, Esc to cancel): "), defaultValue: "1")
-            if let method = methodChoice?.trimmingCharacters(in: .whitespacesAndNewlines) {
-                if method == "2" {
-                    if let newHost = handleManualHostEntry(existingHosts: config.hosts) {
-                        config.hosts.append(newHost)
-                        _ = saveConfig(config, to: configURL)
-                    }
-                } else {
-                    let candidateHosts = discoverCandidateHosts().filter { c in
-                        !config.hosts.contains(where: { $0.host == c.host })
-                    }
-                    if candidateHosts.isEmpty {
-                        print(tr("未扫描到尚未配置的新挂载主机，请尝试手动录入。",
-                                 "No unconfigured mounted hosts discovered. Please try manual entry."))
-                    } else {
-                        print(tr("\n发现以下未配置的候选主机：", "\nDiscovered unconfigured candidate hosts:"))
-                        for (idx, c) in candidateHosts.enumerated() {
-                            print("  [\(idx + 1)] \(c.host) (\(c.mounts.count) 个共享)")
-                        }
-                        let cPrompt = tr("请选择要添加的主机 [1-\(candidateHosts.count)] (按 Esc 取消): ",
-                                         "Select host to add [1-\(candidateHosts.count)] (Esc to cancel): ")
-                        if let cInput = promptLineWithEsc(prompt: cPrompt),
-                           let cIdx = Int(cInput.trimmingCharacters(in: .whitespacesAndNewlines)),
-                           cIdx >= 1 && cIdx <= candidateHosts.count {
-                            let candidate = candidateHosts[cIdx - 1]
-                            if let newHost = handleCandidateHostConfiguration(candidate: candidate) {
-                                config.hosts.append(newHost)
-                                _ = saveConfig(config, to: configURL)
-                            }
-                        }
-                    }
-                }
-            }
-        } else if action == "m" {
-            if config.hosts.count < 2 {
-                print(tr("当前配置主机少于 2 台，无需调整顺位。", "Fewer than 2 hosts configured, no reordering needed."))
+        if action == "save" {
+            guard saveConfig(workingConfig, to: configURL) else {
+                fputs(tr("✗ 保存失败；配置管理仍保持打开。\n", "✗ Save failed; configuration management remains open.\n"), stderr)
                 continue
             }
-            print(tr("\n当前主机顺位：", "\nCurrent host priority:"))
-            for (idx, h) in config.hosts.enumerated() {
-                let aliasText = h.alias.map { " [\($0)]" } ?? ""
-                print("  [\(idx + 1)] \(h.host)\(aliasText)")
+            print(tr("✓ 配置已保存并退出。", "✓ Configuration saved and exited."))
+            return
+        } else if action == "add" {
+            addHostFlow: while true {
+                let methods = [
+                    SelectionItem(id: "mounted", title: tr("扫描当前挂载", "Scan active mounts")),
+                    SelectionItem(id: "manual", title: tr("手动录入主机", "Enter host manually"))
+                ]
+                guard let method = promptInteractiveRadio(title: tr("选择新增主机方式：", "Choose how to add a host:"), options: methods) else { break addHostFlow }
+                if methods[method].id == "manual" {
+                    if let host = handleManualHostEntry(existingHosts: workingConfig.hosts) {
+                        workingConfig.hosts.append(host)
+                    } else if lastManualHostAliasWasEscaped {
+                        continue addHostFlow
+                    } else if lastLineInputReachedEOF || lastSelectionReachedEOF {
+                        return
+                    }
+                    break addHostFlow
+                }
+                let configured = Set(workingConfig.hosts.map(\.host))
+                let candidates = discoverCandidateHosts().filter { !configured.contains($0.host) }
+                let candidateItems = candidates.map {
+                    SelectionItem(id: $0.host, title: $0.host,
+                                  subtitle: tr("\($0.mounts.count) 个已挂载共享", "\($0.mounts.count) mounted shares"))
+                }
+                if let index = promptInteractiveRadio(title: tr("选择要添加的主机：", "Select a host to add:"), options: candidateItems),
+                   candidates.indices.contains(index),
+                   let host = handleCandidateHostConfiguration(candidate: candidates[index]) {
+                    workingConfig.hosts.append(host)
+                }
+                break addHostFlow
             }
-            let pickPrompt = tr("选择要调整顺位的主机编号 [1-\(config.hosts.count)] (按 Esc 取消): ",
-                                "Select host to move [1-\(config.hosts.count)] (Esc to cancel): ")
-            guard let pickInput = promptLineWithEsc(prompt: pickPrompt),
-                  let pickIdx = Int(pickInput.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  pickIdx >= 1 && pickIdx <= config.hosts.count else { continue }
-            let hostIndex = pickIdx - 1
-
-            let dirPrompt = tr("移动方向：[u] 上移一位 / [d] 下移一位 (按 Esc 取消): ",
-                               "Direction: [u] Move Up / [d] Move Down (Esc to cancel): ")
-            guard let dirInput = promptLineWithEsc(prompt: dirPrompt) else { continue }
-            let dir = dirInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if dir == "u" && hostIndex > 0 {
-                config.hosts.swapAt(hostIndex, hostIndex - 1)
-                _ = saveConfig(config, to: configURL)
-                print(tr("✓ 主机顺位已提升！", "✓ Host moved up!"))
-            } else if dir == "d" && hostIndex < config.hosts.count - 1 {
-                config.hosts.swapAt(hostIndex, hostIndex + 1)
-                _ = saveConfig(config, to: configURL)
-                print(tr("✓ 主机顺位已降低！", "✓ Host moved down!"))
+        } else if action == "reorder" {
+            guard workingConfig.hosts.count > 1 else {
+                print(tr("至少需要两台主机才能调整顺位。", "At least two hosts are required to reorder."))
+                continue
             }
-        } else if action == "d" {
-            if config.hosts.isEmpty {
+            let hosts = workingConfig.hosts.enumerated().map { index, host in
+                SelectionItem(id: "host:\(index)",
+                              title: host.alias.map { "\($0) (\(host.host))" } ?? host.host,
+                              subtitle: tr("当前顺位 \(index + 1)", "Current priority \(index + 1)"))
+            }
+            guard let source = promptInteractiveRadio(title: tr("第 1 步：选择要移动的主机", "Step 1: Select the host to move"), options: hosts) else { continue }
+            let destinations = workingConfig.hosts.indices.map { index in
+                SelectionItem(id: "slot:\(index)", title: tr("顺位 \(index + 1)", "Priority \(index + 1)"))
+            }
+            guard let destination = promptInteractiveRadio(title: tr("第 2 步：选择目标顺位", "Step 2: Select the destination priority"), options: destinations) else { continue }
+            if source != destination {
+                let host = workingConfig.hosts.remove(at: source)
+                workingConfig.hosts.insert(host, at: destination)
+                print(tr("✓ 已将主机成功调整至顺位 \(destination + 1)（尚未保存）。", "✓ Host successfully moved to priority \(destination + 1) (not saved yet)."))
+            }
+        } else if action == "delete" {
+            guard !workingConfig.hosts.isEmpty else {
                 print(tr("当前无主机可删除。", "No hosts to delete."))
                 continue
             }
-            print(tr("\n当前配置的主机：", "\nConfigured hosts:"))
-            for (idx, h) in config.hosts.enumerated() {
-                let aliasText = h.alias.map { " [\($0)]" } ?? ""
-                print("  [\(idx + 1)] \(h.host)\(aliasText)")
+            let targets = workingConfig.hosts.enumerated().map { index, host in
+                SelectionItem(id: "host:\(index)",
+                              title: host.alias.map { "\($0) (\(host.host))" } ?? host.host)
+            } + [SelectionItem(id: "all", title: tr("清空全部主机", "Delete all hosts"))]
+            guard let targetIndex = promptInteractiveRadio(title: tr("选择要删除的目标：", "Select deletion target:"), options: targets) else { continue }
+            let targetID = targets[targetIndex].id
+            let confirmation = [
+                SelectionItem(id: "cancel", title: tr("取消并返回", "Cancel and return")),
+                SelectionItem(id: "confirm", title: tr("确认删除", "Confirm deletion"))
+            ]
+            let heading: String
+            if targetID == "all" {
+                heading = tr("=== 高风险操作确认：清空所有主机 ===", "=== HIGH-RISK CONFIRMATION: clear all hosts ===")
+            } else if let index = Int(targetID.dropFirst("host:".count)), workingConfig.hosts.indices.contains(index) {
+                heading = tr("=== 高风险操作确认：删除主机 \(workingConfig.hosts[index].host) ===",
+                             "=== HIGH-RISK CONFIRMATION: delete host \(workingConfig.hosts[index].host) ===")
+            } else {
+                heading = tr("=== 高风险操作确认 ===", "=== HIGH-RISK CONFIRMATION ===")
             }
-            let delPrompt = tr("请输入要删除的主机编号 [1-\(config.hosts.count)] (按 Esc 取消): ",
-                               "Enter host number to delete [1-\(config.hosts.count)] (Esc to cancel): ")
-            guard let delInput = promptLineWithEsc(prompt: delPrompt),
-                  let delIdx = Int(delInput.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  delIdx >= 1 && delIdx <= config.hosts.count else { continue }
-            let removed = config.hosts.remove(at: delIdx - 1)
-            _ = saveConfig(config, to: configURL)
-            let aliasDisplay = removed.alias ?? removed.host
-            print(tr("✓ 已移除主机 [\(aliasDisplay)]。", "✓ Removed host [\(aliasDisplay)]."))
-
-            if config.hosts.isEmpty {
-                print(tr("""
-
-                当前主机列表为空 (0 台主机)。
-                系统将该状态视为合法的静默休眠配置。
-                """, """
-
-                All hosts removed (0 hosts).
-                This is considered a valid dormant sleep configuration.
-                """))
-                let saveEmptyPrompt = tr("保存并退出配置？[Y/n]: ", "Save and exit? [Y/n]: ")
-                let saveChoice = promptLineWithEsc(prompt: saveEmptyPrompt, defaultValue: "Y")
-                if let choice = saveChoice?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-                   choice == "y" || choice == "yes" {
-                    _ = saveConfig(config, to: configURL)
-                    print(tr("配置已更新。后台服务在被系统唤醒时将处于安全休眠状态。",
-                             "Configuration updated. The background daemon will stay in safe dormant sleep."))
-                    return
-                } else {
-                    print(tr("已取消保存退出，继续停留在配置菜单。", "Cancelled saving and exit, staying in configuration menu."))
-                }
+            let dialogTitle = heading + "\n" +
+                tr("警告：删除后该主机名下的所有从属共享挂载配置将被同步移除。",
+                   "Warning: all dependent share mount configurations of this host will be removed as well.") + "\n" +
+                tr("删除仅修改内存工作副本，保存后才会生效。", "Deletion changes only the in-memory working copy until saved.")
+            guard promptExplicitConfirmation(
+                title: dialogTitle,
+                options: confirmation
+            ) == 1 else {
+                print(tr("已安全取消删除。", "Deletion safely canceled."))
+                continue
             }
-        } else if action == "u" {
-            manageUpdateChannel(config: &config)
-            _ = saveConfig(config, to: configURL)
-        } else if let num = Int(action), num >= 1, num <= config.hosts.count {
-            manageHostShares(hostConfig: &config.hosts[num - 1], allHosts: config.hosts)
-            _ = saveConfig(config, to: configURL)
-        } else {
-            print(tr("无效的选择，请重新输入。", "Invalid choice, please re-enter."))
+            if targetID == "all" {
+                workingConfig.hosts.removeAll()
+            } else if let index = Int(targetID.dropFirst("host:".count)), workingConfig.hosts.indices.contains(index) {
+                workingConfig.hosts.remove(at: index)
+            }
+            print(tr("✓ 删除已暂存，保存并退出后生效。", "✓ Deletion staged; save and exit to apply it."))
+        } else if action == "channel" {
+            manageUpdateChannel(config: &workingConfig)
+        } else if action.hasPrefix("host:"),
+                  let index = Int(action.dropFirst("host:".count)), workingConfig.hosts.indices.contains(index) {
+            manageHostShares(hostConfig: &workingConfig.hosts[index], allHosts: workingConfig.hosts)
         }
     }
 }
@@ -3358,6 +3629,139 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
           "promptLineWithEsc returns nil on Esc cancel")
     mockLineInput = nil
 
+    // Feature 003 in-memory interaction component coverage
+    check(TerminalUI.decodeArrowSequence(prefix: 91, suffix: 65) == .up, "CSI up arrow decodes")
+    check(TerminalUI.decodeArrowSequence(prefix: 79, suffix: 66) == .down, "SS3 down arrow decodes")
+    check(TerminalUI.decodeArrowSequence(prefix: 91, suffix: 67) == nil, "unsupported arrow suffix is ignored")
+    TerminalUI.mockInputBytes = [27]
+    TerminalUI.mockPendingInputResults = [false]
+    TerminalUI.mockedPollTimeouts = []
+    check(TerminalUI.readKey() == .escape, "readKey treats a lone Esc byte as cancellation")
+    check(TerminalUI.mockedPollTimeouts == [50], "readKey probes a lone Esc byte with the 50 ms timeout")
+    TerminalUI.mockInputBytes = [27, 91, 65]
+    TerminalUI.mockPendingInputResults = [true, true]
+    TerminalUI.mockedPollTimeouts = []
+    check(TerminalUI.readKey() == .up, "readKey decodes a complete CSI arrow byte sequence")
+    check(TerminalUI.mockedPollTimeouts == [50, 10], "arrow parsing uses the 50 ms and 10 ms bounded probes")
+    TerminalUI.mockInputBytes = [27, 79, 66]
+    TerminalUI.mockPendingInputResults = [true, true]
+    check(TerminalUI.readKey() == .down, "readKey decodes a complete SS3 arrow byte sequence")
+    TerminalUI.mockInputBytes = [27, 91]
+    TerminalUI.mockPendingInputResults = [true, false]
+    check(TerminalUI.readKey() == .escape, "readKey treats a truncated CSI arrow sequence as cancellation")
+    TerminalUI.mockInputBytes = [27, 79]
+    TerminalUI.mockPendingInputResults = [true, false]
+    check(TerminalUI.readKey() == .escape, "readKey treats a truncated SS3 arrow sequence as cancellation")
+    TerminalUI.mockInputBytes = nil
+    TerminalUI.mockPendingInputResults = nil
+    TerminalUI.mockedPollTimeouts = []
+    TerminalUI.termiosTestMode = true
+    TerminalUI.termiosLastRestoreMatchedOriginal = false
+    TerminalUI.setRawMode(true)
+    let rawControlChars = withUnsafeBytes(of: TerminalUI.mockRawTermios!.c_cc) { Array($0) }
+    check(rawControlChars[Int(VMIN)] == 1 && rawControlChars[Int(VTIME)] == 0,
+          "raw terminal mode sets VMIN=1 and VTIME=0")
+    let originalTermiosBytes = TerminalUI.mockOriginalTermiosBytes
+    TerminalUI.setRawMode(false)
+    let restoredTermiosBytes = TerminalUI.mockTermiosOriginalAfterRestore.map {
+        withUnsafeBytes(of: $0) { Array($0) }
+    }
+    check(TerminalUI.termiosLastRestoreMatchedOriginal && originalTermiosBytes == restoredTermiosBytes &&
+          TerminalUI.mockOriginalTermios == nil,
+          "terminal restoration restores the original termios snapshot")
+    TerminalUI.termiosTestMode = false
+    let fallbackOptions = [SelectionItem(id: "first", title: "First"),
+                            SelectionItem(id: "second", title: "Second"),
+                            SelectionItem(id: "disabled", title: "Disabled", isEnabled: false)]
+    isTTYOverride = false
+    TerminalUI.mockKeySequence = [.escape]
+    check(promptInteractiveRadio(title: "escape repaint", options: fallbackOptions) == nil,
+          "radio selection cancels with Escape after rendering")
+    check(TerminalUI.lastRenderedLineCount == 0 && TerminalUI.lastRenderedVisibleRange == nil,
+          "radio Escape clears its rendered frame")
+    TerminalUI.mockKeySequence = [.escape]
+    check(promptInteractiveCheckbox(title: "escape repaint", options: fallbackOptions) == nil,
+          "checkbox selection cancels with Escape after rendering")
+    check(TerminalUI.lastRenderedLineCount == 0 && TerminalUI.lastRenderedVisibleRange == nil,
+          "checkbox Escape clears its rendered frame")
+    let physicalViewport = RollingViewportState(totalCount: 2, capacity: 2, defaultIndex: 0)
+    TerminalUI.lastRenderedLineCount = 0
+    renderSelectionFrame(title: "line1\nline2\nline3", options: fallbackOptions,
+                         viewport: physicalViewport, selected: [], explicit: false)
+    check(TerminalUI.lastRenderedLineCount == 8,
+          "frame line accounting counts embedded title newlines as physical lines")
+    TerminalUI.lastRenderedLineCount = 5
+    printSelectionNotice("\nnotice")
+    check(TerminalUI.lastRenderedLineCount == 7,
+          "notice output is compensated in frame line accounting")
+    let captureURL = tempDir.appendingPathComponent("frame_tail_capture.txt")
+    fflush(stdout)
+    let savedStdout = dup(STDOUT_FILENO)
+    freopen(captureURL.path, "w", stdout)
+    renderSelectionFrame(title: "t", options: [SelectionItem(id: "a", title: "A")],
+                         viewport: RollingViewportState(totalCount: 1, capacity: 1, defaultIndex: 0),
+                         selected: [], explicit: false)
+    clearSelectionFrame()
+    fflush(stdout)
+    dup2(savedStdout, STDOUT_FILENO)
+    close(savedStdout)
+    let capturedFrameOutput = (try? String(contentsOf: captureURL, encoding: .utf8)) ?? ""
+    check(capturedFrameOutput.contains("\u{1B}[2K\n\u{1B}[2K\n\u{1B}[2A"),
+          "repaint erases stale notice lines below the frame and returns the cursor")
+    check(TerminalUI.lastRenderedLineCount == 0,
+          "clear after notice-aware repaint leaves no frame state")
+    TerminalUI.lastRenderedLineCount = 0
+    TerminalUI.mockKeySequence = nil
+    isTTYOverride = nil
+    check(parseSelectionFallback("2, 1, 9, nope", options: fallbackOptions, multiple: true) == [1, 0],
+          "non-TTY multi-selection fallback filters invalid and disabled indices")
+    isTTYOverride = false
+    mockLineInputs = ["2"]
+    check(promptInteractiveRadio(title: "fallback radio", options: fallbackOptions) == 1,
+          "non-TTY radio fallback reads and selects a numbered line")
+    mockLineInputs = ["2, 1, 2"]
+    check(promptInteractiveCheckbox(title: "fallback checkbox", options: fallbackOptions) == [1, 0],
+          "non-TTY checkbox fallback reads a line and deduplicates numbered selections")
+    mockLineInputs = [""]
+    check(promptInteractiveRadio(title: "fallback cancel", options: fallbackOptions) == nil,
+          "non-TTY fallback treats an empty input line as cancellation")
+    mockLineInputs = nil
+    isTTYOverride = nil
+
+    let interactiveOptions = [SelectionItem(id: "first", title: "First"),
+                              SelectionItem(id: "second", title: "Second"),
+                              SelectionItem(id: "disabled", title: "Disabled", isEnabled: false)]
+    isTTYOverride = false
+    TerminalUI.mockKeySequence = [.down, .enter]
+    check(promptInteractiveRadio(title: "radio", options: interactiveOptions) == 1,
+          "in-memory radio selection follows cursor and Enter")
+    TerminalUI.mockKeySequence = [.down, .space, .enter]
+    check(promptInteractiveCheckbox(title: "checkbox", options: interactiveOptions, initiallySelected: [0]) == [0, 1],
+          "in-memory checkbox toggles items and preserves initial selection")
+    TerminalUI.mockKeySequence = [.selectAll, .enter]
+    check(promptInteractiveCheckbox(title: "checkbox", options: interactiveOptions) == [0, 1],
+          "checkbox select-all excludes disabled options")
+    TerminalUI.mockKeySequence = [.selectAll, .selectAll, .enter]
+    check(promptInteractiveCheckbox(title: "checkbox", options: interactiveOptions) == [],
+          "checkbox select-all toggles between all and none")
+    TerminalUI.mockKeySequence = [.down, .enter]
+    check(promptExplicitConfirmation(title: "confirm", options: [SelectionItem(title: "Cancel"), SelectionItem(title: "Confirm")]) == nil,
+          "explicit confirmation cancels when focus moves without Space")
+    TerminalUI.mockKeySequence = [.down, .space, .enter]
+    check(promptExplicitConfirmation(title: "confirm", options: [SelectionItem(title: "Cancel"), SelectionItem(title: "Confirm")]) == 1,
+          "explicit confirmation requires Space before Enter")
+    TerminalUI.mockKeySequence = [.enter]
+    check(promptExplicitConfirmation(title: "confirm", options: [SelectionItem(title: "Cancel"), SelectionItem(title: "Confirm")]) == nil,
+          "explicit confirmation defaults to safe cancellation")
+
+    let longSelection = (0..<20).map { SelectionItem(id: "item:\($0)", title: "Item \($0)") }
+    TerminalUI.mockKeySequence = Array(repeating: .down, count: 12) + [.enter]
+    _ = promptInteractiveRadio(title: "long list", options: longSelection)
+    check(TerminalUI.lastRenderedVisibleRange == 1..<13,
+          "rolling selection viewport scrolls while keeping cursor visible")
+    TerminalUI.mockKeySequence = nil
+    isTTYOverride = nil
+
     // 15. User Story 1 Tests (T009 - T013)
     let mockMount1 = DiscoveredMount(
         mountPoint: "/Volumes/Public-1",
@@ -3378,26 +3782,82 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     let mockGroup = DiscoveredHostGroup(host: "192.168.1.100", mounts: [mockMount1, mockMount2], isConfigured: false)
 
     // Test drill-down configuration via handleCandidateHostConfiguration
-    // Inputs: alias ("家庭 NAS"), selection ("all"), confirm ("Y")
-    mockLineInputs = ["家庭 NAS", "all", "Y"]
+    // Inputs: alias; mounted shares default to all-selected; Enter batch-submits (no confirm step).
+    mockLineInputs = ["家庭 NAS"]
+    TerminalUI.mockKeySequence = [.enter]
     let drilledHost = handleCandidateHostConfiguration(candidate: mockGroup)
+    TerminalUI.mockKeySequence = nil
     check(drilledHost != nil, "handleCandidateHostConfiguration succeeds with valid inputs")
     check(drilledHost?.alias == "家庭 NAS", "HostConfig alias is recorded properly")
     check(drilledHost?.shares.count == 2, "Both candidate mounts selected")
     check(drilledHost?.shares[0].mountPoint == "/Volumes/Public", "Derived mount point is /Volumes/Public without -1 suffix")
     check(drilledHost?.shares[1].mountPoint == "/Volumes/data-1", "Legal data-1 mount point strictly preserved")
 
-    // Test skip host branch in runInitWizard
-    // Inputs: "s" (skip hosts), "1" (update channel off), "n" (skip daemon)
+    // Test skip host branch in runInitWizard with menu key sequences.
     let initWizardURL = tempDir.appendingPathComponent("init_wizard_skip.plist")
     configURLOverride = initWizardURL
     mockCandidateHosts = [mockGroup]
-    mockLineInputs = ["s", "1", "n"]
+    TerminalUI.mockKeySequence = [.down, .down, .enter, .enter, .down, .enter]
     let initSuccess = runInitWizard(offerServiceInstallation: true)
+    TerminalUI.mockKeySequence = nil
     check(initSuccess, "runInitWizard completes successfully when skipping hosts")
     let skippedConfig = inspectConfigFile(at: initWizardURL).config
     check(skippedConfig?.hosts.isEmpty == true, "Skipped wizard produces a valid 0-host configuration")
     check(skippedConfig?.updateChannel == "off", "Update channel defaults to off")
+
+    let manualAliasEscapeURL = tempDir.appendingPathComponent("manual_alias_escape.plist")
+    configURLOverride = manualAliasEscapeURL
+    mockCandidateHosts = [mockGroup]
+    mockLineInputs = ["manual.example.invalid", "\u{1B}"]
+    var manualAliasEscapeProbeCount = 0
+    HostReachabilityProbe.testOverride = { _, _, _ in
+        manualAliasEscapeProbeCount += 1
+        return true
+    }
+    TerminalUI.mockKeySequence = [.down, .enter, .down, .down, .enter, .enter, .down, .enter]
+    check(runInitWizard(offerServiceInstallation: true),
+          "manual host alias Escape returns to host selection and allows completing the wizard")
+    check(manualAliasEscapeProbeCount == 0,
+          "manual host alias Escape does not probe the host or request a share path")
+    check(inspectConfigFile(at: manualAliasEscapeURL).config?.hosts.isEmpty == true,
+          "manual alias Escape stages no partial host configuration")
+    TerminalUI.mockKeySequence = nil
+    mockLineInputs = nil
+    HostReachabilityProbe.testOverride = nil
+
+    let wizardBacktrackURL = tempDir.appendingPathComponent("init_wizard_backtrack.plist")
+    configURLOverride = wizardBacktrackURL
+    mockCandidateHosts = [mockGroup]
+    mockLineInputs = [""]
+    TerminalUI.mockKeySequence = [
+        .enter, .enter,
+        .down, .enter,
+        .escape,
+        .down, .enter,
+        .down, .enter,
+        .escape,
+        .down, .enter,
+        .down, .enter
+    ]
+    check(runInitWizard(offerServiceInstallation: true),
+          "wizard Escape returns from policy to hosts and from deployment to policy")
+    let backtrackedConfig = inspectConfigFile(at: wizardBacktrackURL).config
+    check(backtrackedConfig?.hosts.count == 1 && backtrackedConfig?.hosts[0].host == mockGroup.host,
+          "wizard policy and deployment backtracking preserves staged host configuration")
+    check(backtrackedConfig?.updateChannel == "notify",
+          "wizard accepts an update policy after repeated Escape backtracking")
+    TerminalUI.mockKeySequence = nil
+    mockLineInputs = nil
+
+    let canceledInitURL = tempDir.appendingPathComponent("init_wizard_cancelled.plist")
+    configURLOverride = canceledInitURL
+    mockCandidateHosts = [mockGroup]
+    TerminalUI.mockKeySequence = [.down, .down, .enter, .enter, .escape]
+    check(!runInitWizard(offerServiceInstallation: true), "wizard EOF after deployment Escape cancels setup")
+    TerminalUI.mockKeySequence = nil
+    check(!FileManager.default.fileExists(atPath: canceledInitURL.path),
+          "wizard cancellation before completion does not persist a config")
+
     configURLOverride = nil
     mockCandidateHosts = nil
     mockLineInputs = nil
@@ -3411,15 +3871,29 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     var testHostMgmt = HostConfig(host: "192.168.1.100", alias: "Home NAS", shares: [
         SMBShareConfig(name: "Public", smbURL: "smb://192.168.1.100/Public", mountPoint: "/Volumes/Public")
     ])
-    // Test share removal in manageHostShares: 'd', '1', 'b'
-    mockLineInputs = ["d", "1", "b"]
+    let configuredShareOptions = hostShareManagementOptions(for: testHostMgmt)
+    check(configuredShareOptions.first?.id == testHostMgmt.shares[0].smbURL &&
+          configuredShareOptions.first?.isEnabled == false,
+          "configured share rows are informational and disabled")
+    TerminalUI.mockKeySequence = [.up, .enter, .down, .enter, .escape]
+    check(promptInteractiveRadio(title: "configured share disabled", options: configuredShareOptions) == 1,
+          "radio selection skips configured share rows and activates the next enabled action")
+    TerminalUI.mockKeySequence = nil
+
+    // Test staged share removal through the interactive menu and checkbox.
+    TerminalUI.mockKeySequence = [.down, .enter, .space, .enter,
+                                  .down, .down, .down, .enter]
     manageHostShares(hostConfig: &testHostMgmt, allHosts: [testHostMgmt])
+    TerminalUI.mockKeySequence = nil
     check(testHostMgmt.shares.isEmpty, "manageHostShares successfully removes selected share")
 
     // Test duplicate share detection and prevention
     testHostMgmt.shares = [SMBShareConfig(name: "Public", smbURL: "smb://192.168.1.100/Public", mountPoint: "/Volumes/Public")]
-    mockLineInputs = ["a", "2", "smb://192.168.1.100/Public", "b"]
+    mockLineInputs = ["smb://192.168.1.100/Public"]
+    TerminalUI.mockKeySequence = [.down, .enter, .down, .enter,
+                                  .down, .down, .down, .down, .enter]
     manageHostShares(hostConfig: &testHostMgmt, allHosts: [testHostMgmt])
+    TerminalUI.mockKeySequence = nil
     check(testHostMgmt.shares.count == 1, "Duplicate share is ignored by manageHostShares")
     mockLineInputs = nil
 
@@ -3471,17 +3945,131 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     check(legacyConfig.hosts[0].shares[0].mountPoint == "/Volumes/Finance", "Historical -1 suffix cleaned to /Volumes/Finance")
     check(legacyConfig.profiles.isEmpty, "Legacy profiles array emptied after migration")
 
-    // 21. Phase 10 Convergence Boundary Tests (T030 - T032)
-    // T030: Esc on deploy prompt skips LaunchAgent deployment safely
-    let wizardEscURL = tempDir.appendingPathComponent("init_wizard_esc.plist")
-    configURLOverride = wizardEscURL
-    mockCandidateHosts = [mockGroup]
-    mockLineInputs = ["s", "1", "\u{1B}"] // Skip hosts, channel off, Esc on deployment
-    let escDeploySuccess = runInitWizard(offerServiceInstallation: true)
-    check(escDeploySuccess, "runInitWizard completes successfully when Esc pressed on deploy prompt")
+    // Feature 003 convergence coverage: exercise configuration workflows through the public menus.
+    let managementHostA = HostConfig(host: "first.example")
+    let managementHostB = HostConfig(host: "second.example")
+    func runManagementScenario(_ name: String, hosts: [HostConfig], keys: [KeyAction]) -> (URL, AutomntConfig?) {
+        let url = tempDir.appendingPathComponent("management_\(name).plist")
+        let initial = AutomntConfig(version: automntVersion, updateChannel: "off", hosts: hosts)
+        check(saveConfig(initial, to: url), "management \(name) fixture is written through the program API")
+        configURLOverride = url
+        isTTYOverride = false
+        TerminalUI.mockKeySequence = keys
+        manageConfiguration()
+        TerminalUI.mockKeySequence = nil
+        isTTYOverride = nil
+        configURLOverride = nil
+        return (url, loadConfig(from: url))
+    }
+
+    let (reorderedURL, reorderedConfig) = runManagementScenario(
+        "reorder_success",
+        hosts: [managementHostA, managementHostB],
+        keys: [.down, .down, .down, .enter, .down, .enter, .enter] +
+              Array(repeating: .down, count: 6) + [.enter]
+    )
+    check(reorderedConfig?.hosts.map(\.host) == [managementHostB.host, managementHostA.host],
+          "configuration menu reorders a selected host to the chosen priority and saves it")
+    _ = reorderedURL
+
+    let (sourceCancelURL, sourceCancelConfig) = runManagementScenario(
+        "reorder_source_cancel",
+        hosts: [managementHostA, managementHostB],
+        keys: [.down, .down, .down, .enter, .escape, .escape]
+    )
+    check(sourceCancelConfig?.hosts.map(\.host) == [managementHostA.host, managementHostB.host],
+          "Esc while choosing the source host leaves priority unchanged")
+    _ = sourceCancelURL
+
+    let (destinationCancelURL, destinationCancelConfig) = runManagementScenario(
+        "reorder_destination_cancel",
+        hosts: [managementHostA, managementHostB],
+        keys: [.down, .down, .down, .enter, .enter, .escape, .escape]
+    )
+    check(destinationCancelConfig?.hosts.map(\.host) == [managementHostA.host, managementHostB.host],
+          "Esc while choosing the destination leaves priority unchanged")
+    _ = destinationCancelURL
+
+    func hostDeletionKeys(confirmation: [KeyAction]) -> [KeyAction] {
+        Array(repeating: .down, count: 4) + [.enter, .enter] + confirmation
+    }
+    for (name, confirmation) in [
+        ("delete_enter_cancel", [KeyAction.enter]),
+        ("delete_focus_cancel", [.down, .enter]),
+        ("delete_escape_cancel", [.escape])
+    ] {
+        let (url, result) = runManagementScenario(
+            name,
+            hosts: [managementHostA, managementHostB],
+            keys: hostDeletionKeys(confirmation: confirmation + [.escape])
+        )
+        check(result?.hosts.map(\.host) == [managementHostA.host, managementHostB.host],
+              "host deletion \(name) leaves the persisted config unchanged")
+        _ = url
+    }
+
+    let (hostDeleteURL, hostDeleteConfig) = runManagementScenario(
+        "delete_confirmed",
+        hosts: [managementHostA, managementHostB],
+        keys: hostDeletionKeys(confirmation: [.down, .space, .enter] +
+                               Array(repeating: .down, count: 5) + [.enter])
+    )
+    check(hostDeleteConfig?.hosts.map(\.host) == [managementHostB.host],
+          "host deletion requires Space and Enter, then persists on Save and exit")
+    _ = hostDeleteURL
+
+    func clearAllKeys(confirmation: [KeyAction]) -> [KeyAction] {
+        Array(repeating: .down, count: 4) + [.enter] + Array(repeating: .down, count: 2) +
+        [.enter] + confirmation
+    }
+    for (name, confirmation) in [
+        ("clear_all_enter_cancel", [KeyAction.enter]),
+        ("clear_all_focus_cancel", [.down, .enter]),
+        ("clear_all_escape_cancel", [.escape])
+    ] {
+        let (url, result) = runManagementScenario(
+            name,
+            hosts: [managementHostA, managementHostB],
+            keys: clearAllKeys(confirmation: confirmation + [.escape])
+        )
+        check(result?.hosts.map(\.host) == [managementHostA.host, managementHostB.host],
+              "clear-all \(name) leaves the persisted config unchanged")
+        _ = url
+    }
+
+    let (clearAllURL, clearAllConfig) = runManagementScenario(
+        "clear_all_confirmed",
+        hosts: [managementHostA, managementHostB],
+        keys: clearAllKeys(confirmation: [.down, .space, .enter] +
+                           Array(repeating: .down, count: 4) + [.enter])
+    )
+    check(clearAllConfig?.hosts.isEmpty == true,
+          "clearing all hosts requires Space and Enter, then persists on Save and exit")
+    _ = clearAllURL
+
+    // Configuration session staging: Esc discards, explicit Save writes atomically
+    let stagedConfigURL = tempDir.appendingPathComponent("staged_config.plist")
+    let stagedHost = HostConfig(host: "stage.example", shares: [])
+    let persistedConfig = AutomntConfig(version: automntVersion, updateChannel: "off", hosts: [stagedHost])
+    check(saveConfig(persistedConfig, to: stagedConfigURL), "management staging fixture saved through program API")
+    let originalConfigBytes = try? Data(contentsOf: stagedConfigURL)
+    configURLOverride = stagedConfigURL
+    isTTYOverride = false
+    TerminalUI.mockKeySequence = [.down, .down, .down, .down, .enter,
+                                  .down, .enter, .escape]
+    manageConfiguration()
+    let discardedConfigBytes = try? Data(contentsOf: stagedConfigURL)
+    check(discardedConfigBytes == originalConfigBytes, "management Escape discards staged session changes")
+
+    TerminalUI.mockKeySequence = [.down, .down, .down, .down, .enter,
+                                  .down, .enter,
+                                  .down, .down, .down, .down, .down, .enter]
+    manageConfiguration()
+    check(inspectConfigFile(at: stagedConfigURL).config?.updateChannel == "notify",
+          "management Save and exit persists staged changes")
+    TerminalUI.mockKeySequence = nil
+    isTTYOverride = nil
     configURLOverride = nil
-    mockCandidateHosts = nil
-    mockLineInputs = nil
 
     print("\nSelf-tests: \(passed) passed, \(skipped) skipped, \(failed) failed")
     return failed == 0
