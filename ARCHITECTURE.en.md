@@ -4,7 +4,7 @@ automnt evaluates network profiles sequentially, uses target host TCP 445 reacha
 
 ```mermaid
 flowchart TD
-    Start["Trigger Network Mount Evaluation\n(WatchPaths / Manual CLI)"] --> HealthCheck["InstallState Integrity Self-Check\n(Auto-heals damaged components)"]
+    Start["Trigger Network Mount Evaluation\n(RunAtLoad / Network WatchPaths / StartOnMount + Mount WatchPaths / Manual CLI)"] --> HealthCheck["InstallState Integrity Self-Check\n(Auto-heals damaged components)"]
     HealthCheck --> RetryLoop["EvaluationRetryRunner\n(Bounded Retry Loop Window)"]
     
     RetryLoop --> NextProfile["Pick next profile by priority"]
@@ -37,8 +37,18 @@ automnt is engineered exclusively for Apple silicon (arm64) running macOS 27.0 o
 
 - **Deterministic Framework Selection**: Leverages native `NetFSMountURLSync` with Keychain credentials, eliminating user-facing modal dialogs.
 - **Service Reachability Focus**: Eliminates fragile link-layer MAC/ARP sniffing in favor of transport-layer reachability checks (`HostReachabilityProbe`), natively compatible with multi-homed setups, Tailscale, WireGuard, and VLANs.
-- **Event-Driven Daemon Execution**: The LaunchAgent monitors system configuration events exclusively, avoiding wasteful `StartInterval` polling.
+- **Event-Driven Daemon Execution**: The LaunchAgent monitors exactly three kinds of system events — login (`RunAtLoad`), system network configuration changes (`WatchPaths`), and mount-namespace changes (`StartOnMount` plus mount-directory add/remove watching). It never uses `StartInterval` polling.
 - **Single Active Configuration Contract**: Uses `~/Library/Application Support/automnt/automnt.plist` as the single source of truth with strict `0600` permissions.
+
+# Mount-Loss Recovery (Feature 004)
+
+Each event starts a bounded evaluation. Recovery retains the first reachable host's exclusive mounting scope. A nonblocking kernel snapshot identifies mounted volumes; a short child process probes directory access and reports explicit session-loss errors. Permission errors and probe timeouts remain inconclusive and do not justify forced cleanup. NetFS mounting also runs in a bounded child with `kNAUIOptionNoUI`.
+
+The separate, versioned recovery state retains healthy-mount history, successful cleanup evidence, session suppression, notification counts, and attempt outcomes. A healthy manual eject suppresses automatic remounting until the network context or login epoch changes; **Remount now** explicitly releases that suppression. An absent state file is normal first use; an unreadable or corrupt file suppresses automatic recovery conservatively.
+
+The recovery switch takes effect after **Save and exit**. Interactive configuration entry first converges existing service definitions using saved configuration; daemon evaluation never reloads its own service. Disabling recovery removes mount events and keeps login and network events. `WatchPaths` can miss a race; recovery then waits for the next event, login, or manual action, with no fixed maximum delay and no periodic polling.
+
+The product exposes no user-facing eject action. It may force-clean a detected dead mount before recovery. Notifications merge shares once per round and are limited to two per volume per session, with a bilingual pointer to **Remount now**.
 
 # Key Runtime Mechanisms
 

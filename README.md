@@ -7,13 +7,25 @@
 
 # 简介 / Overview
 
-macOS 原生轻量级网络存储（SMB）自动化挂载工具。基于目标主机 TCP 445 端口服务可达性探测与事件驱动响应，提供完全静默、免密码、断网自动超时清理的稳定挂载体验。
+macOS 原生轻量级网络存储（SMB）自动化挂载工具。基于目标主机 TCP 445 端口服务可达性探测与事件驱动响应，提供完全静默、免密码、断网自动超时清理与丢失自动恢复的稳定挂载体验。
 
-A native, lightweight network storage (SMB) automation tool for macOS. Powered by target host TCP 445 reachability probing and event-driven daemon evaluation, providing silent, password-free, and bounded cleanup volume mounting.
+A native, lightweight network storage (SMB) automation tool for macOS. Powered by target host TCP 445 reachability probing and event-driven daemon evaluation, providing silent, password-free, bounded cleanup, and automatic mount-loss recovery.
 
 交互式终端菜单（3.2.0）为初始化与日常配置提供方向键选择、空格多选、长列表滚动和 Esc 取消；配置修改仅在明确选择保存并退出后写入。
 
 Interactive terminal menus (3.2.0) provide arrow-key selection, Space multi-selection, scrolling for long lists, and Escape cancellation during setup and configuration. Configuration changes are written only after choosing Save and exit.
+
+挂载丢失自动恢复（3.3.0）：远程主机恢复可达后，配置启用且此前已挂载的共享卷会在下一次事件唤醒的当轮评估中自动重新挂载。自动恢复只重挂"此前确实挂载过"的卷；从未挂载过的新增卷仍按原有挂载评估逻辑处理。若使用者在卷健康时手动弹出，该卷在本可达会话内不会被自动重新挂载（会话级抑制）；网络上下文变化或重新登录（先到者为准）后抑制解除。
+
+Automatic mount-loss recovery (3.3.0): once the remote host is reachable again, enabled shares that were previously mounted are re-mounted automatically in the same evaluation round that follows the next wake-up event. Recovery only re-mounts volumes that were genuinely mounted before; newly added shares that were never mounted keep following the existing mount-evaluation logic. A share you eject while healthy is not remounted for the rest of that reachable session (session-level suppression); suppression lifts on a network-context change or a re-login, whichever comes first.
+
+健康弹出与会话抑制静默；仅实际恢复失败时，每轮至多一条合并通知指引至 `automnt --config` 的“立即重新挂载”；同一卷同一会话至多通知两次。“自动恢复开关”默认启用，仅在“保存并退出”后生效；Esc 放弃未保存修改。关闭后保留登录与网络配置变化评估，手动入口仍可用。
+
+Healthy ejection and session suppression remain silent. Only actual recovery failures trigger a merged notification that points to **Remount now** in `automnt --config`, at most once per round and twice per volume per session. **Auto-recovery switch** defaults to enabled and takes effect only after **Save and exit**; Escape discards unsaved edits. Disabling it keeps login and network-change evaluation and the manual action.
+
+**边界说明**：automnt 不提供面向使用者的弹出/卸载入口；程序可在恢复前强制清理检测到的死卷。上述健康“弹出”指识别使用者在系统（如 Finder）中发起的动作。
+
+**Boundary**: automnt exposes no user-facing eject/unmount action. It may force-clean a detected dead mount before recovery. Healthy ejection refers to an action the user initiates in the system (e.g. Finder).
 
 仅支持 macOS 27.0 或更高版本的 Apple silicon（arm64）；不支持 Intel Mac。项目以 macOS 27 SDK 和新 API 为优先目标，不维护旧 macOS 或 Intel 的兼容代码；代码保持精简，且继续支持必要的配置升级迁移。
 

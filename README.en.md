@@ -16,6 +16,13 @@ automnt is a native, lightweight SMB auto-mounting tool for macOS that matches n
 - **Zero External Dependencies**: Implemented purely in native Swift, compiled to a standalone executable optimized for Apple silicon.
 - **Interactive Terminal Menus (3.2.0)**: Setup and configuration use arrow-key navigation and Enter to choose, with Space for multi-selection, scrolling for long lists, and Escape to cancel. Configuration edits are staged in memory and written only when you choose **Save and exit**.
 
+- **Automatic Mount-Loss Recovery (3.3.0)**: Once the remote host is reachable again, shares that are enabled and were previously mounted are re-mounted automatically in the same evaluation round that follows the next wake-up event, with no user action and no credential or login dialog. Recovery only re-mounts volumes that were genuinely mounted before; newly added shares that were never mounted keep following the existing mount-evaluation logic.
+- **Session-Level Suppression (respects manual ejection)**: A share you eject while healthy is not remounted for the rest of that reachable session. Suppression lifts on a network-context change or a re-login, whichever comes first. Ejecting an already-dead volume counts as a repair action rather than abandonment, so it can still recover once the host is reachable.
+- **Fallback When Recovery Fails**: Healthy ejection and session suppression do not trigger failure notifications. If actual recovery fails, a plain-text notification lists the shares that were not restored and points at **Remount now**, at most once per round and twice per volume per session. A session boundary or successful mount resets that count.
+- **Automatic Recovery Switch**: Toggle it from **Auto-recovery switch** in the `automnt --config` main menu (enabled by default). Turning it off falls back to the current behavior — evaluate on login and network changes only — while **Remount now** stays usable. It is written only on **Save and exit**; `Esc` leaves it unchanged.
+
+**Boundary**: automnt exposes no user-facing eject/unmount action. It may force-clean a detected dead mount before recovery. Healthy ejection refers to an action the user initiates in the system (e.g. Finder).
+
 # Quick Start
 
 ## System Requirements

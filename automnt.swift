@@ -23,6 +23,7 @@ import Foundation
 import SystemConfiguration
 import NetFS
 import Darwin
+import Security
 
 // MARK: - 基础辅助函数与国际化 (i18n)
 
@@ -178,14 +179,16 @@ struct BoundedCommandResult {
 func runCommandDiscardingOutputWithTimeout(
     executable: String,
     arguments: [String],
-    timeout: TimeInterval
+    timeout: TimeInterval,
+    standardOutputFile: FileHandle? = nil,
+    standardErrorFile: FileHandle? = nil
 ) -> BoundedCommandResult {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: executable)
     process.arguments = arguments
     process.standardInput = FileHandle.nullDevice
-    process.standardOutput = FileHandle.nullDevice
-    process.standardError = FileHandle.nullDevice
+    process.standardOutput = standardOutputFile ?? FileHandle.nullDevice
+    process.standardError = standardErrorFile ?? FileHandle.nullDevice
     do {
         try process.run()
     } catch {
@@ -206,7 +209,9 @@ func runCommandDiscardingOutputWithTimeout(
                                    processStopped: true, error: nil)
     }
 
-    process.terminate()
+    // Process.terminate() may synchronize with Foundation task state.
+    // Signal directly so a child blocked in SMB kernel I/O cannot delay the caller.
+    _ = kill(process.processIdentifier, SIGTERM)
     if waitGroup.wait(timeout: .now() + 0.5) == .timedOut {
         _ = kill(process.processIdentifier, SIGKILL)
         return BoundedCommandResult(status: nil, timedOut: true, processStopped: false, error: nil)
@@ -217,7 +222,7 @@ func runCommandDiscardingOutputWithTimeout(
 
 // MARK: - 版本与数据结构定义
 
-let automntVersion = "3.2.0"
+let automntVersion = "3.3.2"
 let minimumSupportedMacOSMajorVersion = 27
 let minimumSupportedMacOSVersion = "\(minimumSupportedMacOSMajorVersion).0"
 let githubRepo = "jiezhengj/automnt"
@@ -649,7 +654,32 @@ func atomicWrite(_ data: Data, to url: URL, permissions: Int? = nil) throws {
     try data.write(to: tempURL)
     let targetPermissions = permissions ?? 0o600
     try FileManager.default.setAttributes([.posixPermissions: targetPermissions], ofItemAtPath: tempURL.path)
-    _ = Darwin.rename(tempURL.path, url.path)
+    guard Darwin.rename(tempURL.path, url.path) == 0 else {
+        throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+    }
+}
+
+/// 安装前验证系统信任的签名；升级还须满足已安装程序的指定要求。
+/// 在执行下载产物的 --version 之前调用，避免先运行未经验证的代码。
+enum BinarySigningPolicy {
+    static func trustedCode(at url: URL) -> SecStaticCode? {
+        var code: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess, let code else { return nil }
+        var trust: SecRequirement?
+        guard SecRequirementCreateWithString("anchor apple generic and identifier \"automnt\" and (certificate leaf[field.1.2.840.113635.100.6.1.13] exists or certificate leaf[field.1.2.840.113635.100.6.1.12] exists)" as CFString, [], &trust) == errSecSuccess,
+              SecStaticCodeCheckValidity(code, SecCSFlags(rawValue: kSecCSStrictValidate), trust) == errSecSuccess else { return nil }
+        return code
+    }
+
+    static func permitsReplacement(candidate: URL, installed: URL?) -> Bool {
+        guard let newCode = trustedCode(at: candidate) else { return false }
+        guard let installed, FileManager.default.fileExists(atPath: installed.path) else { return true }
+        guard let oldCode = trustedCode(at: installed) else { return false }
+        var existingRequirement: SecRequirement?
+        guard SecCodeCopyDesignatedRequirement(oldCode, [], &existingRequirement) == errSecSuccess,
+              let existingRequirement else { return false }
+        return SecStaticCodeCheckValidity(newCode, SecCSFlags(rawValue: kSecCSStrictValidate), existingRequirement) == errSecSuccess
+    }
 }
 
 struct StagedFileReplacement {
@@ -685,7 +715,11 @@ func replaceFilesTransactionally(
                 .appendingPathComponent(".tmp.\(UUID().uuidString)")
             try FileManager.default.copyItem(at: replacement.sourceURL, to: tempStaged)
             try FileManager.default.setAttributes([.posixPermissions: replacement.permissions], ofItemAtPath: tempStaged.path)
-            _ = Darwin.rename(tempStaged.path, replacement.destinationURL.path)
+            guard Darwin.rename(tempStaged.path, replacement.destinationURL.path) == 0 else {
+                let renameError = errno
+                try? FileManager.default.removeItem(at: tempStaged)
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(renameError))
+            }
         }
 
         if let postReplaceAction {
@@ -1238,18 +1272,22 @@ func discoverActiveSMBMounts() -> [(url: String, path: String, host: String)] {
 }
 
 func forceUnmountWithTimeout(path: String, timeoutSeconds: Double = 3.0) -> Bool {
+    let remaining = MountExecutionBudget.deadline?.timeIntervalSinceNow ?? timeoutSeconds
+    guard remaining > 0 else { return false }
     let diskutilRes = runCommandDiscardingOutputWithTimeout(
         executable: "/usr/sbin/diskutil",
         arguments: ["unmount", "force", path],
-        timeout: timeoutSeconds
+        timeout: min(timeoutSeconds, remaining)
     )
     if diskutilRes.status == 0 {
         return true
     }
+    let fallbackRemaining = MountExecutionBudget.deadline?.timeIntervalSinceNow ?? timeoutSeconds
+    guard fallbackRemaining > 0 else { return false }
     let umountRes = runCommandDiscardingOutputWithTimeout(
         executable: "/sbin/umount",
         arguments: ["-f", path],
-        timeout: timeoutSeconds
+        timeout: min(timeoutSeconds, fallbackRemaining)
     )
     return umountRes.status == 0
 }
@@ -1278,7 +1316,16 @@ func ensureMountPointReady(target: MountTarget) -> MountPointStatus {
 }
 
 func disableSpotlightIndex(at mountPath: String) {
-    _ = runCommand(executable: "/usr/bin/mdutil", arguments: ["-i", "off", mountPath])
+    let remaining = MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 2
+    guard remaining > 0 else { return }
+    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
+    _ = runCommandDiscardingOutputWithTimeout(executable: executable,
+        arguments: ["--internal-disable-spotlight", mountPath], timeout: min(remaining, 2))
+}
+
+func performDisableSpotlightIndex(at mountPath: String) {
+    _ = runCommandDiscardingOutputWithTimeout(executable: "/usr/bin/mdutil",
+        arguments: ["-i", "off", mountPath], timeout: 1)
     let neverIndexPath = URL(fileURLWithPath: mountPath).appendingPathComponent(".metadata_never_index").path
     if !FileManager.default.fileExists(atPath: neverIndexPath) {
         _ = FileManager.default.createFile(atPath: neverIndexPath, contents: Data(), attributes: nil)
@@ -1294,7 +1341,56 @@ func netFSMountOptions(hasExplicitMountPoint: Bool) -> NSMutableDictionary? {
     return nil
 }
 
+func netFSOpenOptions() -> NSMutableDictionary {
+    NSMutableDictionary(dictionary: [kNAUIOptionKey: kNAUIOptionNoUI])
+}
+
+enum VolumeHealthProbe {
+    static var testOverride: ((String) -> Bool)?
+}
+
+func boundedHostReachability(host: String, port: Int, timeoutMs: Int) -> Bool {
+    let remaining = MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 2
+    guard remaining > 0 else { return false }
+    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
+    let result = runCommandDiscardingOutputWithTimeout(executable: executable,
+        arguments: ["--internal-host-probe", host, String(port), String(timeoutMs)],
+        timeout: min(remaining, max(1, Double(timeoutMs) / 1000 + 0.5)))
+    return !result.timedOut && result.status == 0
+}
+
+func boundedVolumeHealth(at path: String) -> Bool? {
+    if let injected = VolumeHealthProbe.testOverride { return injected(path) }
+    // 子进程的目录枚举不会把 SMB 阻塞传播到恢复主进程。
+    let remaining = MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 1
+    guard remaining > 0 else { return nil }
+    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
+    let result = runCommandDiscardingOutputWithTimeout(executable: executable,
+        arguments: ["--internal-volume-health", path], timeout: min(remaining, 1))
+    // 权限拒绝或超时无法证明会话丢失，保守保留卷，避免误卸健康但繁忙的卷。
+    if result.timedOut || result.error != nil { return nil }
+    if result.status == 74 { return false }
+    return result.status == 0 ? true : nil
+}
+
+enum MountExecutionBudget {
+    static var deadline: Date?
+    static var lastFailure: RecoveryAttemptOutcome = .shareRejected
+    static var netFSStatus: Int32 = 0
+}
+
 func silentMount(urlString: String, mountPath: String) -> Bool {
+    // NetFS 同步调用隔离在短时子进程中，超时可终止，主进程无需常驻等待。
+    let timeout = max(0, MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 10)
+    guard timeout > 0 else { return false }
+    let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
+    let result = runCommandDiscardingOutputWithTimeout(executable: executable,
+        arguments: ["--internal-netfs-mount", urlString, mountPath], timeout: timeout)
+    MountExecutionBudget.lastFailure = result.status == 77 ? .credentialFailure : .shareRejected
+    return result.status == 0 && !result.timedOut
+}
+
+func performNetFSMount(urlString: String, mountPath: String) -> Bool {
     guard let url = URL(string: urlString) else { return false }
     let cfURL = url as CFURL
     let stdPath = URL(fileURLWithPath: mountPath).standardizedFileURL.path
@@ -1312,11 +1408,12 @@ func silentMount(urlString: String, mountPath: String) -> Bool {
         explicitPoint ? cfMountPoint : nil,
         nil,
         nil,
-        nil,
+        netFSOpenOptions(),
         options,
         &mountPoints
     )
 
+    MountExecutionBudget.netFSStatus = status
     if status == 0 {
         mountPoints?.release()
         return true
@@ -1428,6 +1525,20 @@ struct MountRecoveryVolumeRecord: Codable, Equatable {
     }
 }
 
+enum RecoveryAttemptOutcome: String, Codable {
+    case mounted
+    case hostUnreachable = "host-unreachable"
+    case shareRejected = "share-rejected"
+    case credentialFailure = "credential-failure"
+    case suppressedSkipped = "suppressed-skipped"
+}
+
+struct RecoveryAttempt: Codable, Equatable {
+    var timestamp: Double
+    var outcome: RecoveryAttemptOutcome
+    var sequence: Int
+}
+
 /// 附属状态文件根结构。
 struct MountRecoveryStateFile: Codable, Equatable {
     var schemaVersion: Int = mountRecoverySchemaVersion
@@ -1436,12 +1547,14 @@ struct MountRecoveryStateFile: Codable, Equatable {
     var volumes: [String: MountRecoveryVolumeRecord] = [:]
     /// 清理账：automnt 自身清理过的死卷集合（volumeKey → 时间戳）。
     var cleanupLedger: [String: Double] = [:]
+    var attempts: [String: [RecoveryAttempt]] = [:]
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
         case sessionBoundary = "session_boundary"
         case volumes
         case cleanupLedger = "cleanup_ledger"
+        case attempts
     }
 }
 
@@ -1483,7 +1596,10 @@ enum MountRecoveryStore {
         guard rawVersion == mountRecoverySchemaVersion else {
             return .corrupt(reason: "unknown schema_version \(rawVersion)")
         }
-        guard let decoded = try? PropertyListDecoder().decode(MountRecoveryStateFile.self, from: data) else {
+        var compatible = dict
+        if compatible["attempts"] == nil { compatible["attempts"] = [String: Any]() }
+        guard let compatibleData = try? PropertyListSerialization.data(fromPropertyList: compatible, format: .binary, options: 0),
+              let decoded = try? PropertyListDecoder().decode(MountRecoveryStateFile.self, from: compatibleData) else {
             return .corrupt(reason: "state file failed schema decode")
         }
         // 自相矛盾条目（suppressed 缺边界）→ 降级为保守：整表按 corrupt 处理过重，
@@ -1523,6 +1639,7 @@ enum MountRecoveryStore {
 struct NetworkContextSnapshot: Equatable {
     let identity: String
     let components: [String]
+    var isReadable: Bool = true
 }
 
 enum NetworkContextIdentity {
@@ -1530,23 +1647,26 @@ enum NetworkContextIdentity {
     static var testOverride: NetworkContextSnapshot?
 
     /// 内部可注入的要素采集（返回排序后的要素列表）。
-    static var componentsProvider: (() -> [String])?
+    static var componentsProvider: (() -> [String]?)?
+    static var gatewayProvider: (() -> (readable: Bool, gateway: String?))?
 
     static func current() -> NetworkContextSnapshot {
         if let override = testOverride { return override }
-        let elements = (componentsProvider ?? collectElements)().sorted()
+        guard let elements = (componentsProvider ?? collectElements)()?.sorted() else {
+            return NetworkContextSnapshot(identity: "", components: [], isReadable: false)
+        }
         return NetworkContextSnapshot(identity: elements.joined(separator: ";"), components: elements)
     }
 
     /// 以 getifaddrs 采集活动接口（非回环、有地址）的身份要素；
     /// 附加默认路由网关。仅使用公开 API，不引入第三方依赖。
-    static func collectElements() -> [String] {
+    static func collectElements() -> [String]? {
         var elements: [String] = []
         var ifaddrPtr: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifaddrPtr) == 0, let first = ifaddrPtr else { return elements }
+        guard getifaddrs(&ifaddrPtr) == 0 else { return nil }
         defer { freeifaddrs(ifaddrPtr) }
 
-        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        var cursor = ifaddrPtr
         while let current = cursor {
             let flags = Int32(current.pointee.ifa_flags)
             let isUp = (flags & IFF_UP) != 0
@@ -1557,6 +1677,7 @@ enum NetworkContextIdentity {
                 let result = getnameinfo(addr, socklen_t(addr.pointee.sa_len),
                                          &host, socklen_t(host.count),
                                          nil, 0, NI_NUMERICHOST)
+                guard result == 0 || (family != UInt8(AF_INET) && family != UInt8(AF_INET6)) else { return nil }
                 if result == 0 {
                     let name = String(cString: current.pointee.ifa_name)
                     let address = String(cString: host)
@@ -1570,24 +1691,51 @@ enum NetworkContextIdentity {
             cursor = current.pointee.ifa_next
         }
 
-        if let gateway = defaultGatewayIdentity() {
-            elements.append("gw:\(gateway)")
-        }
+        let route = (gatewayProvider ?? defaultGatewayIdentity)()
+        guard route.readable else { return nil }
+        if let gateway = route.gateway { elements.append("gw:\(gateway)") }
         return elements
     }
 
-    /// 默认路由网关标识（无默认路由时返回 nil）。
-    static func defaultGatewayIdentity() -> String? {
-        let result = runCommand(executable: "/sbin/route", arguments: ["-n", "get", "default"])
-        guard result.status == 0 else { return nil }
-        for line in result.stdout.split(separator: "\n") {
+    /// 临时文件避免管道读取阻塞；子进程受剩余恢复预算约束。
+    static func defaultGatewayIdentity() -> (readable: Bool, gateway: String?) {
+        let timeout = max(0, min(1, MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 1))
+        guard timeout > 0 else { return (false, nil) }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("automnt-route-\(UUID().uuidString)")
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                attributes: [.posixPermissions: 0o700])
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let output = directory.appendingPathComponent("output")
+            let errors = directory.appendingPathComponent("errors")
+            guard FileManager.default.createFile(atPath: output.path, contents: nil, attributes: [.posixPermissions: 0o600]),
+                  FileManager.default.createFile(atPath: errors.path, contents: nil, attributes: [.posixPermissions: 0o600]) else { return (false, nil) }
+            let outHandle = try FileHandle(forWritingTo: output)
+            let errHandle = try FileHandle(forWritingTo: errors)
+            defer { try? outHandle.close(); try? errHandle.close() }
+            let result = runCommandDiscardingOutputWithTimeout(executable: "/sbin/route",
+                arguments: ["-n", "get", "default"], timeout: timeout,
+                standardOutputFile: outHandle, standardErrorFile: errHandle)
+            guard !result.timedOut, result.processStopped, let status = result.status else { return (false, nil) }
+            let stdout = try String(contentsOf: output, encoding: .utf8)
+            let stderr = try String(contentsOf: errors, encoding: .utf8)
+            return parseGateway(status: status, stdout: stdout, stderr: stderr)
+        } catch { return (false, nil) }
+    }
+
+    static func parseGateway(status: Int32, stdout: String, stderr: String) -> (readable: Bool, gateway: String?) {
+        // route 的明确 ESRCH 结果表示真实无路由；其他退出错误不构成有效快照。
+        if status != 0 {
+            return (stderr.trimmingCharacters(in: .whitespacesAndNewlines) == "route: writing to routing socket: not in table", nil)
+        }
+        for line in stdout.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("gateway:") {
-                return trimmed.replacingOccurrences(of: "gateway:", with: "")
-                    .trimmingCharacters(in: .whitespaces)
+                let gateway = String(trimmed.dropFirst("gateway:".count)).trimmingCharacters(in: .whitespaces)
+                return (!gateway.isEmpty, gateway.isEmpty ? nil : gateway)
             }
         }
-        return nil
+        return (false, nil)
     }
 }
 
@@ -1636,9 +1784,11 @@ struct SessionBoundaryIdentity: Equatable {
     let loginEpoch: String
     var combined: String { "\(network)|\(loginEpoch)" }
 
-    static func current() -> SessionBoundaryIdentity {
-        SessionBoundaryIdentity(network: NetworkContextIdentity.current().identity,
-                                loginEpoch: LoginSessionEpoch.current())
+    static func current(previous: String? = nil) -> SessionBoundaryIdentity {
+        let snapshot = NetworkContextIdentity.current()
+        let previousNetwork = previous?.split(separator: "|", omittingEmptySubsequences: false).dropLast().joined(separator: "|")
+        return SessionBoundaryIdentity(network: snapshot.isReadable ? snapshot.identity : (previousNetwork ?? "<unreadable>"),
+                                       loginEpoch: LoginSessionEpoch.current())
     }
 }
 
@@ -1723,7 +1873,7 @@ func judgeRecoverySignal(
 
     // 缺失：按 ② → ③ → ④/⑤ 顺序判别。
     if cleanupLedger[volumeKey] != nil { return .productCleanup }
-    if record?.repairEjectEvidence == true { return .repairEject }
+    if record?.repairEjectEvidence == true || record?.state == .pendingRecovery { return .repairEject }
     if record?.everHealthyMounted == true { return .healthyEject }
     return .neverMounted
 }
@@ -2998,9 +3148,7 @@ func manageConfiguration() {
             }
             let cache = ReachabilityCache(probe: { host, port in
                 let timeout = configForRound.hosts.first(where: { $0.host == host })?.timeoutMs ?? 1000
-                return EvaluationRetryRunner(policy: configForRound.retryPolicy ?? RetryPolicy()).run {
-                    HostReachabilityProbe.canConnect(host: host, port: port, timeoutMs: timeout)
-                }
+                return boundedHostReachability(host: host, port: port, timeoutMs: timeout)
             })
             if configForRound.isAutoMountRecoveryEnabled {
                 let outcome = runRecoveryRound(
@@ -3015,13 +3163,19 @@ func manageConfiguration() {
                             return mounted
                         case .unmountFailed: return false
                         }
-                    })
-                print(tr("✓ 重新挂载完成：成功 \(outcome.recovered.count) 个，失败 \(outcome.failed.count) 个，抑制 \(outcome.suppressed.count) 个。",
-                         "✓ Remount finished: \(outcome.recovered.count) recovered, \(outcome.failed.count) failed, \(outcome.suppressed.count) suppressed."))
+                    }, manualRecovery: true)
+                if !outcome.deferredVolumeKeys.isEmpty {
+                    print(tr("· 重新挂载暂未执行：另一轮正在运行或状态锁不可用，请稍后重试。",
+                             "· Remount deferred: another evaluation is running or the state lock is unavailable; try again later."))
+                } else {
+                    print(tr("✓ 重新挂载完成：成功 \(outcome.recovered.count) 个，失败 \(outcome.failed.count) 个，抑制 \(outcome.suppressed.count) 个。",
+                             "✓ Remount finished: \(outcome.recovered.count) recovered, \(outcome.failed.count) failed, \(outcome.suppressed.count) suppressed."))
+                }
             } else {
                 // 开关关闭：回退为基线段挂载评估（不执行恢复判定与会话抑制）。
                 var mounted = 0
-                for volume in configuredVolumes(from: configForRound) where cache.isReachable(host: volume.host, port: volume.port) {
+                let selectedHost = firstReachableHost(in: configForRound, probe: { cache.isReachable(host: $0, port: $1) })
+                for volume in configuredVolumes(from: configForRound) where volume.host == selectedHost?.host {
                     switch ensureMountPointReady(target: MountTarget(url: volume.url, mountPath: volume.mountPoint)) {
                     case .alreadyMountedHealthy: mounted += 1
                     case .readyToMount:
@@ -3199,6 +3353,44 @@ struct InstallationManager {
         return home.appendingPathComponent(".zshrc")
     }
 
+    /// Explicit one-time migration from an ad-hoc installation; never used by the updater.
+    static func migrateAdHocInstallation(expectedTeam: String, source: URL = currentExecutablePhysicalURL(),
+                                         target: URL = getActiveInstalledBinaryURL()) -> Bool {
+        guard source.path != target.path, !expectedTeam.isEmpty,
+              let candidate = BinarySigningPolicy.trustedCode(at: source) else { return false }
+        var candidateInfo: CFDictionary?
+        guard SecCodeCopySigningInformation(candidate, SecCSFlags(rawValue: kSecCSSigningInformation), &candidateInfo) == errSecSuccess,
+              let info = candidateInfo as? [String: Any],
+              info[kSecCodeInfoTeamIdentifier as String] as? String == expectedTeam else { return false }
+        var old: SecStaticCode?
+        var oldInfo: CFDictionary?
+        guard SecStaticCodeCreateWithPath(target as CFURL, [], &old) == errSecSuccess,
+              let old,
+              SecStaticCodeCheckValidity(old, SecCSFlags(rawValue: kSecCSStrictValidate), nil) == errSecSuccess,
+              SecCodeCopySigningInformation(old, SecCSFlags(rawValue: kSecCSSigningInformation), &oldInfo) == errSecSuccess,
+              let oldMetadata = oldInfo as? [String: Any],
+              oldMetadata[kSecCodeInfoIdentifier as String] as? String == "automnt",
+              let flags = oldMetadata[kSecCodeInfoFlags as String] as? NSNumber,
+              flags.uint32Value & 0x00000002 != 0 else { return false } // CS_ADHOC
+        let backup = target.deletingLastPathComponent().appendingPathComponent("automnt.pre-signing-migration.\(UUID().uuidString)")
+        do {
+            try FileManager.default.copyItem(at: target, to: backup)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: backup.path)
+            try replaceFilesTransactionally([
+                StagedFileReplacement(sourceURL: source, destinationURL: target, permissions: 0o755)
+            ], postReplaceAction: {
+                guard BinarySigningPolicy.permitsReplacement(candidate: target, installed: source) else {
+                    throw NSError(domain: "automnt.signing-migration", code: 1)
+                }
+            })
+            print(tr("✓ 签名身份迁移完成；旧程序备份：\(backup.path)\n首次网络卷授权可能仍需用户确认。",
+                     "✓ Signing identity migrated; previous binary backup: \(backup.path)\nFirst network-volume authorization may still require user consent."))
+            return true
+        } catch {
+            return false
+        }
+    }
+
     @discardableResult
     static func relocateIfNeeded() -> Bool {
         let currentURL = currentExecutablePhysicalURL()
@@ -3207,14 +3399,17 @@ struct InstallationManager {
             return false
         }
 
+        guard BinarySigningPolicy.permitsReplacement(candidate: currentURL, installed: targetURL) else {
+            fputs(tr("✗ 安装已停止：代码签名无效或与已安装版本身份不兼容；原程序保留。\n",
+                     "✗ Installation stopped: invalid signature or incompatible installed identity; existing program preserved.\n"), stderr)
+            return false
+        }
         let targetDir = targetURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
-        if FileManager.default.fileExists(atPath: targetURL.path) {
-            try? FileManager.default.removeItem(at: targetURL)
-        }
         do {
-            try FileManager.default.copyItem(at: currentURL, to: targetURL)
-            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: targetURL.path)
+            try replaceFilesTransactionally([
+                StagedFileReplacement(sourceURL: currentURL, destinationURL: targetURL, permissions: 0o755)
+            ])
             let isDevRepo = FileManager.default.fileExists(
                 atPath: currentURL.deletingLastPathComponent().appendingPathComponent("automnt.swift").path
             )
@@ -3377,7 +3572,25 @@ func installedEventSourceSet(at plistURL: URL? = nil) -> RecoveryEventSourceSet?
         return nil
     }
     let hasStartOnMount = (plist["StartOnMount"] as? Bool) == true
-    return hasStartOnMount ? .threeSources : .twoSources
+    let watch = Set(plist["WatchPaths"] as? [String] ?? [])
+    let config = loadConfig(from: getActiveConfigURL(), migrate: false) ?? AutomntConfig()
+    let expectedPaths = Set(mountWatchPaths(from: config) + ["/Volumes"])
+    return hasStartOnMount && expectedPaths.isSubset(of: watch) ? .threeSources : .twoSources
+}
+
+func installedServiceDefinitionMatches(config: AutomntConfig, at url: URL? = nil) -> Bool {
+    guard let data = try? Data(contentsOf: url ?? getLaunchAgentPlistURL()),
+          let installed = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else { return false }
+    let expected = generateLaunchAgentDictionary(binaryURL: getActiveInstalledBinaryURL(),
+        logDir: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/automnt"),
+        autoMountRecoveryEnabled: config.isAutoMountRecoveryEnabled,
+        mountWatchPaths: config.isAutoMountRecoveryEnabled ? mountWatchPaths(from: config) : [])
+    for key in ["RunAtLoad", "StartOnMount", "WatchPaths", "StartInterval", "StartCalendarInterval", "KeepAlive"] {
+        let actualValue = installed[key] as? NSObject
+        let expectedValue = expected[key] as? NSObject
+        if actualValue != expectedValue { return false }
+    }
+    return true
 }
 
 /// 生成 LaunchAgent 字典。
@@ -3436,6 +3649,7 @@ func mountWatchPaths(from config: AutomntConfig) -> [String] {
 }
 
 func registerOrUpdateLaunchAgent(targetBinaryURL: URL? = nil, targetPlistURL: URL? = nil) -> Bool {
+    guard !DaemonRuntime.isDaemon() else { return false }
     let binary = targetBinaryURL ?? getActiveInstalledBinaryURL()
     let plistURL = targetPlistURL ?? getLaunchAgentPlistURL()
     let logDir = FileManager.default.homeDirectoryForCurrentUser
@@ -3475,8 +3689,7 @@ func regenerateServiceDefinitionForSwitch(force: Bool = false) -> String? {
                   "Refusing to regenerate the service definition from daemon runtime (would self-terminate)")
     }
     let config = loadConfig(from: getActiveConfigURL(), migrate: false) ?? AutomntConfig()
-    let desired = RecoveryEventSourceSet.forSwitch(enabled: config.isAutoMountRecoveryEnabled)
-    if !force, let installed = installedEventSourceSet(), installed == desired {
+    if !force, installedServiceDefinitionMatches(config: config) {
         return nil // 幂等：已是目标集合，不重复 bootout/bootstrap
     }
     guard registerOrUpdateLaunchAgent() else {
@@ -3498,13 +3711,18 @@ func convergeInstalledEventSourcesIfNeeded() {
     guard !DaemonRuntime.isDaemon() else { return }
     let config = loadConfig(from: getActiveConfigURL(), migrate: false) ?? AutomntConfig()
     let desired = RecoveryEventSourceSet.forSwitch(enabled: config.isAutoMountRecoveryEnabled)
-    guard let installed = installedEventSourceSet(), installed != desired else { return }
+    guard FileManager.default.fileExists(atPath: getLaunchAgentPlistURL().path),
+          !installedServiceDefinitionMatches(config: config) else { return }
     if let error = regenerateServiceDefinitionForSwitch(force: true) {
         fputs(tr("⚠ 服务定义事件源收敛失败：\(error)\n", "⚠ Event-source convergence failed: \(error)\n"), stderr)
     } else {
         print(tr("✓ 已收敛服务定义事件源为\(desired == .threeSources ? "三类（含挂载命名空间）" : "两类（回落基线）")。",
                  "✓ Converged service definition event sources to \(desired == .threeSources ? "three (incl. mount namespace)" : "two (baseline fallback)")."))
     }
+}
+
+func firstReachableHost(in config: AutomntConfig, probe: (String, Int) -> Bool) -> HostConfig? {
+    config.hosts.first { $0.enabled && probe($0.host, $0.port) }
 }
 
 /// 单轮内的主机可达性缓存：同一主机只探测一次，避免每卷重复探测。
@@ -3527,6 +3745,9 @@ struct RecoveryRoundOutcome: Equatable {
     var failed: [String] = []
     var suppressed: [String] = []
     var attempted: Int = 0
+    var notificationKeys: [String] = []
+    var deferredVolumeKeys: [String] = []
+    var stateDiagnostic: String?
 
     var hasVisibleFallbackTrigger: Bool { !failed.isEmpty || !suppressed.isEmpty }
 }
@@ -3542,50 +3763,145 @@ func runRecoveryRound(
     hostReachability: (String, Int) -> Bool,
     stateURL: URL? = nil,
     applyRecovery: (ConfiguredVolume, AutomntConfig) -> Bool,
-    writeState: Bool = true
+    writeState: Bool = true,
+    manualRecovery: Bool = false,
+    cleanupVolume: (String) -> Bool = { forceUnmountWithTimeout(path: $0) },
+    volumeHealth: ((String) -> Bool)? = nil
 ) -> RecoveryRoundOutcome {
     var outcome = RecoveryRoundOutcome()
 
     // 开关门：关闭时恢复判定与会话抑制不执行（FR-008）。
     guard config.isAutoMountRecoveryEnabled else { return outcome }
+    let previousDeadline = MountExecutionBudget.deadline
+    let window = min(max(config.retryPolicy?.maxTotalWindowMs ?? 10000, 1000), 30000)
+    MountExecutionBudget.deadline = Date().addingTimeInterval(Double(window) / 1000)
+    defer { MountExecutionBudget.deadline = previousDeadline }
+
+    let targetStateURL = stateURL ?? getMountRecoveryStateURL()
+    let lockURL = targetStateURL.deletingLastPathComponent().appendingPathComponent(".mount-recovery.lock")
+    try? FileManager.default.createDirectory(at: lockURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let lockFD = open(lockURL.path, O_CREAT | O_RDWR, mode_t(0o600))
+    guard lockFD >= 0 else {
+        outcome.deferredVolumeKeys = configuredVolumes(from: config).map(\.key)
+        return outcome
+    }
+    defer { close(lockFD) }
+    guard flock(lockFD, LOCK_EX | LOCK_NB) == 0 else {
+        outcome.deferredVolumeKeys = configuredVolumes(from: config).map(\.key)
+        return outcome
+    }
+    defer { flock(lockFD, LOCK_UN) }
 
     let load = MountRecoveryStore.load(from: stateURL)
     let stateReadable = load.isReadable
+    if case .corrupt(let reason) = load {
+        // 只呈现程序定义的类别，禁止将任意输入或凭据带入诊断。
+        let category: String
+        switch reason {
+        case "state file unreadable or not a plist dictionary":
+            category = tr("状态不可读或格式损坏", "state unreadable or invalid plist")
+        case "state file missing schema_version":
+            category = tr("缺少状态版本", "missing state version")
+        case let value where value.hasPrefix("unknown schema_version "):
+            category = tr("未知状态版本", "unknown state version")
+        default:
+            category = tr("状态内容损坏", "invalid state contents")
+        }
+        outcome.stateDiagnostic = tr("  · 恢复状态异常（\(category)）；缺失卷保守跳过，请在配置菜单选择“立即重新挂载”。",
+                                     "  · Recovery state error (\(category)); missing volumes are conservatively skipped. Use Remount now in the configuration menu.")
+    }
     var state = load.file
-    let boundary = SessionBoundaryIdentity.current().combined
+    let boundary = SessionBoundaryIdentity.current(previous: state.sessionBoundary).combined
 
-    // 会话边界解禁：网络上下文或登录变化 → 清除全部抑制并恢复可评估资格（FR-004）。
-    if state.sessionBoundary != boundary {
-        for (key, var record) in state.volumes where record.state == .suppressed {
-            record.state = .pendingRecovery
-            record.suppressionBoundary = nil
+    // 边界解禁保留健康历史，以 pendingRecovery 显式表示恢复资格。
+    let previousBoundary = state.sessionBoundary?.split(separator: "|", omittingEmptySubsequences: false)
+    let establishingNetwork = previousBoundary?.dropLast().joined(separator: "|") == "<unreadable>" &&
+        previousBoundary?.last.map(String.init) == LoginSessionEpoch.current()
+    if state.sessionBoundary != boundary && !establishingNetwork {
+        for (key, var record) in state.volumes {
+            if record.state == .suppressed ||
+                (record.everHealthyMounted && mountTable[key] == nil) {
+                record.state = .pendingRecovery
+                record.suppressionBoundary = nil
+            }
             record.notificationCount = 0
+            state.volumes[key] = record
+        }
+        state.sessionBoundary = boundary
+    } else if establishingNetwork {
+        // 首次成功采集仅建立基线，不是网络变化，已有保护继续绑定。
+        for (key, var record) in state.volumes where record.state == .suppressed {
+            record.suppressionBoundary = boundary
             state.volumes[key] = record
         }
         state.sessionBoundary = boundary
     }
 
-    let volumes = configuredVolumes(from: config)
-    let knownKeys = Set(volumes.map(\.key))
-    // 配置中已删除的卷，其状态条目在本次重建时清除。
+    let allVolumes = configuredVolumes(from: config)
+    let knownKeys = Set(config.hosts.flatMap { $0.shares }.compactMap { smbResourceIdentity($0.smbURL) })
+    // 禁用保留历史；只有真正删除配置条目才清除自账。
     state.volumes = state.volumes.filter { knownKeys.contains($0.key) }
+    state.cleanupLedger = state.cleanupLedger.filter { knownKeys.contains($0.key) }
+    state.attempts = state.attempts.filter { knownKeys.contains($0.key) }
+    var reachabilityCache: [String: Bool] = [:]
+    func reachableHost(_ host: String, _ port: Int) -> Bool {
+        let key = "\(host):\(port)"
+        if let cached = reachabilityCache[key] { return cached }
+        let reachable = hostReachability(host, port)
+        reachabilityCache[key] = reachable
+        return reachable
+    }
+    let selected = firstReachableHost(in: config, probe: reachableHost)
+    let volumes = allVolumes.filter {
+        selected == nil || ($0.host == selected?.host && $0.port == selected?.port) ||
+        (mountTable[$0.key] != nil && !reachableHost($0.host, $0.port))
+    }
 
     for volume in volumes {
         let present = mountTable[volume.key] != nil
-        let reachable = hostReachability(volume.host, volume.port)
+        let reachable = reachableHost(volume.host, volume.port)
         let record = state.volumes[volume.key]
-        let signal = judgeRecoverySignal(volumeKey: volume.key, presentInMountTable: present,
+        var signal = judgeRecoverySignal(volumeKey: volume.key, presentInMountTable: present,
                                          hostReachable: reachable, record: record,
                                          cleanupLedger: state.cleanupLedger,
                                          stateReadable: stateReadable)
+        // 同一挂载点的备用身份也必须尊重本会话健康弹出的意图。
+        // 仅同路径不足以证明两个主机是同一服务器，因此只传播抑制，
+        // 不传播健康记录或修复许可（保守方向）。
+        if !present && !manualRecovery {
+            let protectedByPeer = allVolumes.contains { peer in
+                guard peer.key != volume.key, peer.mountPoint == volume.mountPoint,
+                      mountTable[peer.key] == nil, let peerRecord = state.volumes[peer.key] else { return false }
+                if peerRecord.state == .suppressed && peerRecord.suppressionBoundary == boundary { return true }
+                return judgeRecoverySignal(volumeKey: peer.key, presentInMountTable: false,
+                    hostReachable: reachableHost(peer.host, peer.port), record: peerRecord,
+                    cleanupLedger: state.cleanupLedger, stateReadable: stateReadable) == .healthyEject
+            }
+            if protectedByPeer { signal = .healthyEject }
+        }
+        if manualRecovery && !present { signal = .neverMounted }
+        if present && reachable && (volumeHealth?(mountTable[volume.key]!) ?? boundedVolumeHealth(at: mountTable[volume.key]!)) == false {
+            signal = .deadButPresent
+        }
 
         var working = record ?? MountRecoveryVolumeRecord(volumeKey: volume.key)
         working.updatedAt = Date().timeIntervalSince1970
+        if signal == .deadButPresent {
+            working.repairEjectEvidence = true
+            working.everHealthyMounted = true
+            // 离线时只保留死卷证据；卸载会陷入内核 SMB 重连等待。
+            // 网络恢复后先重新探测健康，已自行重连的卷无需破坏性清理。
+            if reachable, let observedPath = mountTable[volume.key], cleanupVolume(observedPath) {
+                state.cleanupLedger[volume.key] = working.updatedAt
+                if reachable { signal = .productCleanup }
+            }
+        }
 
         switch signal {
         case .attachedHealthy:
             // 幂等 + 自触发防护：已挂载即跳过，且自身挂载不产生新的恢复尝试。
             working.state = .attached
+            working.repairEjectEvidence = false
             working.everHealthyMounted = true
             working.attemptCount = 0
             working.notificationCount = 0
@@ -3594,41 +3910,43 @@ func runRecoveryRound(
             state.cleanupLedger.removeValue(forKey: volume.key)
 
         case .deadButPresent:
-            // 网络丢失：写清理账并纳入恢复（主机不可达时保留待恢复，不丢状态）。
-            working.state = .lost
+            working.state = .pendingRecovery
             working.everHealthyMounted = true
-            state.cleanupLedger[volume.key] = Date().timeIntervalSince1970
-            guard reachable else {
-                working.state = .pendingRecovery
-                state.volumes[volume.key] = working
-                continue
-            }
-            working.state = .recovering
-            working.attemptCount = 1
-            outcome.attempted += 1
-            if applyRecovery(volume, config) {
-                working.state = .attached
-                working.everHealthyMounted = true
-                working.attemptCount = 0
-                outcome.recovered.append(volume.key)
-            } else {
-                working.state = .pendingRecovery
-                outcome.failed.append(volume.key)
-            }
+            working.repairEjectEvidence = true
+            outcome.failed.append(volume.key)
+            state.attempts[volume.key] = [RecoveryAttempt(timestamp: working.updatedAt,
+                outcome: reachable ? .shareRejected : .hostUnreachable, sequence: 0)]
 
         case .productCleanup, .repairEject, .neverMounted:
             // 纳入恢复：主机可达才尝试，否则保留待恢复状态（会话抑制与待恢复不丢失）。
             guard reachable else {
                 working.state = .pendingRecovery
                 // 无挂载证据的卷不因不可达而进入抑制（FR-002④）。
+                outcome.failed.append(volume.key)
+                state.attempts[volume.key] = [RecoveryAttempt(timestamp: working.updatedAt, outcome: .hostUnreachable, sequence: 0)]
+                if working.notificationCount < 2 {
+                    outcome.notificationKeys.append(volume.key)
+                    working.notificationCount += 1
+                }
                 state.volumes[volume.key] = working
                 continue
             }
             working.state = .recovering
-            working.attemptCount = 1
-            outcome.attempted += 1
-            if applyRecovery(volume, config) {
+            var attempts: [RecoveryAttempt] = []
+            let mounted = EvaluationRetryRunner(policy: config.retryPolicy ?? RetryPolicy()).run {
+                guard (MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 0) > 0 else { return false }
+                outcome.attempted += 1
+                MountExecutionBudget.lastFailure = .shareRejected
+                let succeeded = applyRecovery(volume, config)
+                attempts.append(RecoveryAttempt(timestamp: Date().timeIntervalSince1970,
+                    outcome: succeeded ? .mounted : MountExecutionBudget.lastFailure, sequence: attempts.count + 1))
+                return succeeded
+            }
+            working.attemptCount = attempts.count
+            state.attempts[volume.key] = attempts
+            if mounted {
                 working.state = .attached
+                working.repairEjectEvidence = false
                 working.everHealthyMounted = true
                 working.attemptCount = 0
                 working.notificationCount = 0
@@ -3648,13 +3966,37 @@ func runRecoveryRound(
                 working.everHealthyMounted = true // 保守：不得被后续误判为「从未挂载」
             }
             outcome.suppressed.append(volume.key)
+            state.attempts[volume.key] = [RecoveryAttempt(timestamp: working.updatedAt, outcome: .suppressedSkipped, sequence: 0)]
         }
 
+        if outcome.failed.contains(volume.key), working.notificationCount < 2 {
+            outcome.notificationKeys.append(volume.key)
+            working.notificationCount += 1
+        }
         state.volumes[volume.key] = working
     }
 
-    if writeState {
-        _ = MountRecoveryStore.save(state, to: stateURL)
+    // 不同顺位可共用挂载点；新主机已成功接管时，旧主机的离线记录
+    // 仍须保留，但不能把已恢复的同一路径继续报告为失败。
+    let restoredPaths = Set(allVolumes.filter { outcome.recovered.contains($0.key) }.map(\.mountPoint))
+    let supersededKeys = Set(allVolumes.filter {
+        restoredPaths.contains($0.mountPoint) && !outcome.recovered.contains($0.key)
+    }.map(\.key))
+    outcome.failed.removeAll { supersededKeys.contains($0) }
+    outcome.suppressed.removeAll { supersededKeys.contains($0) }
+    outcome.notificationKeys.removeAll { supersededKeys.contains($0) }
+    if manualRecovery {
+        for key in supersededKeys {
+            guard var peerRecord = state.volumes[key] else { continue }
+            peerRecord.state = .pendingRecovery
+            peerRecord.suppressionBoundary = nil
+            peerRecord.notificationCount = 0
+            state.volumes[key] = peerRecord
+        }
+    }
+
+    if writeState && !MountRecoveryStore.save(state, to: stateURL) {
+        fputs(tr("⚠ 恢复状态保存失败；请使用配置菜单重新挂载。\n", "⚠ Recovery state could not be saved; use Remount now in the configuration menu.\n"), stderr)
     }
     return outcome
 }
@@ -3662,14 +4004,17 @@ func runRecoveryRound(
 /// 兜底通知（T016）：每轮至多一条、合并列出、会话级上限 2 条、双语字面。
 /// 返回 nil = 本轮不发通知。
 func recoveryFallbackNotificationText(for outcome: RecoveryRoundOutcome, config: AutomntConfig) -> (title: String, subtitle: String, message: String)? {
-    let affected = outcome.failed + outcome.suppressed
+    let unresolved = Set(outcome.failed).subtracting(outcome.recovered)
+    let affected = Array(Set(outcome.notificationKeys).intersection(unresolved)).sorted()
     guard !affected.isEmpty else { return nil }
     let readable = affected.map { key -> String in
         // 以挂载点最后一段作为可读名，避免暴露主机地址。
-        let name = key.split(separator: "/").last.map(String.init) ?? key
-        return name
+        if let volume = configuredVolumes(from: config).first(where: { $0.key == key }) {
+            return URL(fileURLWithPath: volume.mountPoint).lastPathComponent
+        }
+        return key.split(separator: "/").last.map(String.init) ?? key
     }
-    let list = readable.joined(separator: tr("、", ", "))
+    let list = Array(Set(readable)).sorted().joined(separator: tr("、", ", "))
     let title = tr("automnt：挂载未自动恢复", "automnt: Mounts Not Automatically Restored")
     let subtitle = tr("自动恢复未完成", "Automatic recovery incomplete")
     let message = tr("以下共享未能自动恢复：\(list)。请在 automnt 配置管理菜单中选择“立即重新挂载”。",
@@ -3689,9 +4034,17 @@ func installLaunchAgent() {
     if !FileManager.default.fileExists(atPath: binary.path) {
         InstallationManager.relocateIfNeeded()
     }
+    guard BinarySigningPolicy.trustedCode(at: binary) != nil else {
+        fputs(tr("✗ 服务安装已停止：需要标识为 automnt 的有效 Apple Development 或 Developer ID Application 签名。\n",
+                 "✗ Service installation stopped: a valid Apple Development or Developer ID Application signature with identifier automnt is required.\n"), stderr)
+        return
+    }
     InstallationManager.injectShellEntry()
     let success = registerOrUpdateLaunchAgent()
     let plistURL = getLaunchAgentPlistURL()
+    let triggerDescription = (loadConfig()?.isAutoMountRecoveryEnabled ?? true)
+        ? tr("登录、系统网络配置变化与挂载命名空间变化事件驱动", "Login, network changes, and mount namespace changes")
+        : tr("登录与系统网络配置变化事件驱动", "Login and network changes")
     if success {
         print(tr("✓ 已生成服务描述文件:\n  \(plistURL.path)", "✓ Generated LaunchAgent plist:\n  \(plistURL.path)"))
         print(tr("✓ 成功注册并加载至系统 launchd 守护进程 (gui/\(getuid()))",
@@ -3701,7 +4054,7 @@ func installLaunchAgent() {
         服务详情:
           • 标识 (Label): \(launchAgentLabel)
           • 执行命令: \(binary.path)
-          • 触发时机: 登录启动与系统网络配置变化事件驱动
+          • 触发时机: \(triggerDescription)
           • 日志路径: ~/Library/Logs/automnt/stdout.log
 
         自启动与网络监听服务已生效。
@@ -3710,7 +4063,7 @@ func installLaunchAgent() {
         Service Details:
           • Label: \(launchAgentLabel)
           • Command: \(binary.path)
-          • Trigger: Login and network change event-driven
+          • Trigger: \(triggerDescription)
           • Log file: ~/Library/Logs/automnt/stdout.log
 
         LaunchAgent is loaded and will evaluate the configured network policy.
@@ -3866,7 +4219,8 @@ func showMacOSNotification(title: String, subtitle: String, message: String) {
         return
     }
     let script = "display notification \(quoteAppleScript(message)) with title \(quoteAppleScript(title)) subtitle \(quoteAppleScript(subtitle))"
-    _ = runCommand(executable: "/usr/bin/osascript", arguments: ["-e", script])
+    _ = runCommandDiscardingOutputWithTimeout(executable: "/usr/bin/osascript",
+                                              arguments: ["-e", script], timeout: 2)
 }
 
 /// 自测期通知记录器：让通知行为可断言且不触碰用户桌面。
@@ -3989,8 +4343,26 @@ func performSelfUpdateWithBinary(newVersion: String, binaryData: Data, isSilent:
         try binaryData.write(to: stagedBinary)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: stagedBinary.path)
 
-        let valResult = runCommand(executable: stagedBinary.path, arguments: ["--version"])
-        guard valResult.status == 0, valResult.stdout.contains(newVersion) else {
+        guard BinarySigningPolicy.permitsReplacement(candidate: stagedBinary, installed: targetURL) else {
+            writeLog("Update rejected: invalid signing identity or incompatible designated requirement")
+            if !isSilent {
+                fputs(tr("✗ 更新已停止：代码签名无效或身份不兼容；原版本保留。\n",
+                         "✗ Update stopped: invalid signature or incompatible identity; existing version preserved.\n"), stderr)
+            }
+            return false
+        }
+        let versionOutputURL = tempDir.appendingPathComponent("version-output")
+        guard FileManager.default.createFile(atPath: versionOutputURL.path, contents: nil) else { return false }
+        let versionOutput = try FileHandle(forWritingTo: versionOutputURL)
+        defer { try? versionOutput.close() }
+        let valResult = runCommandDiscardingOutputWithTimeout(executable: stagedBinary.path,
+            arguments: ["--version"], timeout: 2, standardOutputFile: versionOutput)
+        guard !valResult.timedOut, valResult.status == 0,
+              let outputSize = try FileManager.default.attributesOfItem(atPath: versionOutputURL.path)[.size] as? NSNumber,
+              outputSize.intValue <= 128 else { return false }
+        let reportedVersion = try String(contentsOf: versionOutputURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !valResult.timedOut, valResult.status == 0, reportedVersion == newVersion else {
             writeLog("Prebuilt binary validation failed for v\(newVersion)")
             return false
         }
@@ -4240,6 +4612,8 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     try? replaceFilesTransactionally([StagedFileReplacement(sourceURL: src1, destinationURL: dst1, permissions: 0o600)])
     check((try? String(contentsOf: dst1, encoding: .utf8)) == "new content", "transactional file replacement succeeds")
 
+    try? Data("rollback candidate".utf8).write(to: src1)
+    try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dst1.path)
     var rollbackPassed = false
     do {
         try replaceFilesTransactionally([
@@ -4250,7 +4624,9 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     } catch {
         rollbackPassed = (try? String(contentsOf: dst1, encoding: .utf8)) == "new content"
     }
-    check(rollbackPassed, "transactional file replacement rolls back on action error")
+    check(rollbackPassed, "transactional file replacement restores distinct original bytes on action error")
+    let rollbackPermissions = ((try? FileManager.default.attributesOfItem(atPath: dst1.path))?[.posixPermissions] as? NSNumber)?.intValue
+    check(rollbackPermissions == 0o700, "transactional rollback restores original executable permissions")
 
     // 8. Child runner non-deadlock & timeout
     let pipeTest = runCommand(
@@ -4265,6 +4641,17 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     )
     check(timedOutCommand.timedOut && timedOutCommand.processStopped,
           "bounded child runner terminates and reaps a timed-out command")
+
+    let boundedOutputURL = tempDir.appendingPathComponent("bounded-version-output")
+    FileManager.default.createFile(atPath: boundedOutputURL.path, contents: nil)
+    let boundedOutputHandle = try? FileHandle(forWritingTo: boundedOutputURL)
+    let boundedOutputResult = runCommandDiscardingOutputWithTimeout(executable: "/bin/sh",
+        arguments: ["-c", "printf '3.3.0\\n'; exec /bin/sleep 2"], timeout: 0.05,
+        standardOutputFile: boundedOutputHandle)
+    try? boundedOutputHandle?.close()
+    check(boundedOutputResult.timedOut && boundedOutputResult.processStopped &&
+          (try? String(contentsOf: boundedOutputURL, encoding: .utf8)) == "3.3.0\n",
+          "version output before a stalled child is captured but still rejected on timeout")
 
     // 9. Shell snippet injection & removal
     let profileContent = "export VAR=foo\nalias ll='ls -l'\n"
@@ -4319,6 +4706,12 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     try? FileManager.default.createDirectory(at: downloadBin.deletingLastPathComponent(), withIntermediateDirectories: true)
     try? Data("binary bytes".utf8).write(to: downloadBin)
     check(FileManager.default.fileExists(atPath: downloadBin.path), "Download copy exists before relocation")
+    check(!BinarySigningPolicy.permitsReplacement(candidate: downloadBin, installed: nil),
+          "installation rejects unsigned non-executable content before running it")
+    check(!BinarySigningPolicy.permitsReplacement(candidate: URL(fileURLWithPath: "/usr/bin/true"), installed: nil),
+          "Apple platform signature alone cannot impersonate a Developer ID application")
+    check(!BinarySigningPolicy.permitsReplacement(candidate: InstallationManager.currentExecutablePhysicalURL(), installed: downloadBin),
+          "update rejects an unsigned existing identity without implicit migration")
 
     let mockTargetBin = tempDir.appendingPathComponent("canonical/bin/automnt")
     try? FileManager.default.createDirectory(at: mockTargetBin.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -4855,19 +5248,7 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
           "persisted false disables automatic recovery")
     // 既有配置（无该键）原地升舱不破坏
     let legacyNoSwitchURL = tempDir.appendingPathComponent("recovery_legacy.plist")
-    let legacyNoSwitchXML = """
-    <?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-    <plist version="1.0">
-    <dict>
-    \t<key>version</key>
-    \t<string>\(automntVersion)</string>
-    \t<key>hosts</key>
-    \t<array/>
-    </dict>
-    </plist>
-    """
-    try? legacyNoSwitchXML.data(using: .utf8)?.write(to: legacyNoSwitchURL)
+    check(saveConfig(AutomntConfig(), to: legacyNoSwitchURL), "legacy default config generated through program API")
     let legacyNoSwitch = loadConfig(from: legacyNoSwitchURL, migrate: false)
     check(legacyNoSwitch?.isAutoMountRecoveryEnabled == true,
           "in-place migration keeps legacy configs on the default enabled switch")
@@ -4967,8 +5348,315 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     check(RecoverySignal.healthyEject.isSuppressed && !RecoverySignal.healthyEject.isRecoverable,
           "healthy ejection is suppressed within the session")
 
+    // 恢复编排回归：只在隔离目录/内存执行，不访问真实 SMB 或 launchd。
+    VolumeHealthProbe.testOverride = { _ in true }
+    defer { VolumeHealthProbe.testOverride = nil }
+    let roundURL = tempDir.appendingPathComponent("round-state.plist")
+    let roundConfig = AutomntConfig(retryPolicy: RetryPolicy(maxAttempts: 2, intervalMs: 100, maxTotalWindowMs: 1000), hosts: [
+        HostConfig(host: "first.example", shares: [SMBShareConfig(name: "A", smbURL: "smb://first.example/A", mountPoint: "/Volumes/A")]),
+        HostConfig(host: "second.example", shares: [SMBShareConfig(name: "B", smbURL: "smb://second.example/B", mountPoint: "/Volumes/B")])])
+    let firstKey = configuredVolumes(from: roundConfig)[0].key
+    let secondKey = configuredVolumes(from: roundConfig)[1].key
+    LoginSessionEpoch.testOverride = "round-login"
+    NetworkContextIdentity.testOverride = snapshotA
+    let roundBoundary = SessionBoundaryIdentity.current().combined
+    var calls = 0
+    func round(_ table: [String: String] = [:], manual: Bool = false, success: Bool = true) -> RecoveryRoundOutcome {
+        runRecoveryRound(config: roundConfig, mountTable: table, hostReachability: { _, _ in true },
+                         stateURL: roundURL, applyRecovery: { _, _ in calls += 1; return success },
+                         manualRecovery: manual)
+    }
+    let contentionDir = tempDir.appendingPathComponent("lock-contention")
+    try? FileManager.default.createDirectory(at: contentionDir, withIntermediateDirectories: true)
+    let contentionState = contentionDir.appendingPathComponent("state.plist")
+    let contentionLock = contentionDir.appendingPathComponent(".mount-recovery.lock")
+    let heldFD = open(contentionLock.path, O_CREAT | O_RDWR, mode_t(0o600))
+    let held = heldFD >= 0 && flock(heldFD, LOCK_EX | LOCK_NB) == 0
+    var contentionCalls = 0
+    let deferred = runRecoveryRound(config: roundConfig, mountTable: [:], hostReachability: { _, _ in true },
+        stateURL: contentionState, applyRecovery: { _, _ in contentionCalls += 1; return true })
+    check(held && Set(deferred.deferredVolumeKeys) == Set([firstKey, secondKey]) && deferred.suppressed.isEmpty,
+          "held recovery lock defers evaluation without claiming manual-eject suppression")
+    check(contentionCalls == 0 && !deferred.hasVisibleFallbackTrigger && deferred.notificationKeys.isEmpty &&
+          !FileManager.default.fileExists(atPath: contentionState.path),
+          "lock contention performs no mount, notification, or state write")
+    if heldFD >= 0 { _ = flock(heldFD, LOCK_UN); close(heldFD) }
+    let invalidLockDir = tempDir.appendingPathComponent("invalid-lock")
+    try? FileManager.default.createDirectory(at: invalidLockDir.appendingPathComponent(".mount-recovery.lock"), withIntermediateDirectories: true)
+    let unavailable = runRecoveryRound(config: roundConfig, mountTable: [:], hostReachability: { _, _ in true },
+        stateURL: invalidLockDir.appendingPathComponent("state.plist"), applyRecovery: { _, _ in contentionCalls += 1; return true })
+    check(unavailable.deferredVolumeKeys.count == 2 && unavailable.suppressed.isEmpty && contentionCalls == 0,
+          "unopenable recovery lock preserves safe deferral without false suppression")
+    var historical = MountRecoveryStateFile(sessionBoundary: roundBoundary)
+    historical.volumes[firstKey] = MountRecoveryVolumeRecord(volumeKey: firstKey, everHealthyMounted: true)
+    check(MountRecoveryStore.save(historical, to: roundURL), "round history is saved through state API")
+    let ejected = round()
+    check(ejected.suppressed == [firstKey] && calls == 0, "healthy eject stays suppressed and other hosts are excluded")
+    check(ejected.notificationKeys.isEmpty, "healthy eject produces no failure notification")
+    check(round().notificationKeys.isEmpty && round().notificationKeys.isEmpty &&
+          MountRecoveryStore.load(from: roundURL).file.volumes[firstKey]?.notificationCount == 0,
+          "repeated healthy eject evaluations remain silent without consuming notification budget")
+    let stableSnapshot = NetworkContextIdentity.testOverride
+    var protectedState = MountRecoveryStore.load(from: roundURL).file
+    protectedState.volumes[firstKey]?.notificationCount = 2
+    _ = MountRecoveryStore.save(protectedState, to: roundURL)
+    NetworkContextIdentity.testOverride = NetworkContextSnapshot(identity: "", components: [], isReadable: false)
+    let failedCollection = round()
+    check(failedCollection.suppressed == [firstKey] && calls == 0 &&
+          MountRecoveryStore.load(from: roundURL).file.sessionBoundary == protectedState.sessionBoundary &&
+          MountRecoveryStore.load(from: roundURL).file.volumes[firstKey]?.notificationCount == 2,
+          "unreadable network preserves eject protection, boundary and notification budget")
+    NetworkContextIdentity.testOverride = stableSnapshot
+    check(round().suppressed == [firstKey] && calls == 0,
+          "collection recovery with unchanged identity never releases suppression")
+    NetworkContextIdentity.testOverride = nil
+    NetworkContextIdentity.componentsProvider = { nil }
+    check(!NetworkContextIdentity.current().isReadable, "interface collection failure is distinct from a valid empty network")
+    NetworkContextIdentity.componentsProvider = { [] }
+    check(NetworkContextIdentity.current().isReadable && NetworkContextIdentity.current().identity.isEmpty,
+          "successful empty network is a valid identity")
+    NetworkContextIdentity.componentsProvider = nil
+    NetworkContextIdentity.gatewayProvider = { (false, nil) }
+    check(!NetworkContextIdentity.current().isReadable, "route failure invalidates the entire network snapshot")
+    NetworkContextIdentity.gatewayProvider = nil
+    check(!NetworkContextIdentity.parseGateway(status: 1, stdout: "", stderr: "permission denied").readable &&
+          NetworkContextIdentity.parseGateway(status: 1, stdout: "", stderr: "route: writing to routing socket: not in table").readable,
+          "explicit absent route is distinguished from route command failure")
+    check(NetworkContextIdentity.parseGateway(status: 0, stdout: "gateway: 192.0.2.1", stderr: "").gateway == "192.0.2.1" &&
+          !NetworkContextIdentity.parseGateway(status: 0, stdout: "unexpected", stderr: "").readable,
+          "gateway parsing requires a complete successful route response")
+    let savedDeadline = MountExecutionBudget.deadline
+    MountExecutionBudget.deadline = Date().addingTimeInterval(-1)
+    let routeStart = Date()
+    check(!NetworkContextIdentity.defaultGatewayIdentity().readable && Date().timeIntervalSince(routeStart) < 0.2,
+          "exhausted recovery budget prevents route launch and returns immediately")
+    MountExecutionBudget.deadline = savedDeadline
+    let timeoutStart = Date()
+    let timeoutResult = runCommandDiscardingOutputWithTimeout(executable: "/bin/sleep", arguments: ["2"], timeout: 0.01)
+    check(timeoutResult.timedOut && Date().timeIntervalSince(timeoutStart) < 0.8,
+          "route subprocess timeout primitive stops waiting within its bounded termination allowance")
+    var unknownBaseline = protectedState
+    unknownBaseline.sessionBoundary = "<unreadable>|\(LoginSessionEpoch.current())"
+    unknownBaseline.volumes[firstKey]?.suppressionBoundary = unknownBaseline.sessionBoundary
+    _ = MountRecoveryStore.save(unknownBaseline, to: roundURL)
+    NetworkContextIdentity.testOverride = stableSnapshot
+    check(round().suppressed == [firstKey] && calls == 0 &&
+          MountRecoveryStore.load(from: roundURL).file.volumes[firstKey]?.notificationCount == 2,
+          "first readable identity establishes baseline without releasing an existing suppression")
+    _ = MountRecoveryStore.save(protectedState, to: roundURL)
+    NetworkContextIdentity.testOverride = NetworkContextSnapshot(identity: "", components: [])
+    check(round().recovered == [firstKey], "confirmed empty network constitutes a real identity change")
+    _ = MountRecoveryStore.save(protectedState, to: roundURL)
+    NetworkContextIdentity.testOverride = NetworkContextSnapshot(identity: "gateway-changed", components: ["gw:192.0.2.2"])
+    check(round().recovered == [firstKey], "confirmed gateway change releases suppression")
+    calls = 0
+    _ = MountRecoveryStore.save(protectedState, to: roundURL)
+    NetworkContextIdentity.testOverride = NetworkContextSnapshot(identity: "", components: [], isReadable: false)
+    let savedEpoch = LoginSessionEpoch.current()
+    LoginSessionEpoch.testOverride = "independent-relogin"
+    check(round().recovered == [firstKey], "re-login independently releases protection during network collection failure")
+    LoginSessionEpoch.testOverride = savedEpoch
+    NetworkContextIdentity.testOverride = stableSnapshot
+    _ = MountRecoveryStore.save(protectedState, to: roundURL)
+    calls = 0
+    NetworkContextIdentity.testOverride = NetworkContextSnapshot(identity: "new-network", components: ["new-network"])
+    check(round().recovered == [firstKey] && calls == 1, "network boundary releases suppression without clearing healthy history")
+    check(MountRecoveryStore.load(from: roundURL).file.volumes[firstKey]?.everHealthyMounted == true,
+          "healthy history remains sticky after boundary recovery")
+    check(round([firstKey: "/Volumes/A"]).attempted == 0 && calls == 1,
+          "self-generated mount event is idempotent and adds no attempt")
+    check(round().suppressed == [firstKey], "fresh healthy eject after recovery is suppressed again")
+    check(round(manual: true).recovered == [firstKey], "explicit Remount now restores a suppressed volume")
+    check(round([firstKey: "/Volumes/A"]).notificationKeys.isEmpty, "healthy observation resets notification budget")
+    historical.sessionBoundary = SessionBoundaryIdentity.current().combined
+    historical.volumes[firstKey]?.repairEjectEvidence = true
+    check(MountRecoveryStore.save(historical, to: roundURL), "repair evidence fixture saved")
+    let beforeFailures = calls
+    let failedRound = round(success: false)
+    check(failedRound.failed == [firstKey] && calls - beforeFailures == 2 && failedRound.attempted == 2,
+          "mount failures exhaust exactly the configured bounded retry count")
+    check(failedRound.notificationKeys == [firstKey] && round(success: false).notificationKeys == [firstKey] &&
+          round(success: false).notificationKeys.isEmpty,
+          "actual failures still notify at most twice per volume and session")
+    check(recoveryFallbackNotificationText(for: RecoveryRoundOutcome(suppressed: [firstKey], notificationKeys: [firstKey]), config: roundConfig) == nil,
+          "notification renderer rejects stale suppressed notification keys from previous policy")
+    let attempts = MountRecoveryStore.load(from: roundURL).file.attempts[firstKey] ?? []
+    check(attempts.last?.outcome == .shareRejected && attempts.last?.sequence == 2,
+          "failed recovery records outcome and sequence")
+    check(MountRecoveryStore.load(from: roundURL).file.volumes[secondKey] == nil,
+          "lower-priority reachable host never enters recovery")
+    MountRecoveryStore.mountRecoveryStoreLoadOverride = .corrupt(reason: "injected")
+    let beforeCorrupt = calls
+    let corruptRound = round()
+    check(corruptRound.suppressed == [firstKey] && calls == beforeCorrupt,
+          "corruption never falls through to first-use mounting")
+    check(corruptRound.stateDiagnostic != nil && corruptRound.notificationKeys.isEmpty &&
+          recoveryFallbackNotificationText(for: corruptRound, config: roundConfig) == nil &&
+          !(corruptRound.stateDiagnostic?.contains("injected") ?? true),
+          "corrupt state has safe distinct diagnostics with no failure notification or raw input")
+    MountRecoveryStore.mountRecoveryStoreLoadOverride = .corrupt(reason: "unknown schema_version 999")
+    let unknownVersionRound = round()
+    check(unknownVersionRound.stateDiagnostic == tr("  · 恢复状态异常（未知状态版本）；缺失卷保守跳过，请在配置菜单选择“立即重新挂载”。",
+        "  · Recovery state error (unknown state version); missing volumes are conservatively skipped. Use Remount now in the configuration menu."),
+        "unknown schema diagnostics match bilingual text exactly")
+    check(round(manual: true).recovered == [firstKey], "manual fallback remains available after state corruption")
     MountRecoveryStore.mountRecoveryStoreLoadOverride = nil
+    var disabledRoundConfig = roundConfig
+    disabledRoundConfig.autoMountRecovery = false
+    check(runRecoveryRound(config: disabledRoundConfig, mountTable: [:], hostReachability: { _, _ in true },
+                           stateURL: roundURL, applyRecovery: { _, _ in calls += 1; return true }).attempted == 0,
+          "disabled recovery performs no classification or mount attempt")
+    check(firstReachableHost(in: disabledRoundConfig, probe: { _, _ in true })?.host == "first.example",
+          "disabled manual baseline retains first-host exclusivity")
+    let fallbackURL = tempDir.appendingPathComponent("priority-fallback-state.plist")
+    var fallbackCalls: [String] = []
+    let fallbackRound = runRecoveryRound(config: roundConfig, mountTable: [:],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: fallbackURL,
+        applyRecovery: { volume, _ in fallbackCalls.append(volume.host); return true })
+    check(fallbackCalls == ["second.example"] && fallbackRound.recovered == [secondKey],
+          "unreachable first host falls back exclusively to reachable second host")
+    check(fallbackRound.notificationKeys.isEmpty && fallbackRound.failed.isEmpty,
+          "successful priority fallback never reports the unavailable nonselected host as failed")
+    var takeoverConfig = roundConfig
+    takeoverConfig.hosts[1].shares[0].mountPoint = "/Volumes/A"
+    let takeoverURL = tempDir.appendingPathComponent("priority-takeover-state.plist")
+    let takeoverRound = runRecoveryRound(config: takeoverConfig, mountTable: [firstKey: "/Volumes/A"],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: takeoverURL,
+        applyRecovery: { _, _ in true })
+    check(takeoverRound.recovered == [secondKey] && takeoverRound.failed.isEmpty && takeoverRound.notificationKeys.isEmpty,
+          "successful same-path fallback removes stale first-host failure notifications")
+    check(MountRecoveryStore.load(from: takeoverURL).file.volumes[firstKey]?.repairEjectEvidence == true,
+          "same-path fallback retains old-host repair evidence for future evaluation")
+    let peerEjectURL = tempDir.appendingPathComponent("peer-eject-state.plist")
+    _ = runRecoveryRound(config: takeoverConfig, mountTable: [firstKey: "/Volumes/A"],
+        hostReachability: { _, _ in true }, stateURL: peerEjectURL,
+        applyRecovery: { _, _ in false }, volumeHealth: { _ in true })
+    var peerMountCalls = 0
+    let peerEjectRound = runRecoveryRound(config: takeoverConfig, mountTable: [:],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: peerEjectURL,
+        applyRecovery: { _, _ in peerMountCalls += 1; return true })
+    check(peerMountCalls == 0 && peerEjectRound.suppressed.contains(secondKey),
+          "fallback identity cannot bypass a healthy eject at the same mount point")
+    let peerRepeatedRound = runRecoveryRound(config: takeoverConfig, mountTable: [:],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: peerEjectURL,
+        applyRecovery: { _, _ in peerMountCalls += 1; return true })
+    check(peerMountCalls == 0 && peerRepeatedRound.suppressed.contains(secondKey),
+          "same-path eject protection persists across repeated fallback evaluations")
+    let peerCappedRound = runRecoveryRound(config: takeoverConfig, mountTable: [:],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: peerEjectURL,
+        applyRecovery: { _, _ in peerMountCalls += 1; return true })
+    check(peerEjectRound.notificationKeys.isEmpty && peerRepeatedRound.notificationKeys.isEmpty && peerCappedRound.notificationKeys.isEmpty,
+          "same-path fallback respects healthy eject silently across every event")
+    let peerBoundaryURL = tempDir.appendingPathComponent("peer-boundary-state.plist")
+    try? FileManager.default.copyItem(at: peerEjectURL, to: peerBoundaryURL)
+    let previousNetworkOverride = NetworkContextIdentity.testOverride
+    NetworkContextIdentity.testOverride = NetworkContextSnapshot(identity: "peer-new-network", components: ["peer-new-network"])
+    let peerBoundaryRound = runRecoveryRound(config: takeoverConfig, mountTable: [:],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: peerBoundaryURL,
+        applyRecovery: { _, _ in true })
+    check(peerBoundaryRound.recovered == [secondKey],
+          "network boundary releases same-path fallback eject protection")
+    NetworkContextIdentity.testOverride = previousNetworkOverride
+    let peerManualRound = runRecoveryRound(config: takeoverConfig, mountTable: [:],
+        hostReachability: { host, _ in host == "second.example" }, stateURL: peerEjectURL,
+        applyRecovery: { _, _ in true }, manualRecovery: true)
+    check(peerManualRound.recovered == [secondKey],
+          "explicit manual recovery releases same-path fallback suppression")
+    check(MountRecoveryStore.load(from: peerEjectURL).file.volumes[firstKey]?.state == .pendingRecovery,
+          "manual same-path recovery clears stale suppression on the alternate identity")
+    var disabledHistoryConfig = roundConfig
+    disabledHistoryConfig.hosts[0].shares[0].enabled = false
+    _ = runRecoveryRound(config: disabledHistoryConfig, mountTable: [:], hostReachability: { _, _ in true },
+        stateURL: roundURL, applyRecovery: { _, _ in false })
+    check(MountRecoveryStore.load(from: roundURL).file.volumes[firstKey]?.everHealthyMounted == true,
+          "temporary disable preserves sticky healthy history")
+    let generatorBinary = tempDir.appendingPathComponent("automnt")
+    let enabledAgent = generateLaunchAgentDictionary(binaryURL: generatorBinary, logDir: tempDir,
+        autoMountRecoveryEnabled: true, mountWatchPaths: mountWatchPaths(from: roundConfig))
+    let disabledAgent = generateLaunchAgentDictionary(binaryURL: generatorBinary, logDir: tempDir,
+        autoMountRecoveryEnabled: false, mountWatchPaths: [])
+    check(enabledAgent["StartOnMount"] as? Bool == true &&
+          (enabledAgent["WatchPaths"] as? [String])?.contains("/Volumes/A") == true,
+          "enabled generator includes mount event and config-derived mount paths")
+    check(disabledAgent["StartOnMount"] == nil && !(disabledAgent["WatchPaths"] as? [String] ?? []).contains("/Volumes"),
+          "disabled generator removes mount namespace event sources")
+    check(enabledAgent["StartInterval"] == nil && enabledAgent["StartCalendarInterval"] == nil && enabledAgent["KeepAlive"] == nil,
+          "recovery generator has neither periodic wakeups nor resident KeepAlive")
+    check(!registerOrUpdateLaunchAgent(targetBinaryURL: generatorBinary, targetPlistURL: tempDir.appendingPathComponent("guarded-agent.plist")),
+          "daemon predicate blocks registration before file writes or launchctl")
+    let agentFixture = tempDir.appendingPathComponent("generated-agent.plist")
+    let generatedData = try? PropertyListSerialization.data(fromPropertyList: enabledAgent, format: .binary, options: 0)
+    try? generatedData?.write(to: agentFixture)
+    check(installedServiceDefinitionMatches(config: roundConfig, at: agentFixture),
+          "matching generated service is detected as converged for idempotent reload")
+    let outdatedData = try? PropertyListSerialization.data(fromPropertyList: disabledAgent, format: .binary, options: 0)
+    try? outdatedData?.write(to: agentFixture)
+    check(!installedServiceDefinitionMatches(config: roundConfig, at: agentFixture),
+          "older two-source service is detected before entering config menu")
+    let compatibleURL = tempDir.appendingPathComponent("compatible-state.plist")
+    var oldState = (try? PropertyListSerialization.propertyList(from: PropertyListEncoder().encode(historical), options: [], format: nil)) as? [String: Any] ?? [:]
+    oldState.removeValue(forKey: "attempts")
+    if let encoded = try? PropertyListSerialization.data(fromPropertyList: oldState, format: .binary, options: 0) { try? encoded.write(to: compatibleURL) }
+    check(MountRecoveryStore.load(from: compatibleURL).isReadable,
+          "older schema-one state without attempt records remains readable")
+    var unsaved = reloadedSwitchConfig!
+    unsaved.autoMountRecovery = true
+    check(loadConfig(from: recoveryConfigURL, migrate: false)?.autoMountRecovery == false,
+          "unsaved switch toggle leaves disk configuration unchanged")
+    check(netFSOpenOptions()[kNAUIOptionKey] as? String == kNAUIOptionNoUI,
+          "NetFS explicitly forbids credential UI")
+    let cleanupURL = tempDir.appendingPathComponent("cleanup-state.plist")
+    var cleanedPaths: [String] = []
+    let deadRound = runRecoveryRound(config: roundConfig, mountTable: [firstKey: "/Volumes/A-1"],
+        hostReachability: { _, _ in false }, stateURL: cleanupURL,
+        applyRecovery: { _, _ in check(false, "unreachable dead volume is never mounted"); return false },
+        cleanupVolume: { path in cleanedPaths.append(path); return true })
+    check(cleanedPaths.isEmpty && deadRound.attempted == 0,
+          "offline dead volume retains evidence without blocking on forced unmount")
+    check(MountRecoveryStore.load(from: cleanupURL).file.cleanupLedger[firstKey] == nil,
+          "deferred cleanup never fabricates a successful cleanup ledger")
+    check(MountRecoveryStore.load(from: cleanupURL).file.volumes[firstKey]?.repairEjectEvidence == true,
+          "session loss leaves readable repair-eject evidence")
+    let reconnected = runRecoveryRound(config: roundConfig, mountTable: [firstKey: "/Volumes/A-1"],
+        hostReachability: { _, _ in true }, stateURL: cleanupURL,
+        applyRecovery: { _, _ in check(false, "healthy reconnect never remounts"); return false }, writeState: false,
+        cleanupVolume: { _ in check(false, "healthy reconnect never unmounts"); return false },
+        volumeHealth: { _ in true })
+    check(reconnected.recovered.isEmpty && reconnected.failed.isEmpty,
+          "fresh healthy probe overrides historical repair evidence after reconnect")
+    let repaired = runRecoveryRound(config: roundConfig, mountTable: [firstKey: "/Volumes/A-1"],
+        hostReachability: { _, _ in true }, stateURL: cleanupURL,
+        applyRecovery: { _, _ in true }, cleanupVolume: { _ in true }, volumeHealth: { _ in false })
+    check(repaired.recovered == [firstKey] && repaired.attempted == 1,
+          "reachable but unhealthy retained volume is cleaned and restored in the same round")
+    check(MountRecoveryStore.load(from: cleanupURL).file.volumes[firstKey]?.repairEjectEvidence == false,
+          "successful recovery clears stale repair evidence before a future healthy eject")
+    let failedCleanupURL = tempDir.appendingPathComponent("failed-cleanup.plist")
+    _ = runRecoveryRound(config: roundConfig, mountTable: [firstKey: "/Volumes/A-1"],
+        hostReachability: { _, _ in false }, stateURL: failedCleanupURL,
+        applyRecovery: { _, _ in false }, cleanupVolume: { _ in false })
+    check(MountRecoveryStore.load(from: failedCleanupURL).file.cleanupLedger[firstKey] == nil,
+          "failed cleanup never fabricates product cleanup evidence")
+    let combinedNotice = recoveryFallbackNotificationText(for: RecoveryRoundOutcome(failed: [firstKey, secondKey],
+        notificationKeys: [firstKey, secondKey, firstKey]), config: roundConfig)
+    check(combinedNotice?.title == tr("automnt：挂载未自动恢复", "automnt: Mounts Not Automatically Restored") &&
+          combinedNotice?.subtitle == tr("自动恢复未完成", "Automatic recovery incomplete") &&
+          combinedNotice?.message == tr("以下共享未能自动恢复：A、B。请在 automnt 配置管理菜单中选择“立即重新挂载”。",
+              "The following shares were not restored automatically: A, B. Choose \"Remount now\" in the automnt configuration menu."),
+          "fallback notification matches exact contract text and merges unique shares")
+    let sharedPathNotice = recoveryFallbackNotificationText(for: RecoveryRoundOutcome(
+        failed: [firstKey, secondKey], notificationKeys: [firstKey, secondKey]), config: takeoverConfig)
+    check(sharedPathNotice?.message == tr("以下共享未能自动恢复：A。请在 automnt 配置管理菜单中选择“立即重新挂载”。",
+        "The following shares were not restored automatically: A. Choose \"Remount now\" in the automnt configuration menu."),
+        "fallback notification lists one shared mount point once across host identities")
+    LoginSessionEpoch.testOverride = nil
+    NetworkContextIdentity.testOverride = nil
     MountRecoveryStore.mountRecoveryStoreSaveBlocked = false
+    check(recoveryFallbackNotificationText(for: RecoveryRoundOutcome(recovered: [firstKey],
+        failed: [firstKey], notificationKeys: [firstKey]), config: roundConfig) == nil,
+        "success at round end excludes stale notification keys even if failure bookkeeping remains")
+    check(recoveryFallbackNotificationText(for: RecoveryRoundOutcome(notificationKeys: [firstKey]),
+        config: roundConfig) == nil, "notification keys alone cannot report a resolved or healthy volume")
 
     print("\nSelf-tests: \(passed) passed, \(skipped) skipped, \(failed) failed")
     return failed == 0
@@ -4985,6 +5673,7 @@ func printUsage() {
       --uninstall [--purge]       卸载自启动服务与 CLI (--purge 连同配置文件与日志彻底清理)
       --status                    查看当前安装状态、守护服务运行状态与挂载详情
       --update                    检查并升级软件至最新版本 (免编译下载预编译二进制)
+      --migrate-signing --team ID  从临时签名显式迁移至指定 Team（可能需要首次授权）
       --self-test                 运行内置全量自动化自测试套件
       --version, -v               查看当前软件版本号
       --help, -h                  显示帮助说明
@@ -5001,6 +5690,7 @@ func printUsage() {
       --uninstall [--purge]       Uninstall daemon and CLI entry (--purge deletes config and logs)
       --status                    Show service status and active mount details
       --update                    Check and self-update to latest prebuilt release
+      --migrate-signing --team ID  Explicit ad-hoc identity migration (initial consent may be needed)
       --self-test                 Run full automated test suite
       --version, -v               Show software version
       --help, -h                  Show this help message
@@ -5014,6 +5704,34 @@ func printUsage() {
 
 func main() {
     let args = CommandLine.arguments
+
+    if args.count == 3 && args[1] == "--internal-disable-spotlight" {
+        performDisableSpotlightIndex(at: args[2])
+        exit(0)
+    }
+
+    if args.count == 3 && args[1] == "--internal-volume-health" {
+        guard let directory = opendir(args[2]) else {
+            let failure = errno
+            exit([EIO, ENXIO, ENOTCONN, ESTALE, ETIMEDOUT].contains(failure) ? 74 : 75)
+        }
+        errno = 0
+        _ = readdir(directory)
+        let failure = errno
+        closedir(directory)
+        exit(failure == 0 ? 0 : ([EIO, ENXIO, ENOTCONN, ESTALE, ETIMEDOUT].contains(failure) ? 74 : 75))
+    }
+
+    if args.count == 5 && args[1] == "--internal-host-probe" {
+        guard let port = Int(args[3]), let timeout = Int(args[4]) else { exit(1) }
+        exit(HostReachabilityProbe.canConnect(host: args[2], port: port, timeoutMs: timeout) ? 0 : 1)
+    }
+
+    if args.count == 4 && args[1] == "--internal-netfs-mount" {
+        let mounted = performNetFSMount(urlString: args[2], mountPath: args[3])
+        let credentialFailure = [Int32(EACCES), Int32(EAUTH), Int32(ENEEDAUTH), -5000, -5023].contains(MountExecutionBudget.netFSStatus)
+        exit(mounted ? 0 : (credentialFailure ? 77 : 1))
+    }
 
     if args.contains("--self-test") {
         let success = runSelfTestsEntry(includeNetworkChecks: args.contains("--network"))
@@ -5049,8 +5767,25 @@ func main() {
         exit(1)
     }
 
+    if args.count > 1 && args[1] == "--migrate-signing" {
+        guard args.count == 4, args[2] == "--team" else {
+            fputs("Usage: automnt --migrate-signing --team TEAM_ID\n", stderr)
+            exit(2)
+        }
+        guard InstallationManager.migrateAdHocInstallation(expectedTeam: args[3]) else {
+            fputs(tr("✗ 签名迁移被拒绝或失败；检查候选签名、指定 Team 与旧程序身份。\n",
+                     "✗ Signing migration rejected or failed; check candidate signature, specified team and previous identity.\n"), stderr)
+            exit(1)
+        }
+        exit(0)
+    }
+
     // 自搬迁安装与首次运行引导 (US1)
     let justRelocated = InstallationManager.relocateIfNeeded()
+    if !justRelocated && InstallationManager.currentExecutablePhysicalURL().standardizedFileURL.path != getActiveInstalledBinaryURL().standardizedFileURL.path {
+        // 搬迁失败必须停止，不能继续从下载副本写配置或注册服务。
+        exit(1)
+    }
     if justRelocated {
         InstallationManager.injectShellEntry()
         print(tr("✓ 成功安装 automnt 到规范目录: \(getActiveInstalledBinaryURL().path)",
@@ -5156,6 +5891,9 @@ func main() {
     // Feature 004：恢复判定轮先于基线段挂载执行。
     // 关键：会话抑制的卷必须在基线段被跳过，否则「健康弹出后零重挂」红线不成立。
     var suppressedVolumeKeys: Set<String> = []
+    var recoveredVolumeKeys: Set<String> = []
+    var protectedVolumeKeys: Set<String> = []
+    var deferredVolumeKeys: Set<String> = []
     if config.isAutoMountRecoveryEnabled {
         var mountTable: [String: String] = [:]
         for entry in getKernelMountEntries() where entry.fileSystemType.lowercased() == "smbfs" {
@@ -5166,9 +5904,7 @@ func main() {
         let reachabilityCache = ReachabilityCache(
             probe: { host, port in
                 let timeout = config.hosts.first(where: { $0.host == host })?.timeoutMs ?? 1000
-                return EvaluationRetryRunner(policy: config.retryPolicy ?? RetryPolicy()).run {
-                    HostReachabilityProbe.canConnect(host: host, port: port, timeoutMs: timeout)
-                }
+                return boundedHostReachability(host: host, port: port, timeoutMs: timeout)
             })
         let outcome = runRecoveryRound(
             config: config,
@@ -5189,16 +5925,29 @@ func main() {
                     return false
                 }
             })
-        suppressedVolumeKeys = Set(outcome.suppressed)
+        // 恢复轮已处理的目标不再进入基线段重复尝试。
+        suppressedVolumeKeys = Set(outcome.suppressed + outcome.failed + outcome.recovered + outcome.deferredVolumeKeys)
+        recoveredVolumeKeys = Set(outcome.recovered)
+        protectedVolumeKeys = Set(outcome.suppressed)
+        deferredVolumeKeys = Set(outcome.deferredVolumeKeys)
+        if !outcome.deferredVolumeKeys.isEmpty {
+            print(tr("  · 恢复评估暂未执行（另一轮正在运行或状态锁不可用）",
+                     "  · Recovery evaluation deferred (another evaluation is running or the state lock is unavailable)"))
+        }
         if !outcome.recovered.isEmpty {
             print(tr("  ✓ 自动恢复成功: \(outcome.recovered.count) 个卷",
                      "  ✓ Auto-recovered \(outcome.recovered.count) volume(s)"))
         }
-        if !suppressedVolumeKeys.isEmpty {
-            print(tr("  · 会话抑制中（尊重手动弹出）: \(suppressedVolumeKeys.count) 个卷",
-                     "  · Session-suppressed (respecting manual eject): \(suppressedVolumeKeys.count) volume(s)"))
+        if let diagnostic = outcome.stateDiagnostic { print(diagnostic) }
+        if !outcome.suppressed.isEmpty && outcome.stateDiagnostic == nil {
+            print(tr("  · 会话抑制中（尊重手动弹出）: \(outcome.suppressed.count) 个卷",
+                     "  · Session-suppressed (respecting manual eject): \(outcome.suppressed.count) volume(s)"))
         }
-        // 兜底可见：失败或被抑制 → 通知（每轮至多一条，会话级上限）。
+        if !outcome.failed.isEmpty {
+            print(tr("  · 本轮未恢复: \(outcome.failed.count) 个卷",
+                     "  · Not restored this round: \(outcome.failed.count) volume(s)"))
+        }
+        // 仅实际失败发通知；抑制保持静默（每轮至多一条，会话级上限）。
         if outcome.hasVisibleFallbackTrigger,
            let notification = recoveryFallbackNotificationText(for: outcome, config: config) {
             showMacOSNotification(title: notification.title,
@@ -5228,7 +5977,7 @@ func main() {
                  "    Probing TCP port \(port) on \(host) (timeout: \(timeout)ms)..."))
 
         let reachable = retryRunner.run {
-            HostReachabilityProbe.canConnect(host: host, port: port, timeoutMs: timeout)
+            boundedHostReachability(host: host, port: port, timeoutMs: timeout)
         }
 
         if reachable {
@@ -5263,8 +6012,20 @@ func main() {
         }
         // 会话抑制的卷在基线段必须跳过（SC-002 红线：健康弹出后本会话零重挂）。
         if let key = smbResourceIdentity(share.smbURL), suppressedVolumeKeys.contains(key) {
-            print(tr("  跳过会话抑制中的共享: \(share.mountPoint)",
-                     "  Skipping session-suppressed share: \(share.mountPoint)"))
+            if recoveredVolumeKeys.contains(key) {
+                mountedCount += 1
+                print(tr("  已在本轮恢复: \(share.mountPoint)", "  Already restored this round: \(share.mountPoint)"))
+            } else if deferredVolumeKeys.contains(key) {
+                print(tr("  评估暂未执行，跳过并发挂载: \(share.mountPoint)",
+                         "  Evaluation deferred; skipping concurrent mount: \(share.mountPoint)"))
+            } else if protectedVolumeKeys.contains(key) {
+                print(tr("  跳过会话抑制中的共享: \(share.mountPoint)",
+                         "  Skipping session-suppressed share: \(share.mountPoint)"))
+            } else {
+                failedCount += 1
+                print(tr("  本轮恢复已失败，跳过重复尝试: \(share.mountPoint)",
+                         "  Recovery failed this round; skipping duplicate attempt: \(share.mountPoint)"))
+            }
             continue
         }
         print(tr("  目标: \(share.mountPoint) (\(redactedSMBURL(share.smbURL)))",
