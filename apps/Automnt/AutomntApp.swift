@@ -923,7 +923,9 @@ final class ApplicationModel {
         guard let identity = smbResourceIdentity(share.smbURL),
               let actual = actualMountPoint(of: share), actual != share.mountPoint,
               ShareFormFields.isValidMountPath(actual) else { return false }
-        let saved = save(base) { configuration in
+        // Start from the latest revision so a save in another window is not reported as
+        // a conflict for an action the user just took in this one.
+        let saved = save(latestSnapshotForAction() ?? base) { configuration in
             for hostIndex in configuration.hosts.indices {
                 guard let shareIndex = configuration.hosts[hostIndex].shares.firstIndex(where: {
                     smbResourceIdentity($0.smbURL) == identity
