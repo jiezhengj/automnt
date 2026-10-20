@@ -78,7 +78,6 @@ struct MainWindowView: View {
         .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didUnmountNotification)) { _ in
             model.refreshObservedState()
         }
-        .safeAreaInset(edge: .bottom) { statusBar }
     }
 
     /// Below this width the window uses the native server → shared folder → detail
@@ -367,52 +366,131 @@ struct MainWindowView: View {
             SettingsLink { Label("Settings", systemImage: "gearshape") }
         }
     }
+}
 
-    private var statusBar: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if model.hasConfiguration {
-                if !backgroundLine.isEmpty {
-                    HStack(spacing: 8) {
-                        Text(backgroundLine)
-                        Spacer()
-                        if model.backend.needsUserAction {
-                            Button("Check Background Mounting") { model.refreshActionReadiness() }
-                                .buttonStyle(.link)
-                        }
+/// One status surface for saved intent versus actual background service. It replaces
+/// the old footer strip: normal runs are silent, and every non-healthy state gets one
+/// plain-language explanation with a concrete next action.
+private struct AutomationStatusCard: View {
+    let model: ApplicationModel
+    let attention: ServerSharesView.AutomationAttention
+
+    private var intended: Bool { model.snapshot?.configuration.isAutomationEnabled == true }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            statusIcon
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(title).font(.headline)
+                    if attention == .applying {
+                        ProgressView().controlSize(.small)
                     }
                 }
-                if let observed = model.roundObservedAt {
-                    LabeledContent("Last checked") { Text(observed, format: .dateTime) }
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("No round has run yet.")
-                        .foregroundStyle(.secondary)
+                Text(message).font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                actions.padding(.top, 2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    private var statusIcon: some View {
+        Image(systemName: icon)
+            .font(.title3)
+            .foregroundStyle(attention == .managedByCLI ? Color.secondary : Color.orange)
+            .accessibilityHidden(true)
+    }
+
+    private var icon: String {
+        switch attention {
+        case .applying: "arrow.triangle.2.circlepath"
+        case .needsRepair, .notRunning: "exclamationmark.triangle.fill"
+        case .waitingApproval: "clock.badge.questionmark"
+        case .managedByCLI: "terminal"
+        }
+    }
+
+    private var title: String {
+        switch attention {
+        case .applying:
+            String(localized: "Applying Automatic Mounting Settings…")
+        case .needsRepair:
+            intended
+                ? String(localized: "Automatic Mounting Didn’t Finish")
+                : String(localized: "Background Mounting Didn’t Fully Stop")
+        case .notRunning:
+            String(localized: "Automatic Mounting Is On, but the Background Service Isn’t Running")
+        case .waitingApproval:
+            String(localized: "Automatic Mounting Is Waiting for System Approval")
+        case .managedByCLI:
+            String(localized: "Automatic Mounting Is Managed by the Command-Line Service")
+        }
+    }
+
+    private var message: String {
+        switch attention {
+        case .applying:
+            String(localized: "The status will update automatically when this finishes. Don’t toggle the switch again.")
+        case .needsRepair:
+            intended
+                ? String(localized: "The background service didn’t confirm. Repairing retries the setup without mounting anything twice.")
+                : String(localized: "The background service state is not confirmed. Repair it before trying again.")
+        case .notRunning:
+            String(localized: "Repair the background service so shared folders can mount after sign-in or network changes.")
+        case .waitingApproval:
+            String(localized: "Allow Automnt in Login Items; automatic mounting takes effect after that.")
+        case .managedByCLI:
+            String(localized: "This app doesn’t take over the background service. Check status in Settings.")
+        }
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        switch attention {
+        case .applying:
+            EmptyView()
+        case .waitingApproval:
+            HStack(spacing: 12) {
+                Button("Open Login Items Settings") { ServiceController(mode: .baseline).openApprovalSettings() }
+                    .buttonStyle(.borderedProminent)
+                Button("Try Again") { Task { await model.activateAppBackground(repair: true) } }
+                    .disabled(model.busy || model.automationChangeInFlight)
+            }
+        case .needsRepair, .notRunning:
+            HStack(spacing: 12) {
+                Button("Repair Background Mounting") {
+                    Task { await model.activateAppBackground(repair: true) }
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.busy || model.automationChangeInFlight)
+                SettingsLink { Text("Settings") }
             }
-            if let issue = model.issue {
-                Text(issue).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-            } else if let notice = model.notice {
-                Text(notice).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
+        case .managedByCLI:
+            SettingsLink { Text("Settings") }
+        }
+    }
+}
+
+private struct DetailMessageCard: View {
+    let text: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: systemImage).foregroundStyle(tint)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
         .font(.callout)
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.bar)
+        .padding(12)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) { Divider() }
     }
-
-    private var backgroundLine: String {
-        guard model.configurationAccess.allowsChanges else { return "" }
-        return switch model.backend {
-        case .running: String(localized: "Background mounting: running")
-        case .awaitingApproval: String(localized: "Background mounting: waiting for approval in Login Items")
-        case .stopped: String(localized: "Background mounting: off")
-        case .transitioning: String(localized: "Background mounting: applying your setting")
-        case .unavailable: String(localized: "Background mounting: could not be confirmed")
-        case .governedByCLI: String(localized: "Background mounting: the command-line service is in control")
-        }
-    }
-
 }
 
 /// Sidebar row: name plus the managed / addable / problem counts. It never expands
@@ -531,8 +609,17 @@ private struct ServerSharesView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            if showsAutomationPrompt {
-                automationPrompt
+            VStack(spacing: 0) {
+                if let attention = automationAttention {
+                    AutomationStatusCard(model: model, attention: attention)
+                } else if showsAutomationPrompt {
+                    automationPrompt
+                }
+                if automationAttention == nil, let issue = model.issue {
+                    DetailMessageCard(text: issue, systemImage: "exclamationmark.triangle.fill", tint: .orange)
+                } else if automationAttention == nil, let notice = model.notice {
+                    DetailMessageCard(text: notice, systemImage: "info.circle", tint: .secondary)
+                }
             }
         }
         .searchable(text: $shareSearch, prompt: Text("Search shared folders"))
@@ -551,8 +638,36 @@ private struct ServerSharesView: View {
         }
     }
 
+    fileprivate enum AutomationAttention: Equatable {
+        case applying
+        case needsRepair
+        case notRunning
+        case waitingApproval
+        case managedByCLI
+    }
+
+    private var automationAttention: AutomationAttention? {
+        guard model.configurationAccess.allowsChanges else { return nil }
+        let intended = model.snapshot?.configuration.isAutomationEnabled == true
+        switch model.backend {
+        case .running:
+            return nil
+        case .transitioning:
+            return .applying
+        case .awaitingApproval:
+            return intended ? .waitingApproval : .needsRepair
+        case .unavailable:
+            return .needsRepair
+        case .stopped:
+            return intended ? .notRunning : nil
+        case .governedByCLI:
+            return .managedByCLI
+        }
+    }
+
     private var showsAutomationPrompt: Bool {
         model.snapshot?.configuration.isAutomationEnabled == false &&
+        automationAttention == nil &&
         !server.managedShares.isEmpty &&
         !automationPromptDismissed
     }
@@ -572,7 +687,7 @@ private struct ServerSharesView: View {
                 if let base = model.snapshot { model.saveAutomation(true, base: base) }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(model.busy)
+            .disabled(model.busy || model.automationChangeInFlight)
             .fixedSize(horizontal: true, vertical: false)
             Button("Later") { automationPromptDismissed = true }
                 .fixedSize(horizontal: true, vertical: false)

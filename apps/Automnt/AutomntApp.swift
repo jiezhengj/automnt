@@ -143,6 +143,9 @@ final class ApplicationModel {
     var manualMountReady = false
     var missingBackendGuidance: String?
     var backend: SettingsSurface.BackendStatus = .stopped
+    /// One background transition at a time. The switch is disabled while this is true,
+    /// so closing and reopening it quickly cannot leave a failed half-transition.
+    var automationChangeInFlight = false
 
     var loginStatus = SMAppService.mainApp.status
     var changingLogin = false
@@ -754,7 +757,7 @@ final class ApplicationModel {
     }
 
     func activateAppBackground(repair: Bool = false) async {
-        guard configurationChangesAllowed, let authorization, let base = snapshot else { return }
+        guard !busy, configurationChangesAllowed, let authorization, let base = snapshot else { return }
         busy = true
         defer { busy = false; refreshActionReadiness(); refreshStatus() }
         do {
@@ -815,6 +818,8 @@ final class ApplicationModel {
                 issue = String(localized: "Background mounting could not be changed. Check the service state and try again.")
                 notice = nil
             }
+        } catch let error as AutomntIssue where error == .signalUnavailable || error == .timeout {
+            issue = String(localized: "Automatic mounting didn’t finish. Repair the background service and try again.")
         } catch { show(error) }
     }
 
@@ -927,7 +932,16 @@ final class ApplicationModel {
     }
 
     func saveAutomation(_ enabled: Bool, base: ConfigSnapshot) {
+        guard !automationChangeInFlight else {
+            notice = String(localized: "Applying automatic mounting settings. Please wait.")
+            return
+        }
+        guard !busy else {
+            notice = String(localized: "Applying automatic mounting settings. Please wait.")
+            return
+        }
         guard save(base, { $0.automationEnabled = enabled }) else { return }
+        automationChangeInFlight = true
         notice = enabled
             ? String(localized: "Turning on automatic mounting…")
             : String(localized: "Automatic mounting is off. Mounted shared folders remain available.")
@@ -936,6 +950,7 @@ final class ApplicationModel {
         // Settings uses. Turning it off drains the service through the same coordinator.
         let savedRevision = snapshot?.revision
         Task {
+            defer { automationChangeInFlight = false }
             guard snapshot?.revision == savedRevision,
                   snapshot?.configuration.isAutomationEnabled == enabled else { return }
             await activateAppBackground(repair: true)

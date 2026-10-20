@@ -412,3 +412,17 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 | automation.enable | 开启自动挂载 | Turn On Automatic Mounting | 主按钮；开启时注册后台服务 |
 | automation.turningOn | 正在开启自动挂载… | Turning on automatic mounting… | 保存后、服务激活中 |
 | automation.activationFailed | 无法更改自动挂载。请检查后台服务状态后重试。 | Background mounting could not be changed. Check the service state and try again. | 激活失败，不谎报已开启 |
+
+
+# 后台状态卡文案（2026-10-20）
+
+| ID | 简体中文 | English | 语境 |
+| --- | --- | --- | --- |
+| background.applyingTitle | 正在应用自动挂载设置… | Applying Automatic Mounting Settings… | 过渡中，开关禁用 |
+| background.failedTitle | 自动挂载没有完成 | Automatic Mounting Didn’t Finish | 已开启但服务未确认 |
+| background.failedBody | 后台服务没有确认。修复会重新尝试设置，不会重复挂载已挂载的共享。 | The background service didn’t confirm. Repairing retries the setup without mounting anything twice. | 信任说明 |
+| background.stopFailedTitle | 后台挂载没有完全关闭 | Background Mounting Didn’t Fully Stop | 关闭时失败 |
+| background.notRunningTitle | 自动挂载已开启，但后台服务没有运行 | Automatic Mounting Is On, but the Background Service Isn’t Running | 意图与事实不一致 |
+| background.approvalTitle | 自动挂载正在等待系统允许 | Automatic Mounting Is Waiting for System Approval | 登录项待批准 |
+| background.repair | 修复后台挂载 | Repair Background Mounting | 主按钮，真实恢复 |
+| background.cliTitle | 自动挂载由命令行版本管理 | Automatic Mounting Is Managed by the Command-Line Service | 命令行接管 |

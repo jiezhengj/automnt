@@ -1007,7 +1007,7 @@ struct SettingsView: View {
                 Toggle("Automatic Mounting", isOn: Binding(
                     get: { configuration.isAutomationEnabled },
                     set: { model.saveAutomation($0, base: base) }))
-                    .disabled(model.busy)
+                    .disabled(model.busy || model.automationChangeInFlight)
                 LabeledContent("Background Mounting", value: model.backend.label)
                 Text(Self.mountingSummaryText(SettingsSurface.automaticMountingSummary(automaticMounting ?? .init(
                     intended: configuration.isAutomationEnabled, backend: model.backend,

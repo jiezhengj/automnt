@@ -22620,6 +22620,906 @@
           }
         }
       }
+    },
+    "Applying Automatic Mounting Settings…": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applying Automatic Mounting Settings…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在应用自动挂载设置…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在套用自動掛載設定…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウント設定を適用しています…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트 설정을 적용하는 중…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatische Einbindung wird angewendet…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Application des réglages de montage automatique…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicando los ajustes de montaje automático…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicando os ajustes de montagem automática…"
+          }
+        }
+      }
+    },
+    "Automatic Mounting Didn’t Finish": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic Mounting Didn’t Finish"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载没有完成"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載沒有完成"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントを完了できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트가 완료되지 않았습니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden wurde nicht abgeschlossen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique ne s’est pas terminé"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje automático no se completó"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem automática não foi concluída"
+          }
+        }
+      }
+    },
+    "Background Mounting Didn’t Fully Stop": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background Mounting Didn’t Fully Stop"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台挂载没有完全关闭"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背景掛載沒有完全關閉"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンドマウントを完全に停止できませんでした"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백그라운드 마운트가 완전히 중지되지 않았습니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrund-Einbindung wurde nicht vollständig beendet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage en arrière-plan ne s’est pas complètement arrêté"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje en segundo plano no se detuvo por completo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem em segundo plano não foi totalmente encerrada"
+          }
+        }
+      }
+    },
+    "Automatic Mounting Is On, but the Background Service Isn’t Running": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic Mounting Is On, but the Background Service Isn’t Running"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载已开启，但后台服务没有运行"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載已開啟，但背景服務沒有執行"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントはオンですが、バックグラウンドサービスが動作していません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트는 켜져 있지만 백그라운드 서비스가 실행 중이 아닙니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden ist an, aber der Hintergrunddienst läuft nicht"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique est activé, mais le service en arrière-plan ne fonctionne pas"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje automático está activado, pero el servicio en segundo plano no se está ejecutando"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem automática está ativada, mas o serviço em segundo plano não está em execução"
+          }
+        }
+      }
+    },
+    "Automatic Mounting Is Waiting for System Approval": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic Mounting Is Waiting for System Approval"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载正在等待系统允许"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載正在等待系統允許"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントはシステムの許可を待っています"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트가 시스템 승인을 기다리고 있습니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden wartet auf die Systemfreigabe"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique attend l’autorisation du système"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje automático está esperando la autorización del sistema"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem automática está aguardando a autorização do sistema"
+          }
+        }
+      }
+    },
+    "Automatic Mounting Is Managed by the Command-Line Service": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic Mounting Is Managed by the Command-Line Service"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载由命令行版本管理"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載由命令列版本管理"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントはコマンドライン版が管理しています"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트는 명령줄 버전에서 관리합니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden wird von der Kommandozeilenversion verwaltet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique est géré par la version en ligne de commande"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje automático lo gestiona la versión de línea de comandos"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem automática é gerenciada pela versão de linha de comando"
+          }
+        }
+      }
+    },
+    "The status will update automatically when this finishes. Don’t toggle the switch again.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The status will update automatically when this finishes. Don’t toggle the switch again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成后状态会自动更新。请不要再次切换开关。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完成後狀態會自動更新。請不要再次切換開關。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了すると状態は自動的に更新されます。スイッチを再度切り替えないでください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "완료되면 상태가 자동으로 업데이트됩니다. 스위치를 다시 전환하지 마세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Status wird nach Abschluss automatisch aktualisiert. Schalten Sie den Schalter nicht erneut um."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’état sera mis à jour automatiquement à la fin. Ne rebasculez pas l’interrupteur."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El estado se actualizará automáticamente al terminar. No vuelvas a cambiar el interruptor."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O estado será atualizado automaticamente ao concluir. Não alterne o interruptor novamente."
+          }
+        }
+      }
+    },
+    "The background service didn’t confirm. Repairing retries the setup without mounting anything twice.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The background service didn’t confirm. Repairing retries the setup without mounting anything twice."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台服务没有确认。修复会重新尝试设置，不会重复挂载已挂载的共享。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背景服務沒有確認。修復會重新嘗試設定，不會重複掛載已掛載的共享。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンドサービスが確認できませんでした。修復すると設定をやり直しますが、マウント済みの共有を二重にマウントすることはありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백그라운드 서비스가 확인되지 않았습니다. 복구하면 설정을 다시 시도하며, 이미 마운트된 공유를 중복으로 마운트하지 않습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hintergrunddienst hat nicht bestätigt. Beim Reparieren wird die Einrichtung erneut versucht, ohne bereits eingebundene Freigaben doppelt einzubinden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le service en arrière-plan n’a pas confirmé. La réparation relance la configuration sans monter deux fois les partages déjà montés."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servicio en segundo plano no confirmó. La reparación reintenta la configuración sin montar dos veces las carpetas ya montadas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O serviço em segundo plano não confirmou. O reparo tenta a configuração novamente sem montar duas vezes as pastas já montadas."
+          }
+        }
+      }
+    },
+    "The background service state is not confirmed. Repair it before trying again.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The background service state is not confirmed. Repair it before trying again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "后台服务状态尚未确认。请先修复，再重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背景服務狀態尚未確認。請先修復，再重試。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンドサービスの状態を確認できませんでした。修復してから再試行してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백그라운드 서비스 상태가 확인되지 않았습니다. 복구한 후 다시 시도하세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Status des Hintergrunddienstes ist nicht bestätigt. Reparieren Sie ihn, bevor Sie es erneut versuchen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’état du service en arrière-plan n’est pas confirmé. Réparez-le avant de réessayer."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El estado del servicio en segundo plano no está confirmado. Repáralo antes de volver a intentarlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O estado do serviço em segundo plano não foi confirmado. Repare-o antes de tentar novamente."
+          }
+        }
+      }
+    },
+    "Repair the background service so shared folders can mount after sign-in or network changes.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repair the background service so shared folders can mount after sign-in or network changes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修复后台服务后，登录或网络变化时才能自动挂载共享文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復背景服務後，登入或網路變化時才能自動掛載共享資料夾。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンドサービスを修復すると、ログイン時やネットワーク変更時に共有フォルダを自動でマウントできます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백그라운드 서비스를 복구하면 로그인하거나 네트워크가 바뀔 때 공유 폴더를 자동으로 마운트할 수 있습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparieren Sie den Hintergrunddienst, damit freigegebene Ordner bei der Anmeldung oder bei Netzwerkänderungen automatisch eingebunden werden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réparez le service en arrière-plan pour que les dossiers partagés se montent à l’ouverture de session ou lors d’un changement de réseau."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repara el servicio en segundo plano para que las carpetas compartidas se monten al iniciar sesión o cuando cambie la red."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repare o serviço em segundo plano para que as pastas compartilhadas sejam montadas ao iniciar sessão ou quando a rede mudar."
+          }
+        }
+      }
+    },
+    "Allow Automnt in Login Items; automatic mounting takes effect after that.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Automnt in Login Items; automatic mounting takes effect after that."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在“登录项”中允许 Automnt 后，自动挂载才会生效。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在「登入項目」中允許 Automnt 後，自動掛載才會生效。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「ログイン項目」で Automnt を許可すると、自動マウントが有効になります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그인 항목에서 Automnt를 허용하면 자동 마운트가 적용됩니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erlauben Sie Automnt in den Anmeldeobjekten; danach wird das automatische Einbinden wirksam."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorisez Automnt dans les éléments d’ouverture de session ; le montage automatique prendra alors effet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite Automnt en los ítems de inicio de sesión; después se aplicará el montaje automático."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permita o Automnt nos itens de início de sessão; depois disso, a montagem automática entrará em vigor."
+          }
+        }
+      }
+    },
+    "This app doesn’t take over the background service. Check status in Settings.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This app doesn’t take over the background service. Check status in Settings."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前 App 不接管后台服务。可在设置中查看状态。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前 App 不接管背景服務。可在設定中查看狀態。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この App はバックグラウンドサービスを引き継ぎません。設定で状態を確認できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 앱은 백그라운드 서비스를 넘겨받지 않습니다. 설정에서 상태를 확인할 수 있습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese App übernimmt den Hintergrunddienst nicht. Prüfen Sie den Status in den Einstellungen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette app ne prend pas en charge le service en arrière-plan. Consultez l’état dans les réglages."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta app no asume el servicio en segundo plano. Consulta el estado en los ajustes."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este app não assume o serviço em segundo plano. Verifique o estado nos ajustes."
+          }
+        }
+      }
+    },
+    "Repair Background Mounting": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repair Background Mounting"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修复后台挂载"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復背景掛載"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンドマウントを修復"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백그라운드 마운트 복구"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrund-Einbindung reparieren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réparer le montage en arrière-plan"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparar montaje en segundo plano"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparar montagem em segundo plano"
+          }
+        }
+      }
+    },
+    "Applying automatic mounting settings. Please wait.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applying automatic mounting settings. Please wait."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在应用自动挂载设置，请稍候。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在套用自動掛載設定，請稍候。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウント設定を適用しています。しばらくお待ちください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트 설정을 적용하는 중입니다. 잠시 기다려 주세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatische Einbindung wird angewendet. Bitte warten."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Application des réglages de montage automatique. Veuillez patienter."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicando los ajustes de montaje automático. Espera un momento."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aplicando os ajustes de montagem automática. Aguarde."
+          }
+        }
+      }
+    },
+    "Automatic mounting didn’t finish. Repair the background service and try again.": {
+      "comment": "2026-10-20 background status and recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic mounting didn’t finish. Repair the background service and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载没有完成。请修复后台服务后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載沒有完成。請修復背景服務後重試。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントを完了できませんでした。バックグラウンドサービスを修復して再試行してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트가 완료되지 않았습니다. 백그라운드 서비스를 복구한 뒤 다시 시도하세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden wurde nicht abgeschlossen. Reparieren Sie den Hintergrunddienst und versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique ne s’est pas terminé. Réparez le service en arrière-plan et réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje automático no se completó. Repara el servicio en segundo plano y vuelve a intentarlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem automática não foi concluída. Repare o serviço em segundo plano e tente novamente."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

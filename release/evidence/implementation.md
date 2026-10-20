@@ -443,3 +443,11 @@ tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建�
 - 修正：服务器开关改为“此服务器参与自动挂载”，总开关关闭时说明依赖；底部只留状态；详情顶部新增启用卡（标题/收益/开启/稍后），首次与后续添加可见；`saveAutomation(true)` 保存后调用 `activateAppBackground` 真正注册后台 owner；全新安装缺 `backend-state.plist` 时初始化 stopped，而不是误报损坏；添加成功提示按总开关状态区分。
 - 实测：点击/自动执行开启后 `automation_enabled=true`，backend owner=app、phase=active，launchctl 出现系统服务；界面显示“自动挂载：运行中”，两个共享可用。总开关关闭时截图显示顶部启用卡与服务器依赖说明，底部无重复 onboarding。
 - 桌面 zip 不再生成；App 安装于 `/Applications/Automnt.app`。版本仍为 3.4.0，未推送。
+
+# 2026-10-20 移除底部状态条，改为顶部状态卡
+
+- 现象：失败时底部同时出现“自动挂载：暂时无法确认”、红字“无法确认该操作”和蓝字“检查后台挂载”；后者只刷新状态，不修复；快速关闭/开启会造成并发 transition。
+- 修正：删除底部 `statusBar`；详情顶部新增 `AutomationStatusCard`，按“应用/失败/未运行/等待批准/命令行”显示一个说明和主次动作；失败主按钮“修复后台挂载”调用真实 `activateAppBackground(repair:true)`；普通错误移入同一卡片，不再用底部红字。
+- 总开关切换加入 `automationChangeInFlight` 串行锁，Settings 与启用卡在应用期间禁用；`saveAutomation` 保存后只运行一次后台激活。
+- 九语新增状态卡文案；本地化/签名构建通过。UI 截图确认失败状态显示“自动挂载没有完成”卡片，底部无状态条。
+- 未完成/待确认：本机历史 failed journal（failure=signalUnavailable）在点击修复后仍未复测清除，后台注册 readiness 问题待单独诊断；不得声称该场景已恢复。
