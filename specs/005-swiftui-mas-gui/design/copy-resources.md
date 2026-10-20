@@ -86,14 +86,17 @@
 | setting.loginRevoked | 已撤销 | 不自动重新注册；用户可显式重试 |
 | setting.loginFailed | 注册失败 | 偏好不冒充系统成功；持续失败说明 |
 | setting.loginSystem | 打开登录项设置… | 系统入口失败持续显示，可重试 |
-| setting.loginRetry | 重试注册 | 仅菜单与登录偏好开启；显式动作 |
+| setting.loginRetry | 检查一次 | Check Again | 仅登录项未加载时显示；重新读取真实状态 |
 | state.offlineAddress | 查看服务器地址… | 显示完整地址，检查网络，不更改地址/凭据或挂载 |
 | state.offlineWait | 服务器当前不可达。检查网络连接；网络变化后会自动检查。 | 仅自动挂载开启；关闭时改为开启后才自动重试 |
-| setting.loginHelp | 登录时不打开主窗口。关闭菜单栏或退出应用不会停止自动挂载。 | GUI登录项与helper独立 |
+| setting.loginNotFound | 登录项暂时没有加载。请退出 Automnt，从“应用程序”文件夹重新打开，然后再检查。 | The login item didn’t load. Quit Automnt, reopen it from the Applications folder, then check again. | 仅登录项实际变更失败时显示；未启用登录功能时不显示，避免噪音 |
+| setting.loginSystem | 打开系统登录项设置… | Open Login Items Settings… | requiresApproval 的系统入口 |
+| setting.notificationPermission | 通知权限：未开启/已允许/已关闭/暂时无法读取 | Notification Permission: Not set up/Allowed/Not allowed/Couldn’t read | 状态标签，不把系统授权说成“系统授权” |
+| setting.loginHelp | 开启后，登录时 Automnt 会出现在菜单栏，方便快速挂载共享或打开设置；主窗口不会自动打开。 | GUI 登录项只负责菜单栏，后台自动挂载独立 |
 | setting.notifications | 通知 | 分组 |
-| setting.notificationsHelp | 共享无法挂载时通知你。正常挂载和恢复不会发送通知。 | 系统许可/前台状态/发送门槛仍适用 |
+| setting.notificationsHelp | 共享文件夹未能自动挂载时，Automnt 会通知你，方便及时处理。 | 主动说明用户收益，不用“只/从不”防御措辞 |
 | setting.sound | 通知声音 | 默认开启，独立偏好 |
-| setting.soundHelp | 关闭后，仍会收到通知。开启时，提醒声音仍由系统设置控制。 | 不保证必响；系统授权仍适用 |
+| setting.soundHelp | 关闭声音后仍会收到通知，只是没有提示音。 | 说明实际差别，不用“仍会收到”免责式表达 |
 | setting.language | 语言 | 分组 |
 | setting.languageHelp | 在系统设置的“语言与地区”中更改 Automnt 的语言。 | 系统应用语言，无应用内语言开关 |
 | setting.help | 帮助 | 分组 |
@@ -273,9 +276,9 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 | state.standbyHelp | 当前使用顺序靠前的可达服务器。仅当之前的服务器均不可达时，才自动挂载此服务器的共享。 | 排他评估说明 |
 | menu.busy | 正在处理此共享，请等待结果。 | 禁用挂载/弹出等冲突动作，仍可查看详情 |
 | notification.request | 允许通知… | 仅前台显式请求 |
-| notification.purpose | 通知只用于提醒未能自动挂载的共享文件夹。 | 未决定状态；不保证系统展示 |
+| notification.purpose | 共享文件夹未能自动挂载时，Automnt 会通知你，方便及时处理。 | 未决定状态；主动说明触发场景与价值 |
 | notification.allowed | 通知已允许 | 实际授权状态；不代表横幅必达 |
-| notification.denied | 通知未允许。你仍可在 Automnt 查看挂载问题。 | 持续结果，下一步打开通知设置 |
+| notification.denied | 通知已关闭。挂载失败时，你仍可在 Automnt 中查看原因。 | 持续结果，下一步打开系统通知设置 |
 | notification.requestFailed | 未能请求通知权限：{reason} | String；保留原因、可显式重试 |
 | index.setting | 尝试阻止 Spotlight 索引 | 共同配置意图，不保证系统停止索引 |
 | index.help | 减少此服务器共享的磁盘与网络索引活动，同时限制 Spotlight 搜索共享内容。系统限制可能使设置无法生效；不会自动删除已有索引。 | 服务器详情；HostConfig.prevent_spotlight_index，不覆盖其他服务器 |
@@ -391,3 +394,8 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 现有应用已有单行添加、完整无凭据 SMB URL、用途说明、访问状态与 CAS，不应描述为完全未实现。确认缺口包括已管理服务器新增发现共享未合并、编辑开始 revision/身份及保存基线不足、实际退出草稿保护未接通、生命周期观察不足、无选择引导及窄导航不足。保存后反复提示为尚未复现的用户反馈，不将全部 save 判为故障；共享编辑与原生 demo 的成功关闭证据不证明服务器编辑或实际退出通过。
 
 未来 T086/T089/T090/T091 资源须覆盖已管理服务器新发现共享、事件只刷新、无选择引导/窄返回、空 URL 与非法 URL 的独立原因；T087/T088 须覆盖编辑开始身份/revision、成功基线、冲突/目标消失和实际退出保护。T083–T094 已追加至[主任务清单](../tasks.md)，全部未完成；本文件引用其编号，不表示实现或验收通过。依次覆盖授权架构、统一访问、图标、发现合并、编辑 CAS/dirty/身份、实际退出草稿、生命周期刷新、无选择/窄导航、字段校验文案、owner 中断恢复、真实后台矩阵和全界面原生九语验收。
+
+
+# 设置文案去防御化（2026-10-20）
+
+登录与通知文案按“用户会得到什么/何时会收到”表达：通知直接说明“共享未能自动挂载时会通知你”，不用“只对……发送、除此之外不发”的免责结构；声音开关说明“仍会收到通知，只是没有提示音”。登录项不可用时说明先退出并从“应用程序”重新打开，再给“检查一次”，不再保留含义不明的常驻“检查登录设置”。通知权限状态用“未开启/已允许/已关闭/暂时无法读取”，不再用“系统授权”这种抽象标签。

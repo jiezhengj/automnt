@@ -728,55 +728,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notification sound is off because its settings could not be read. Choose your preference to repair them."
+            "value": "The notification sound setting couldn’t be read, so sound is off. Choose it again to repair the setting."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法读取声音设置，通知声音已关闭。请选择声音偏好以修复设置。"
+            "value": "通知声音设置未能读取，已暂时关闭。重新选择一次即可修复。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法讀取音效設定，通知音效已關閉。請選擇音效偏好以修復設定。"
+            "value": "通知聲音設定未能讀取，已暫時關閉。重新選擇一次即可修復。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定を読み込めなかったため、通知音はオフです。通知音の設定を選び直してください。"
+            "value": "通知サウンドの設定を読み取れなかったため、サウンドはオフです。もう一度選択すると修復できます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정을 읽을 수 없어 알림 소리가 꺼져 있습니다. 소리 설정을 다시 선택하세요."
+            "value": "알림음 설정을 읽지 못해 소리가 꺼져 있습니다. 다시 선택하면 설정이 복구됩니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Mitteilungston ist deaktiviert, weil die Einstellungen nicht gelesen werden konnten. Wähle deine Einstellung erneut, um sie zu reparieren."
+            "value": "Die Ton-Einstellung für Mitteilungen konnte nicht gelesen werden, daher ist der Ton aus. Wählen Sie sie erneut, um sie zu reparieren."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le son des notifications est désactivé, car ses réglages n’ont pas pu être lus. Choisissez à nouveau votre préférence pour les réparer."
+            "value": "Le réglage du son des notifications n’a pas pu être lu ; le son est désactivé. Choisissez-le à nouveau pour le réparer."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El sonido de las notificaciones está desactivado porque no se han podido leer sus ajustes. Vuelve a elegir tu preferencia para repararlos."
+            "value": "No se pudo leer el ajuste de sonido de las notificaciones, así que está desactivado. Vuelve a elegirlo para repararlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O som das notificações está desativado porque não foi possível ler seus ajustes. Escolha sua preferência novamente para repará-los."
+            "value": "O ajuste de som das notificações não pôde ser lido, então o som está desativado. Escolha novamente para reparar."
           }
         }
       }
@@ -3494,25 +3494,25 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开“登录项”设置"
+            "value": "打开系统登录项设置…"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "打開「登入項目」設定"
+            "value": "開啟系統登入項目設定…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「ログイン項目」設定を開く"
+            "value": "システムのログイン項目設定を開く…"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 항목 설정 열기"
+            "value": "시스템 로그인 항목 설정 열기…"
           }
         },
         "de": {
@@ -3524,19 +3524,19 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouvrir « Ouverture »"
+            "value": "Ouvrir les réglages d’ouverture"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir «Ítems de inicio»"
+            "value": "Abrir ajustes de inicio de sesión"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrir “Itens de Início”"
+            "value": "Abrir ajustes de itens de início"
           }
         }
       }
@@ -6794,49 +6794,49 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请在系统设置的登录项中允许 Automnt，以便登录时显示菜单栏。"
+            "value": "请在系统设置的“登录项”中允许 Automnt，登录时才会显示菜单栏。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "請在系統設定的登入項目中允許 Automnt，以便登入時顯示選單列。"
+            "value": "請在系統設定的「登入項目」中允許 Automnt，登入時才會顯示選單列。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ログイン時にメニューバーを表示するには、システム設定のログイン項目でAutomntを許可してください。"
+            "value": "システム設定の「ログイン項目」で Automnt を許可すると、ログイン時にメニューバーが表示されます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 시 메뉴 막대를 표시하려면 시스템 설정의 로그인 항목에서 Automnt를 허용하세요."
+            "value": "시스템 설정의 로그인 항목에서 Automnt를 허용하면 로그인할 때 메뉴 막대가 표시됩니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erlauben Sie Automnt unter Anmeldeobjekte in den Systemeinstellungen, um die Menüleiste bei der Anmeldung anzuzeigen."
+            "value": "Erlauben Sie Automnt in den Anmeldeobjekten der Systemeinstellungen, damit die Menüleiste bei der Anmeldung erscheint."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autorisez Automnt dans les éléments de connexion des Réglages Système pour afficher la barre des menus à la connexion."
+            "value": "Autorisez Automnt dans « Ouverture » des Réglages Système pour afficher la barre des menus à l’ouverture de session."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permite Automnt en los ítems de inicio de sesión de Ajustes del Sistema para mostrar la barra de menús al iniciar sesión."
+            "value": "Permite Automnt en Inicio de sesión de Ajustes del Sistema para mostrar la barra de menús al iniciar sesión."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permita Automnt nos itens de início de sessão dos Ajustes do Sistema para mostrar a barra de menus ao iniciar sessão."
+            "value": "Permita o Automnt nos Itens de Início dos Ajustes do Sistema para mostrar a barra de menus ao iniciar sessão."
           }
         }
       }
@@ -7028,55 +7028,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The login setting could not be changed. Check Login Items in System Settings and try again."
+            "value": "The login item wasn’t saved. Open Login Items in System Settings, allow Automnt, then try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法更改登录设置。请在系统设置中检查登录项后重试。"
+            "value": "登录项没有保存。请打开系统设置中的“登录项”，允许 Automnt 后再试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法更改登入設定。請在系統設定中檢查登入項目後再試。"
+            "value": "登入項目沒有儲存。請開啟系統設定中的「登入項目」，允許 Automnt 後再試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ログイン設定を変更できません。システム設定のログイン項目を確認して再試行してください。"
+            "value": "ログイン項目を保存できませんでした。システム設定の「ログイン項目」で Automnt を許可してから、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "로그인 설정을 변경할 수 없습니다. 시스템 설정에서 로그인 항목을 확인하고 다시 시도하세요."
+            "value": "로그인 항목을 저장하지 못했습니다. 시스템 설정의 로그인 항목에서 Automnt를 허용한 뒤 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Anmeldeeinstellung konnte nicht geändert werden. Prüfen Sie Anmeldeobjekte in den Systemeinstellungen und versuchen Sie es erneut."
+            "value": "Das Anmeldeobjekt wurde nicht gesichert. Öffnen Sie „Anmeldeobjekte“ in den Systemeinstellungen, erlauben Sie Automnt und versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de modifier le réglage de connexion. Vérifiez les éléments de connexion dans les Réglages Système et réessayez."
+            "value": "L’élément d’ouverture n’a pas été enregistré. Ouvrez « Ouverture » dans Réglages Système, autorisez Automnt, puis réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cambiar el ajuste de inicio de sesión. Comprueba los ítems de inicio de sesión en Ajustes del Sistema e inténtalo de nuevo."
+            "value": "No se guardó el ítem de inicio. Abre Inicio de sesión en Ajustes del Sistema, permite Automnt y vuelve a intentarlo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível alterar o ajuste de início de sessão. Verifique os itens de início de sessão nos Ajustes do Sistema e tente novamente."
+            "value": "O item de início não foi salvo. Abra Itens de Início nos Ajustes do Sistema, permita o Automnt e tente novamente."
           }
         }
       }
@@ -8864,19 +8864,19 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autorisé"
+            "value": "Autorisées"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitido"
+            "value": "Permitidas"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitido"
+            "value": "Permitidas"
           }
         }
       }
@@ -9848,55 +9848,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt uses notifications only for shared folders it could not mount automatically."
+            "value": "If a shared folder can’t be mounted automatically, Automnt will let you know so you can fix it."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 只对未能自动挂载的共享文件夹发送通知。"
+            "value": "共享文件夹未能自动挂载时，Automnt 会通知你，方便你及时处理。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 只對未能自動掛載的共享檔案夾傳送通知。"
+            "value": "共享資料夾未能自動掛載時，Automnt 會通知你，方便你及時處理。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt は自動マウントできなかった共有フォルダについてのみ通知します。"
+            "value": "共有フォルダを自動でマウントできなかったときに、Automnt が知らせます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt는 자동으로 마운트하지 못한 공유 폴더에 대해서만 알림을 보냅니다."
+            "value": "공유 폴더를 자동으로 마운트하지 못하면 Automnt가 알려 드립니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt verwendet Mitteilungen nur für freigegebene Ordner, die nicht automatisch eingebunden werden konnten."
+            "value": "Wenn ein freigegebener Ordner nicht automatisch eingebunden werden kann, informiert Sie Automnt."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt n’utilise les notifications que pour les dossiers partagés qui n’ont pas pu être montés automatiquement."
+            "value": "Si un dossier partagé ne peut pas être monté automatiquement, Automnt vous prévient."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt usa notificaciones solo para las carpetas compartidas que no pudo montar automáticamente."
+            "value": "Si una carpeta compartida no se puede montar automáticamente, Automnt te avisa."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Automnt usa notificações apenas para pastas compartilhadas que não pôde montar automaticamente."
+            "value": "Se uma pasta compartilhada não puder ser montada automaticamente, o Automnt avisa você."
           }
         }
       }
@@ -12008,25 +12008,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not be read"
+            "value": "Couldn’t read"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法读取"
+            "value": "暂时无法读取"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法讀取"
+            "value": "暫時無法讀取"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "読み取れませんでした"
+            "value": "読み取れません"
           }
         },
         "ko": {
@@ -12038,19 +12038,19 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konnte nicht gelesen werden"
+            "value": "Nicht lesbar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible à lire"
+            "value": "Illisible"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo leer"
+            "value": "No se puede leer"
           }
         },
         "pt-BR": {
@@ -14234,13 +14234,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未允许"
+            "value": "已关闭"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "未允許"
+            "value": "已關閉"
           }
         },
         "ja": {
@@ -14252,7 +14252,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "허용되지 않음"
+            "value": "허용 안 됨"
           }
         },
         "de": {
@@ -14264,19 +14264,19 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Non autorisé"
+            "value": "Refusées"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No permitido"
+            "value": "Denegadas"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não permitido"
+            "value": "Não permitidas"
           }
         }
       }
@@ -14408,55 +14408,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not requested yet"
+            "value": "Not set up"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚未请求"
+            "value": "未开启"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚未要求"
+            "value": "未開啟"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "まだ要求していません"
+            "value": "未設定"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아직 요청하지 않음"
+            "value": "설정 안 됨"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Noch nicht angefragt"
+            "value": "Nicht eingerichtet"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas encore demandée"
+            "value": "Non configuré"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aún no solicitado"
+            "value": "Sin configurar"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ainda não solicitado"
+            "value": "Não configurado"
           }
         }
       }
@@ -14468,55 +14468,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notifications are not allowed. You can still see mounting problems in Automnt."
+            "value": "Notifications are off. When a mount fails, you can still see why in Automnt."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知未允许。你仍然可以在 Automnt 中查看挂载问题。"
+            "value": "通知已关闭。挂载失败时，你仍可在 Automnt 中查看原因。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知未允許。你仍然可以在 Automnt 中查看掛載問題。"
+            "value": "通知已關閉。掛載失敗時，你仍可在 Automnt 中查看原因。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知は許可されていません。マウントの問題は引き続き Automnt で確認できます。"
+            "value": "通知はオフです。マウントに失敗した場合も、Automnt で理由を確認できます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "알림이 허용되지 않았습니다. 마운트 문제는 Automnt에서 계속 확인할 수 있습니다."
+            "value": "알림이 꺼져 있습니다. 마운트에 실패해도 Automnt에서 이유를 확인할 수 있습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mitteilungen sind nicht erlaubt. Du kannst Einbindungsprobleme weiterhin in Automnt sehen."
+            "value": "Mitteilungen sind aus. Wenn das Einbinden fehlschlägt, sehen Sie die Ursache weiterhin in Automnt."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les notifications ne sont pas autorisées. Vous pouvez toujours consulter les problèmes de montage dans Automnt."
+            "value": "Les notifications sont désactivées. En cas d’échec de montage, vous pouvez toujours voir pourquoi dans Automnt."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Las notificaciones no están permitidas. Aún puedes ver los problemas de montaje en Automnt."
+            "value": "Las notificaciones están desactivadas. Si falla un montaje, puedes ver el motivo en Automnt."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "As notificações não estão permitidas. Você ainda pode ver problemas de montagem no Automnt."
+            "value": "As notificações estão desativadas. Se uma montagem falhar, você ainda pode ver o motivo no Automnt."
           }
         }
       }
@@ -14834,25 +14834,25 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "打开通知设置"
+            "value": "打开系统通知设置…"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "打開通知設定"
+            "value": "開啟系統通知設定…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知設定を開く"
+            "value": "システム通知設定を開く…"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "알림 설정 열기"
+            "value": "시스템 알림 설정 열기…"
           }
         },
         "de": {
@@ -17108,55 +17108,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "System Permission"
+            "value": "Notification Permission"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "系统授权"
+            "value": "通知权限"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "系統授權"
+            "value": "通知權限"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "システムの許可"
+            "value": "通知の許可"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "시스템 권한"
+            "value": "알림 권한"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Systemberechtigung"
+            "value": "Mitteilungszugriff"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autorisation système"
+            "value": "Autorisation des notifications"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permiso del sistema"
+            "value": "Permiso de notificaciones"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permissão do sistema"
+            "value": "Permissão de notificações"
           }
         }
       }
@@ -17348,55 +17348,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The notification setting could not be read. Check Notifications in System Settings."
+            "value": "Automnt can’t read the notification setting right now. Check again later, or look at Notifications in System Settings."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法读取通知设置。请检查系统设置中的“通知”。"
+            "value": "暂时无法读取通知设置。请稍后重新检查，或在系统设置中查看通知。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法讀取通知設定。請檢查系統設定中的「通知」。"
+            "value": "暫時無法讀取通知設定。請稍後重新檢查，或在系統設定中查看通知。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "通知の設定を読み取れませんでした。システム設定の「通知」を確認してください。"
+            "value": "通知設定を現在読み取れません。しばらくしてから再確認するか、システム設定の「通知」を確認してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "알림 설정을 읽을 수 없습니다. 시스템 설정의 알림을 확인하세요."
+            "value": "지금은 알림 설정을 읽을 수 없습니다. 잠시 후 다시 확인하거나 시스템 설정의 알림을 확인하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Mitteilungseinstellung konnte nicht gelesen werden. Prüfe „Mitteilungen“ in den Systemeinstellungen."
+            "value": "Automnt kann die Mitteilungseinstellung derzeit nicht lesen. Prüfen Sie es später erneut oder sehen Sie in den Systemeinstellungen unter „Mitteilungen“ nach."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le réglage des notifications n’a pas pu être lu. Vérifiez « Notifications » dans les Réglages Système."
+            "value": "Automnt ne peut pas lire le réglage des notifications pour le moment. Vérifiez plus tard ou consultez « Notifications » dans Réglages Système."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo leer el ajuste de notificaciones. Comprueba Notificaciones en Ajustes del Sistema."
+            "value": "Automnt no puede leer el ajuste de notificaciones ahora. Compruébalo más tarde o revisa Notificaciones en Ajustes del Sistema."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível ler o ajuste de notificações. Verifique Notificações nos Ajustes do Sistema."
+            "value": "O Automnt não consegue ler o ajuste de notificações agora. Verifique mais tarde ou veja Notificações nos Ajustes do Sistema."
           }
         }
       }
@@ -18008,55 +18008,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This login setting opens only the menu bar item; it never opens the main window. Background automatic mounting runs separately."
+            "value": "When this is on, Automnt appears in the menu bar at login so you can mount shares or open Settings. The main window won’t open automatically."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "此登录设置只打开菜单栏图标，不会打开主窗口。后台自动挂载独立运行。"
+            "value": "开启后，登录时 Automnt 会出现在菜单栏，方便你快速挂载共享或打开设置；主窗口不会自动打开。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "此登入設定只開啟選單列圖像，不會開啟主視窗。背景自動掛載獨立執行。"
+            "value": "開啟後，登入時 Automnt 會出現在選單列，方便你快速掛載共享或開啟設定；主視窗不會自動開啟。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このログイン設定はメニューバー項目だけを開きます。メインウインドウは開きません。バックグラウンドの自動マウントは別に動作します。"
+            "value": "オンにすると、ログイン時に Automnt がメニューバーに表示され、共有のマウントや設定をすぐに開けます。メインウインドウは自動で開きません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 로그인 설정은 메뉴 막대 항목만 엽니다. 기본 윈도우는 열지 않습니다. 백그라운드 자동 마운트는 별도로 실행됩니다."
+            "value": "켜면 로그인할 때 Automnt가 메뉴 막대에 표시되어 공유를 마운트하거나 설정을 열 수 있습니다. 기본 창은 자동으로 열리지 않습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Anmeldeeinstellung öffnet nur das Menüleisten-Symbol, niemals das Hauptfenster. Das automatische Einbinden im Hintergrund läuft separat."
+            "value": "Wenn dies aktiviert ist, erscheint Automnt beim Anmelden in der Menüleiste, damit Sie Freigaben einbinden oder die Einstellungen öffnen können. Das Hauptfenster wird nicht automatisch geöffnet."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce réglage de connexion n’ouvre que l’élément de la barre des menus, jamais la fenêtre principale. Le montage automatique en arrière-plan fonctionne séparément."
+            "value": "Lorsque cette option est activée, Automnt apparaît dans la barre des menus à l’ouverture de session pour monter des partages ou ouvrir les réglages. La fenêtre principale ne s’ouvre pas automatiquement."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este ajuste de inicio de sesión solo abre el elemento de la barra de menús, nunca la ventana principal. El montaje automático en segundo plano se ejecuta por separado."
+            "value": "Al activar esta opción, Automnt aparece en la barra de menús al iniciar sesión para montar recursos compartidos o abrir los ajustes. La ventana principal no se abre automáticamente."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este ajuste de login abre apenas o item da barra de menus, nunca a janela principal. A montagem automática em segundo plano é executada separadamente."
+            "value": "Com esta opção ativada, o Automnt aparece na barra de menus ao iniciar sessão para montar compartilhamentos ou abrir os ajustes. A janela principal não abre automaticamente."
           }
         }
       }
@@ -19148,55 +19148,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "When this is off, you still receive notifications."
+            "value": "With sound off, notifications still arrive—just without a sound."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "关闭后，你仍会收到通知。"
+            "value": "关闭声音后仍会收到通知，只是没有提示音。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "關閉後，你仍會收到通知。"
+            "value": "關閉聲音後仍會收到通知，只是沒有提示音。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "オフにしても通知は届きます。"
+            "value": "サウンドをオフにしても通知は届きます。ただし音は鳴りません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "꺼도 알림은 계속 받습니다."
+            "value": "소리를 꺼도 알림은 계속 오며, 알림음만 나지 않습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wenn dies aus ist, erhältst du weiterhin Mitteilungen."
+            "value": "Bei ausgeschaltetem Ton kommen Mitteilungen weiterhin an – nur ohne Ton."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Si cette option est désactivée, vous recevez toujours les notifications."
+            "value": "Même sans son, les notifications arrivent toujours ; seul le son est désactivé."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Si se desactiva, sigues recibiendo notificaciones."
+            "value": "Aunque desactives el sonido, las notificaciones siguen llegando; solo desaparece el sonido."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se isto estiver desativado, você ainda recebe notificações."
+            "value": "Mesmo com o som desativado, as notificações continuam chegando; apenas não há som."
           }
         }
       }
@@ -22137,6 +22137,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "Adicione uma pasta compartilhada para começar. O Automnt vai montá-la automaticamente quando o servidor estiver disponível."
+          }
+        }
+      }
+    },
+    "The login item didn’t load. Quit Automnt, reopen it from the Applications folder, then check again.": {
+      "comment": "2026-10-20 settings copy revision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The login item didn’t load. Quit Automnt, reopen it from the Applications folder, then check again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登录项暂时没有加载。请退出 Automnt，从“应用程序”文件夹重新打开，然后再检查。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "登入項目暫時沒有載入。請結束 Automnt，從「應用程式」資料夾重新開啟，然後再檢查。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ログイン項目を読み込めませんでした。Automnt を終了し、「アプリケーション」フォルダから開き直して、もう一度確認してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "로그인 항목을 불러오지 못했습니다. Automnt를 종료한 뒤 응용 프로그램 폴더에서 다시 열고 확인하세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Anmeldeobjekt wurde nicht geladen. Beenden Sie Automnt, öffnen Sie es erneut aus dem Ordner „Programme“ und prüfen Sie dann erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’élément d’ouverture n’a pas pu être chargé. Quittez Automnt, rouvrez-le depuis le dossier Applications, puis vérifiez à nouveau."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar el ítem de inicio. Sal de Automnt, vuelve a abrirlo desde la carpeta Aplicaciones y comprueba de nuevo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O item de início não foi carregado. Saia do Automnt, abra-o novamente na pasta Aplicativos e verifique de novo."
+          }
+        }
+      }
+    },
+    "Check Again": {
+      "comment": "2026-10-20 settings copy revision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Again"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新检查"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新檢查"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再確認"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 확인"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut prüfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier à nouveau"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobar de nuevo"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar novamente"
           }
         }
       }

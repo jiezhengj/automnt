@@ -1074,13 +1074,10 @@ struct SettingsView: View {
                 Text("Allow Automnt in Login Items in System Settings to show the menu bar at login.")
                     .font(.callout).foregroundStyle(.secondary)
                 Button("Open Login Items Settings") { SMAppService.openSystemSettingsLoginItems() }
-            } else if model.loginStatus == .notFound {
-                Text("The login item is unavailable. Keep Automnt in its installed location and try again.")
-                    .font(.callout).foregroundStyle(.secondary)
             }
-            Button("Check Login Setting") { model.refreshLoginStatus() }
             if let issue = model.loginIssue {
                 Text(issue).font(.callout).foregroundStyle(.secondary)
+                Button("Check Again") { model.refreshLoginStatus() }
             }
         }
     }
@@ -1111,8 +1108,10 @@ struct SettingsView: View {
                     }
                 }
             }
-            Button("Check Notification Permission") { Task { await model.refreshNotificationPermission() } }
-                .disabled(model.requestingNotifications)
+            if notifications.authorization == .denied || notifications.authorization == .unavailable {
+                Button("Check Again") { Task { await model.refreshNotificationPermission() } }
+                    .disabled(model.requestingNotifications)
+            }
             if let issue = model.notificationIssue {
                 Text(issue).font(.callout).foregroundStyle(.secondary)
             }
