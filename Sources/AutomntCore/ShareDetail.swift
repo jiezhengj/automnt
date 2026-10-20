@@ -38,7 +38,12 @@ public struct ShareDetail: Equatable, Sendable {
         case automatedMountingOff
         case serverUnreachable
         case authenticationRequired
+        /// The same SMB identity is mounted, but somewhere other than the configured
+        /// path. It is usable; tasks that rely on the configured path may not find it.
         case locationMismatch
+        /// Another volume (or another share) occupies the configured path. This is a
+        /// conflict to inspect, not a failed mount of this share.
+        case locationOccupied
         case recovering
         case recoveryFailed
         case unconfirmed
@@ -66,13 +71,15 @@ public struct ShareDetail: Equatable, Sendable {
         case .serverUnreachable: return .checkNetwork
         case .authenticationRequired: return .connectInFinder
         case .locationMismatch: return .reviewLocations
+        case .locationOccupied: return .reviewOccupiedLocation
         case .recoveryFailed, .unconfirmed: return .retryThisShare
         }
     }
 
     public enum NextStep: String, Equatable, Sendable {
         case openInFinder, wait, mountThisShare, explainRoundSelection
-        case checkNetwork, connectInFinder, reviewLocations, retryThisShare
+        case checkNetwork, connectInFinder, reviewLocations, reviewOccupiedLocation
+        case retryThisShare
     }
 
     /// A healthy share whose actual location differs from the configured one is not
@@ -83,6 +90,12 @@ public struct ShareDetail: Equatable, Sendable {
 
     public var showsExpectedAndActualLocations: Bool {
         status == .locationMismatch || (actualMountPoint != nil && actualMountPoint != expectedMountPoint)
+    }
+
+    /// True when the mounted copy is usable and only its path differs; the user may
+    /// adopt that path or open it, but nothing failed.
+    public var offersActualLocationActions: Bool {
+        status == .locationMismatch
     }
 }
 
@@ -101,16 +114,19 @@ public enum ShareDetailBuilder {
                              shareEnabled: Bool,
                              suppressed: Bool,
                              recovering: Bool,
+                             locationOccupied: Bool,
                              recoveryFailed: Bool,
                              issue: AutomntIssue?) -> ShareDetail {
         let identity = smbResourceIdentity(share.smbURL) ?? share.smbURL
         let status: ShareDetail.Status
+        let mountedElsewhere = actualMountPoint != nil && actualMountPoint != expectedMountPoint
         if recovering { status = .recovering }
         else if suppressed && !mounted { status = .ejectedForThisSession }
         else if !automationEnabled { status = mounted ? .automatedMountingOff : .notMounted }
         else if serverReachable == false && !mounted { status = .serverUnreachable }
         else if issue == .authorizationRequired || issue == .credentialFailure { status = .authenticationRequired }
-        else if mounted && actualMountPoint != nil && actualMountPoint != expectedMountPoint { status = .locationMismatch }
+        else if mountedElsewhere { status = .locationMismatch }
+        else if locationOccupied { status = .locationOccupied }
         else if mounted { status = .healthy }
         else if recoveryFailed { status = .recoveryFailed }
         else if !selectedThisRound { status = .notSelectedThisRound }
@@ -138,6 +154,12 @@ public enum DetailAction: String, Equatable, Sendable {
     case editTarget
     case removeFromManagement
     case viewDiagnostics
+    /// Opens the path where this share is actually mounted (location mismatch only).
+    case openActualLocation
+    /// Adopts the actual mounted path as the configured location (CAS-checked save).
+    case useActualLocation
+    /// Reveals the path that another volume occupies (location conflict inspection).
+    case openOccupyingLocation
 }
 
 public enum DetailActionPolicy {
@@ -151,9 +173,22 @@ public enum DetailActionPolicy {
         var actions: Set<DetailAction> = [.editTarget, .viewDiagnostics]
         if busy { return actions }
         switch detail.status {
-        case .healthy, .locationMismatch, .automatedMountingOff:
+        case .healthy, .automatedMountingOff:
             actions.insert(.eject)
             if detail.actualMountPoint != nil { actions.insert(.openInFinder) }
+        case .locationMismatch:
+            // Mounted somewhere else: usable, never a mount failure. Offer opening and
+            // adopting the actual path; ordinary ejection stays available.
+            actions.insert(.eject)
+            if detail.actualMountPoint != nil {
+                actions.insert(.openInFinder)
+                actions.insert(.openActualLocation)
+                actions.insert(.useActualLocation)
+            }
+        case .locationOccupied:
+            // Another volume owns the configured path. Ejecting it from here would
+            // target the wrong object, so only inspection and an explicit edit remain.
+            actions.insert(.openOccupyingLocation)
         case .ejectedForThisSession, .notMounted, .notSelectedThisRound,
              .serverUnreachable, .recoveryFailed, .unconfirmed:
             actions.insert(.mount)

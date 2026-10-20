@@ -37,6 +37,30 @@ enum ShareFormFields {
 }
 
 /// Manual add. A complete, credential-free SMB address is the primary input; the
+/// A revision conflict is recoverable: the draft stays exactly as typed and one
+/// explicit button re-reads the latest settings. Reloading never mounts, ejects or
+/// overwrites the input, so it is safe to press while editing.
+struct ConfigurationConflictCard: View {
+    @Bindable var model: ApplicationModel
+
+    var body: some View {
+        if model.configurationConflictDetected {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("The configuration changed in another window or from the command line. Reload the latest settings; your input is kept.",
+                      systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Reload Settings") { model.reloadAfterConfigurationConflict() }
+                    .disabled(model.busy)
+                Text("Reloading does not mount, eject or overwrite what you typed.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 /// shared folder name and its standard location are derived from it and can be
 /// changed before the single "Add" action saves immediately.
 struct AddShareView: View {
@@ -78,6 +102,7 @@ struct AddShareView: View {
     var body: some View {
         NavigationStack {
             Form {
+                ConfigurationConflictCard(model: model)
                 Section("SMB Address") {
                     TextField("SMB Address", text: $address, prompt: Text(verbatim: "smb://host/share"))
                         .focused($focused, equals: .address)
@@ -345,6 +370,23 @@ struct ShareDetailSheet: View {
                 if actions.contains(.openInFinder) {
                     Button("Open in Finder", systemImage: "folder") { model.openInFinder(share) }
                 }
+                if actions.contains(.openActualLocation), let actual = detail.actualMountPoint {
+                    Button("Open the Actual Location in Finder", systemImage: "folder.badge.questionmark") {
+                        model.openPathInFinder(actual)
+                    }
+                }
+                if actions.contains(.useActualLocation) {
+                    Button("Use This Location", systemImage: "arrow.triangle.turn.up.right.diamond") {
+                        if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
+                    }.disabled(model.busy)
+                }
+                if actions.contains(.openOccupyingLocation) {
+                    // The occupying volume is not this share; inspection and an explicit
+                    // location edit are the only safe actions here.
+                    Button("Show the Occupying Folder in Finder", systemImage: "externaldrive.badge.exclamationmark") {
+                        model.openPathInFinder(share.mountPoint)
+                    }
+                }
                 if actions.contains(.mount) {
                     Button("Mount This Shared Folder", systemImage: "externaldrive.badge.plus") {
                         Task { await model.mount(host: host, share: share) }
@@ -445,6 +487,7 @@ struct ShareDetailSheet: View {
         case .serverUnreachable: String(localized: "Server not reachable")
         case .authenticationRequired: String(localized: "Sign-in required")
         case .locationMismatch: String(localized: "Mounted at a different location")
+        case .locationOccupied: String(localized: "Location occupied by another volume")
         case .recovering: String(localized: "Recovering")
         case .recoveryFailed: String(localized: "Mounting failed")
         case .unconfirmed: String(localized: "Result could not be confirmed")
@@ -458,7 +501,9 @@ struct ShareDetailSheet: View {
         case .mounting, .recovering: "arrow.triangle.2.circlepath"
         case .ejectedForThisSession: "eject.circle"
         case .automatedMountingOff: "pause.circle"
-        case .locationMismatch, .serverUnreachable, .authenticationRequired,
+        case .locationMismatch: "folder.badge.questionmark"
+        case .locationOccupied: "externaldrive.badge.exclamationmark"
+        case .serverUnreachable, .authenticationRequired,
              .recoveryFailed, .unconfirmed, .notMounted, .notSelectedThisRound:
             "exclamationmark.triangle"
         }
@@ -469,10 +514,13 @@ struct ShareDetailSheet: View {
         case .openInFinder: String(localized: "Open this shared folder in Finder to use it.")
         case .wait: String(localized: "Wait for this to finish. You can keep using the rest of the window.")
         case .mountThisShare: String(localized: "Mount it now, or turn on automatic mounting in Settings to have it mounted for you.")
-        case .explainRoundSelection: String(localized: "A round checks servers in order and stops at the first reachable one, so this server was not reached. It is not an error.")
+        case .explainRoundSelection: model.snapshot?.configuration.isMountAllEnabled == true
+            ? String(localized: "Every enabled server is checked in the saved order, so this server was not reached in the last round. It is not an error.")
+            : String(localized: "A round checks servers in order and stops at the first reachable one, so this server was not reached. It is not an error.")
         case .checkNetwork: String(localized: "Check the network connection. Automnt waits for a network or sign-in change before trying again.")
         case .connectInFinder: String(localized: "Connect to this server in Finder and sign in, then return and try again.")
-        case .reviewLocations: String(localized: "Another volume holds the configured location. Eject that volume in Finder, or open the mounted folder.")
+        case .reviewLocations: String(localized: "This shared folder is already mounted at another location, so tasks that use the configured location may not find it. Open it there or use that location.")
+        case .reviewOccupiedLocation: String(localized: "Another volume occupies the configured location. Automnt will not replace it. Show it in Finder, or choose a different location for this shared folder.")
         case .retryThisShare: String(localized: "Check the server and your sign-in, then try mounting this shared folder again.")
         }
     }
@@ -523,8 +571,9 @@ struct EditShareView: View {
     @FocusState private var focused: Field?
     /// Target identity and revision captured when editing begins. Saving never takes a
     /// newer snapshot revision, so a concurrent CLI or app write is reported as a
-    /// conflict and the draft stays in the form.
-    private let editBase: ConfigSnapshot?
+    /// conflict and the draft stays in the form. Only the explicit "Reload Settings"
+    /// action refreshes this baseline; typed values are never replaced.
+    @State private var editBase: ConfigSnapshot?
 
     init(model: ApplicationModel, host: HostConfig, share: SMBShareConfig) {
         self.model = model
@@ -533,7 +582,7 @@ struct EditShareView: View {
         _smbURL = State(initialValue: share.smbURL)
         _name = State(initialValue: share.name)
         _mountPoint = State(initialValue: share.mountPoint)
-        editBase = model.snapshot
+        _editBase = State(initialValue: model.snapshot)
     }
 
     private var isDirty: Bool {
@@ -545,6 +594,7 @@ struct EditShareView: View {
     var body: some View {
         NavigationStack {
             Form {
+                ConfigurationConflictCard(model: model)
                 Section("Shared Folder") {
                     TextField("SMB Address", text: $smbURL)
                         .focused($focused, equals: .address)
@@ -573,6 +623,14 @@ struct EditShareView: View {
                 }
             }
             .formStyle(.grouped)
+            .onChange(of: model.configurationConflictDetected) { wasDetected, isDetected in
+                // Reload clears the flag after refreshing the model snapshot; adopt that
+                // new baseline so the next save uses the current revision. Field values
+                // stay exactly as typed.
+                if wasDetected && !isDetected, let latest = model.snapshot {
+                    editBase = latest
+                }
+            }
             .navigationTitle("Edit Shared Folder")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -747,6 +805,7 @@ struct ServerSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                ConfigurationConflictCard(model: model)
                 Section("Name") {
                     TextField("Name", text: $name, prompt: Text(verbatim: host.host))
                         .focused($focused, equals: .name)
@@ -799,6 +858,11 @@ struct ServerSettingsView: View {
                 }
             }
             .formStyle(.grouped)
+            .onChange(of: model.configurationConflictDetected) { wasDetected, isDetected in
+                if wasDetected && !isDetected, let latest = model.snapshot {
+                    base = latest
+                }
+            }
             .navigationTitle(host.alias ?? host.host)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -1032,6 +1096,18 @@ struct SettingsView: View {
                     set: { model.saveRecovery($0, base: base) }))
                     .disabled(model.busy || !(automaticMounting?.recoveryEditable ?? false))
                 Text("Shared folders that disconnect unexpectedly get an extra attempt when the volume setup changes. Automatic mounting after sign-in or a network change still runs when this is off.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Picker("Mount Scope", selection: Binding(
+                    get: { configuration.effectiveMountPolicy },
+                    set: { model.saveMountPolicy($0, base: base) })) {
+                    Text("First Reachable Server").tag(MountPolicy.firstReachable)
+                    Text("All Reachable Servers").tag(MountPolicy.allReachable)
+                }
+                .pickerStyle(.menu)
+                .disabled(model.busy)
+                Text("Servers are checked in the order shown in the sidebar. The first option stops at the first reachable server; the second also mounts the shared folders of every other reachable server.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

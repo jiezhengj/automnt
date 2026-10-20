@@ -2750,6 +2750,11 @@ func manageConfiguration() {
                                     "Auto-recovery switch: \(workingConfig.isAutoMountRecoveryEnabled ? "Enabled" : "Disabled")"),
                           subtitle: tr("回车切换；仅在“保存并退出”后落盘生效",
                                        "Press Enter to toggle; applied only after \"Save and exit\"")),
+            SelectionItem(id: "mount_scope",
+                          title: tr("挂载范围：\(workingConfig.isMountAllEnabled ? "所有可达服务器" : "首个可达服务器")",
+                                    "Mount scope: \(workingConfig.isMountAllEnabled ? "All reachable servers" : "First reachable server")"),
+                          subtitle: tr("服务器按左侧顺序检查；回车切换，保存并退出后生效",
+                                       "Servers are checked in saved order; press Enter to toggle, applied after Save and exit")),
             SelectionItem(id: "save", title: tr("保存并退出", "Save and exit"),
                           subtitle: tr("写入本次会话的所有修改", "Write all changes from this session"))
         ]
@@ -2834,14 +2839,26 @@ func manageConfiguration() {
                 }
             } else {
                 // 开关关闭：回退为基线段挂载评估（不执行恢复判定与会话抑制）。
+                // 挂载范围与恢复轮次共用同一规则：默认只处理首个可达主机；选择
+                // “所有可达主机”时按保存顺序逐个挂载其启用共享。
                 var mounted = 0
-                let selectedHost = firstReachableHost(in: committedConfig, probe: { cache.isReachable(host: $0, port: $1) })
-                for volume in configuredVolumes(from: committedConfig) where volume.host == selectedHost?.host {
-                    switch ensureMountPointReady(target: MountTarget(url: volume.url, mountPath: volume.mountPoint)) {
-                    case .alreadyMountedHealthy: mounted += 1
-                    case .readyToMount:
-                        if silentMount(urlString: volume.url, mountPath: volume.mountPoint) { mounted += 1 }
-                    case .unmountFailed: break
+                let candidates: [HostConfig]
+                if committedConfig.effectiveMountPolicy == .allReachable {
+                    candidates = committedConfig.hosts.filter {
+                        $0.enabled && cache.isReachable(host: $0.host, port: $0.port)
+                    }
+                } else {
+                    candidates = [firstReachableHost(in: committedConfig, probe: { cache.isReachable(host: $0, port: $1) })].compactMap { $0 }
+                }
+                for host in candidates {
+                    for volume in configuredVolumes(from: committedConfig)
+                        where volume.host == host.host && volume.port == host.port {
+                        switch ensureMountPointReady(target: MountTarget(url: volume.url, mountPath: volume.mountPoint)) {
+                        case .alreadyMountedHealthy: mounted += 1
+                        case .readyToMount:
+                            if silentMount(urlString: volume.url, mountPath: volume.mountPoint) { mounted += 1 }
+                        case .unmountFailed: break
+                        }
                     }
                 }
                 _ = CLIOwnership.endEvaluation(permit)
@@ -2854,6 +2871,12 @@ func manageConfiguration() {
             workingConfig.autoMountRecovery = !workingConfig.isAutoMountRecoveryEnabled
             print(tr("✓ 自动恢复已切换为\(workingConfig.isAutoMountRecoveryEnabled ? "启用" : "关闭")（尚未保存，保存并退出后生效）。",
                      "✓ Auto-recovery toggled \(workingConfig.isAutoMountRecoveryEnabled ? "on" : "off") (not saved yet; applies after Save and exit)."))
+            continue
+        } else if action == "mount_scope" {
+            // T117：挂载范围只改内存工作副本，与自动恢复开关一样随“保存并退出”落盘。
+            workingConfig.mountPolicy = workingConfig.isMountAllEnabled ? .firstReachable : .allReachable
+            print(tr("✓ 挂载范围已切换为\(workingConfig.isMountAllEnabled ? "所有可达服务器" : "首个可达服务器")（尚未保存，保存并退出后生效）。",
+                     "✓ Mount scope switched to \(workingConfig.isMountAllEnabled ? "all reachable servers" : "first reachable server") (not saved yet; applies after Save and exit)."))
             continue
         } else if action == "add" {
             addHostFlow: while true {
@@ -4757,7 +4780,7 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
         "reorder_success",
         hosts: [managementHostA, managementHostB],
         keys: [.down, .down, .down, .enter, .down, .enter, .enter] +
-              Array(repeating: .down, count: 8) + [.enter]
+              Array(repeating: .down, count: 9) + [.enter]
     )
     check(reorderedConfig?.hosts.map(\.host) == [managementHostB.host, managementHostA.host],
           "configuration menu reorders a selected host to the chosen priority and saves it")
@@ -4803,7 +4826,7 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
         "delete_confirmed",
         hosts: [managementHostA, managementHostB],
         keys: hostDeletionKeys(confirmation: [.down, .space, .enter] +
-                               Array(repeating: .down, count: 7) + [.enter])
+                               Array(repeating: .down, count: 8) + [.enter])
     )
     check(hostDeleteConfig?.hosts.map(\.host) == [managementHostB.host],
           "host deletion requires Space and Enter, then persists on Save and exit")
@@ -4832,7 +4855,7 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
         "clear_all_confirmed",
         hosts: [managementHostA, managementHostB],
         keys: clearAllKeys(confirmation: [.down, .space, .enter] +
-                           Array(repeating: .down, count: 6) + [.enter])
+                           Array(repeating: .down, count: 7) + [.enter])
     )
     check(clearAllConfig?.hosts.isEmpty == true,
           "clearing all hosts requires Space and Enter, then persists on Save and exit")
@@ -4854,7 +4877,7 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
 
     TerminalUI.mockKeySequence = [.down, .down, .down, .down, .enter,
                                   .down, .enter,
-                                  .down, .down, .down, .down, .down, .down, .down, .enter]
+                                  .down, .down, .down, .down, .down, .down, .down, .down, .enter]
     manageConfiguration()
     check(inspectConfigFile(at: stagedConfigURL).config?.updateChannel == "notify",
           "management Save and exit persists staged changes")
@@ -4891,6 +4914,35 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     let legacyNoSwitch = loadConfig(from: legacyNoSwitchURL, migrate: false)
     check(legacyNoSwitch?.isAutoMountRecoveryEnabled == true,
           "in-place migration keeps legacy configs on the default enabled switch")
+
+    // T117：挂载范围与 GUI 写同一 mount_policy 字段，缺省 first_reachable 保持既有行为。
+    let mountScopeURL = tempDir.appendingPathComponent("mount_scope.plist")
+    var scopeConfig = AutomntConfig(version: automntVersion, updateChannel: "off",
+                                    hosts: [HostConfig(host: "scope.example",
+                                                       shares: [SMBShareConfig(name: "S", smbURL: "smb://scope.example/S", mountPoint: "/Volumes/S")])])
+    check(saveConfig(scopeConfig, to: mountScopeURL), "mount scope fixture saved through program API")
+    check(!scopeConfig.isMountAllEnabled, "mount scope defaults to first reachable server")
+    scopeConfig.mountPolicy = .allReachable
+    check(saveConfig(scopeConfig, to: mountScopeURL), "mount scope all-reachable value persisted")
+    check(loadConfig(from: mountScopeURL, migrate: false)?.isMountAllEnabled == true,
+          "mount scope persists through the config whitelist (not silently dropped)")
+    check(loadConfig(from: mountScopeURL, migrate: false)?.effectiveMountPolicy == .allReachable,
+          "persisted all-reachable resolves as the effective policy")
+    // 菜单入口：与自动恢复开关一样只改工作副本，保存并退出后才落盘。
+    let scopeMenuURL = tempDir.appendingPathComponent("mount_scope_menu.plist")
+    check(saveConfig(AutomntConfig(version: automntVersion, updateChannel: "off",
+                                   hosts: [HostConfig(host: "scope-menu.example")]), to: scopeMenuURL),
+          "mount scope menu fixture saved through program API")
+    configURLOverride = scopeMenuURL
+    isTTYOverride = false
+    TerminalUI.mockKeySequence = Array(repeating: .down, count: 7) + [.enter] +
+        Array(repeating: .down, count: 8) + [.enter]
+    manageConfiguration()
+    TerminalUI.mockKeySequence = nil
+    isTTYOverride = nil
+    configURLOverride = nil
+    check(loadConfig(from: scopeMenuURL, migrate: false)?.isMountAllEnabled == true,
+          "configuration menu switches mount scope and persists it on Save and exit")
 
     // T003: 附属状态文件读写、0600、损坏降级、absent 与 corrupt 区分
     let stateURL = tempDir.appendingPathComponent("recovery_state_isolated").appendingPathComponent(mountRecoveryStateFileName)

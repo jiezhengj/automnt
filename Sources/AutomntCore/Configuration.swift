@@ -231,6 +231,17 @@ public struct NetworkProfile: Codable, Equatable, Sendable {
     }
 }
 
+/// Automatic mounting scope. `firstReachable` preserves the historical behavior:
+/// walk enabled hosts in order and stop at the first reachable one. `allReachable`
+/// walks the same order but processes every reachable host. Both use the shared
+/// bounded evaluation and single-owner rules; this is not parallel discovery.
+public enum MountPolicy: String, Codable, CaseIterable, Sendable {
+    case firstReachable = "first_reachable"
+    case allReachable = "all_reachable"
+
+    public var isAllReachable: Bool { self == .allReachable }
+}
+
 public struct AutomntConfig: Codable, Equatable, Sendable {
     public var version: String
     public var updateChannel: String?                 // "off" (默认), "notify", "auto"
@@ -244,6 +255,8 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
     public var autoMountRecovery: Bool?
     /// Missing key preserves existing CLI automation intent.
     public var automationEnabled: Bool?
+    /// Missing key preserves the historical first-reachable behavior.
+    public var mountPolicy: MountPolicy?
 
     enum CodingKeys: String, CodingKey {
         case version
@@ -256,6 +269,7 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
         case profiles
         case autoMountRecovery = "auto_mount_recovery"
         case automationEnabled = "automation_enabled"
+        case mountPolicy = "mount_policy"
     }
 
     public init(
@@ -268,7 +282,8 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
         hosts: [HostConfig] = [],
         profiles: [NetworkProfile] = [],
         autoMountRecovery: Bool? = nil,
-        automationEnabled: Bool? = nil
+        automationEnabled: Bool? = nil,
+        mountPolicy: MountPolicy? = nil
     ) {
         self.version = version
         self.updateChannel = updateChannel
@@ -280,6 +295,7 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
         self.profiles = profiles
         self.autoMountRecovery = autoMountRecovery
         self.automationEnabled = automationEnabled
+        self.mountPolicy = mountPolicy
     }
 
     public init(from decoder: Decoder) throws {
@@ -295,6 +311,7 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
         // 缺省语义：键缺失 = 启用（FR-008 默认启用）
         self.autoMountRecovery = try container.decodeIfPresent(Bool.self, forKey: .autoMountRecovery)
         self.automationEnabled = try container.decodeIfPresent(Bool.self, forKey: .automationEnabled)
+        self.mountPolicy = try container.decodeIfPresent(MountPolicy.self, forKey: .mountPolicy)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -311,10 +328,14 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
         }
         try container.encodeIfPresent(autoMountRecovery, forKey: .autoMountRecovery)
         try container.encodeIfPresent(automationEnabled, forKey: .automationEnabled)
+        try container.encodeIfPresent(mountPolicy, forKey: .mountPolicy)
     }
 
     /// 生效值：缺省视为启用。
     public var isAutoMountRecoveryEnabled: Bool { autoMountRecovery ?? true }
     public var isAutomationEnabled: Bool { automationEnabled ?? true }
+    /// 缺省为首个可达服务器，保持升级前行为。
+    public var effectiveMountPolicy: MountPolicy { mountPolicy ?? .firstReachable }
+    public var isMountAllEnabled: Bool { effectiveMountPolicy == .allReachable }
 }
 

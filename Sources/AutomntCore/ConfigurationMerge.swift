@@ -26,7 +26,7 @@ public func managedConfigKeys(for context: ConfigPlistContext) -> Set<String> {
     case .root:
         return ["version", "update_channel", "retry_policy", "last_update_check_timestamp",
                 "update_retry_after_timestamp", "last_notified_version", "hosts", "profiles",
-                "auto_mount_recovery", "automation_enabled"]
+                "auto_mount_recovery", "automation_enabled", "mount_policy"]
     case .profile:
         return ["id", "description", "host", "port", "timeout_ms",
                 "prevent_spotlight_index", "targets"]

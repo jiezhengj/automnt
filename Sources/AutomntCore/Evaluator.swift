@@ -43,23 +43,48 @@ public struct EvaluationRetryRunner: Sendable {
 }
 
 public enum HostPriorityEvaluator {
+    /// One host's bounded reachability probe under the shared retry policy.
+    public static func isReachable(_ host: HostConfig,
+                                   configuration: AutomntConfig,
+                                   deadline: ContinuousClock.Instant,
+                                   probe: any ReachabilityProbe) async throws -> Bool {
+        try Task.checkCancellation()
+        guard ContinuousClock.now < deadline else { return false }
+        return try await EvaluationRetryRunner(policy: configuration.retryPolicy ?? RetryPolicy())
+            .run(deadline: deadline) { end in
+                let remaining = ContinuousClock.now.duration(to: end).components
+                let milliseconds = remaining.seconds * 1000 + remaining.attoseconds / 1_000_000_000_000_000
+                let budget = min(max(host.timeoutMs, 1), Int(max(milliseconds, 1)))
+                return try await probe.isReachable(host: host.host, port: host.port, timeoutMilliseconds: budget)
+            }
+    }
+
+    /// Enabled hosts in saved order that answer within the deadline.
+    ///
+    /// `first_reachable` stops at the first answer; `all_reachable` keeps probing the
+    /// remaining hosts in the same order. Probing never runs in parallel and never
+    /// exceeds the bounded evaluation window.
+    public static func reachableHosts(in configuration: AutomntConfig,
+                                      deadline: ContinuousClock.Instant,
+                                      probe: any ReachabilityProbe,
+                                      stopAfterFirst: Bool) async throws -> [HostConfig] {
+        guard configuration.isAutomationEnabled else { return [] }
+        var reachable: [HostConfig] = []
+        for host in configuration.hosts where host.enabled {
+            guard ContinuousClock.now < deadline else { break }
+            if try await isReachable(host, configuration: configuration, deadline: deadline, probe: probe) {
+                reachable.append(host)
+                if stopAfterFirst { break }
+            }
+        }
+        return reachable
+    }
+
     public static func firstReachable(in configuration: AutomntConfig,
                                       deadline: ContinuousClock.Instant,
                                       probe: any ReachabilityProbe) async throws -> HostConfig? {
-        guard configuration.isAutomationEnabled else { return nil }
-        for host in configuration.hosts where host.enabled {
-            try Task.checkCancellation()
-            guard ContinuousClock.now < deadline else { return nil }
-            let reachable = try await EvaluationRetryRunner(policy: configuration.retryPolicy ?? RetryPolicy())
-                .run(deadline: deadline) { end in
-                    let remaining = ContinuousClock.now.duration(to: end).components
-                    let milliseconds = remaining.seconds * 1000 + remaining.attoseconds / 1_000_000_000_000_000
-                    let budget = min(max(host.timeoutMs, 1), Int(max(milliseconds, 1)))
-                    return try await probe.isReachable(host: host.host, port: host.port, timeoutMilliseconds: budget)
-                }
-            if reachable { return host }
-        }
-        return nil
+        try await reachableHosts(in: configuration, deadline: deadline, probe: probe,
+            stopAfterFirst: true).first
     }
 
     /// A share failure cannot cause fallback: select the host before mounting.

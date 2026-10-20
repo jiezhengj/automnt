@@ -209,11 +209,16 @@ public enum RecoveryRoundPlanner {
         configuration.hosts.first { $0.enabled && probe($0.host, $0.port) }
     }
 
-    /// 本轮参与判定的卷：仅选定主机；但在表且主机不可达的卷仍须进入（否则死卷清理与
-    /// 修复证据丢失）。
+    /// 本轮参与判定的卷。
+    ///
+    /// `first_reachable`（默认）只让首个可达主机的卷参与，但「在表且主机不可达」的卷
+    /// 仍须进入（否则死卷清理与修复证据丢失）。
+    /// `all_reachable` 让所有启用主机的启用卷都参与，按保存顺序逐卷判定；不可达主机
+    /// 由逐卷判定落为待恢复（pendingUnreachable），不阻止其余主机继续。
     public static func relevantVolumes(configuration: AutomntConfig, mountedIdentities: Set<String>,
                                        probe: (String, Int) -> Bool) -> [RecoveryRoundConfiguredVolume] {
         let all = configuredRecoveryVolumes(from: configuration)
+        guard configuration.effectiveMountPolicy == .firstReachable else { return all }
         let selected = firstReachableHost(in: configuration, probe: probe)
         return all.filter {
             selected == nil ||

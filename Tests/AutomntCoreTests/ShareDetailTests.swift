@@ -8,12 +8,13 @@ struct ShareDetailTests {
     private func detail(mounted: Bool = false, actual: String? = nil, reachable: Bool? = true,
                         selected: Bool = true, automation: Bool = true, serverEnabled: Bool = true,
                         shareEnabled: Bool = true, suppressed: Bool = false, recovering: Bool = false,
-                        recoveryFailed: Bool = false, issue: AutomntIssue? = nil) -> ShareDetail {
+                        locationOccupied: Bool = false, recoveryFailed: Bool = false,
+                        issue: AutomntIssue? = nil) -> ShareDetail {
         ShareDetailBuilder.build(share: share, expectedMountPoint: "/Volumes/Docs", mounted: mounted,
             actualMountPoint: actual, observedAt: Date(), serverReachable: reachable,
             selectedThisRound: selected, automationEnabled: automation, serverEnabled: serverEnabled,
             shareEnabled: shareEnabled, suppressed: suppressed, recovering: recovering,
-            recoveryFailed: recoveryFailed, issue: issue)
+            locationOccupied: locationOccupied, recoveryFailed: recoveryFailed, issue: issue)
     }
 
     @Test func healthyOnlyWhenMountedAtTheExpectedPath() {
@@ -32,6 +33,32 @@ struct ShareDetailTests {
         #expect(mismatched.nextStep == .reviewLocations)
         #expect(mismatched.actualMountPoint == "/Volumes/Docs-1")
         #expect(mismatched.expectedMountPoint == "/Volumes/Docs")
+    }
+
+    /// 同一身份挂在别处时，即使没有挂在配置路径，也是「位置不同」而不是「挂载失败」。
+    @Test func mountedElsewhereIsMismatchNotFailure() {
+        let elsewhere = detail(mounted: false, actual: "/Volumes/Docs-1")
+        #expect(elsewhere.status == .locationMismatch)
+        #expect(elsewhere.actualMountPoint == "/Volumes/Docs-1")
+        #expect(elsewhere.status != .recoveryFailed)
+        #expect(elsewhere.showsExpectedAndActualLocations)
+        let actions = DetailActionPolicy.available(elsewhere, busy: false)
+        #expect(actions.contains(.useActualLocation))
+        #expect(actions.contains(.openActualLocation))
+        #expect(!actions.contains(.mount))
+    }
+
+    /// 配置位置被另一个卷占用是独立状态：不是恢复失败，也不提供弹出/挂载主按钮。
+    @Test func occupiedLocationIsNotARecoveryFailure() {
+        let occupied = detail(mounted: false, locationOccupied: true, recoveryFailed: true)
+        #expect(occupied.status == .locationOccupied)
+        #expect(occupied.nextStep == .reviewOccupiedLocation)
+        #expect(!occupied.showsExpectedAndActualLocations)
+        let actions = DetailActionPolicy.available(occupied, busy: false)
+        #expect(actions.contains(.openOccupyingLocation))
+        #expect(!actions.contains(.eject))
+        #expect(!actions.contains(.mount))
+        #expect(actions.contains(.editTarget))
     }
 
     @Test func notSelectedThisRoundIsNotAFailure() {

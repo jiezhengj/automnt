@@ -72,6 +72,7 @@ struct ConfigurationContractTests {
         #expect(decoded.isAutomationEnabled)
         configuration.automationEnabled = false
         configuration.autoMountRecovery = true
+        configuration.mountPolicy = .allReachable
         let merged = try #require(mergeConfigPlistValue(original: original,
             generated: PropertyListSerialization.propertyList(from: encoder.encode(configuration), format: nil), context: .root) as? [String: Any])
         #expect(merged[extensionKey] as? String == value)
@@ -82,6 +83,7 @@ struct ConfigurationContractTests {
         let roundtrip = try PropertyListDecoder().decode(AutomntConfig.self, from: PropertyListSerialization.data(fromPropertyList: merged, format: .binary, options: 0))
         #expect(!roundtrip.isAutomationEnabled)
         #expect(roundtrip.isAutoMountRecoveryEnabled)
+        #expect(roundtrip.isMountAllEnabled)
         #expect(roundtrip.retryPolicy == configuration.retryPolicy)
         #expect(roundtrip.hosts == configuration.hosts)
         var legacy = AutomntConfig()
@@ -101,6 +103,7 @@ struct ConfigurationContractTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let repository = FileConfigRepository(authorizedDirectory: directory)
         let first = try repository.create(model())
+        #expect(first.configuration.effectiveMountPolicy == .firstReachable)
         #expect(throws: AutomntIssue.configurationConflict) { try repository.create(model()) }
         var draft = first.configuration
         draft.hosts[0].shares.append(draft.hosts[0].shares[0])
@@ -110,17 +113,21 @@ struct ConfigurationContractTests {
         var switches = first.configuration
         switches.automationEnabled = false
         switches.autoMountRecovery = true
+        switches.mountPolicy = .allReachable
         let saved = try repository.save(switches, baseRevision: first.revision)
         let reopened = try FileConfigRepository(authorizedDirectory: directory).read()
         #expect(reopened.revision == saved.revision)
         #expect(!reopened.configuration.isAutomationEnabled)
         #expect(reopened.configuration.isAutoMountRecoveryEnabled)
+        #expect(reopened.configuration.isMountAllEnabled)
         switches.automationEnabled = true
         switches.autoMountRecovery = false
+        switches.mountPolicy = nil
         _ = try repository.save(switches, baseRevision: reopened.revision)
         let final = try repository.read()
         #expect(final.configuration.isAutomationEnabled)
         #expect(!final.configuration.isAutoMountRecoveryEnabled)
+        #expect(final.configuration.effectiveMountPolicy == .firstReachable)
         #expect(final.configuration.hosts == first.configuration.hosts)
     }
 }

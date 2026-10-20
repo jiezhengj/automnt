@@ -69,6 +69,8 @@ public enum TargetAvailability: String, Codable, Sendable {
     case usable
     case notMounted
     case locationMismatch
+    /// The configured location is taken by another volume; this share is not mounted.
+    case locationOccupied
     case suppressedForThisSession
     case notEvaluatedThisRound
     case unreachable

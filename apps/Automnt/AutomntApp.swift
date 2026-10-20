@@ -107,6 +107,9 @@ final class ApplicationModel {
     var snapshot: ConfigSnapshot?
     /// A failure worth showing in the window; never used to fake a state change.
     var issue: String?
+    /// A save was refused because another writer changed the revision. Forms keep their
+    /// draft and offer an explicit re-read; nothing is overwritten automatically.
+    var configurationConflictDetected = false
     /// A confirmation of what actually happened (added, saved, ejected).
     var notice: String?
     /// A configuration exists but could not be read: not a first-run empty state.
@@ -379,6 +382,25 @@ final class ApplicationModel {
     // MARK: - Projection
 
     /// Managed servers in saved order plus discovered servers that are not managed yet.
+    /// 侧栏当前选中的服务器身份，由主窗口同步；菜单里的移动命令用它。
+    var selectedServerIdentity: String?
+
+    func canMoveSelectedServer(earlier: Bool) -> Bool {
+        guard configurationChangesAllowed, let identity = selectedServerIdentity,
+              let index = inventory.managed.firstIndex(where: { $0.identity == identity }) else {
+            return false
+        }
+        let target = index + (earlier ? -1 : 1)
+        return target >= 0 && target < inventory.managed.count
+    }
+
+    /// 键盘与菜单共用的顺序移动入口；保存仍由 `moveServer` 的 CAS 控制器完成。
+    func moveSelectedServer(earlier: Bool) {
+        guard let identity = selectedServerIdentity,
+              let index = inventory.managed.firstIndex(where: { $0.identity == identity }) else { return }
+        moveServer(identity: identity, to: index + (earlier ? -1 : 1))
+    }
+
     var inventory: ServerInventory.Snapshot {
         ServerInventory.build(
             configuration: snapshot?.configuration,
@@ -621,9 +643,11 @@ final class ApplicationModel {
         let path = mountObservations[identity]
         if path == .smb(identity: identity) { return .usable }
         if suppressedIdentities.contains(identity) { return .suppressedForThisSession }
+        // The same share is mounted somewhere else: usable, just not at the configured path.
+        if actualMountPoint(of: share) != nil { return .locationMismatch }
         // The kernel reports another volume at the configured location, so the task path
         // is taken; this is a location conflict, not an idle "not mounted" state.
-        if isLocationOccupied(share) { return .locationMismatch }
+        if isLocationOccupied(share) { return .locationOccupied }
         if let observation = roundObservations[identity] {
             switch observation.status {
             case .offline: return .unreachable
@@ -643,6 +667,13 @@ final class ApplicationModel {
         return .notMounted
     }
 
+    /// Where this exact SMB identity is mounted today, independent of the configured path.
+    /// Reads the kernel-observed discovery list; it never contacts the server.
+    func actualMountPoint(of share: SMBShareConfig) -> String? {
+        guard let identity = smbResourceIdentity(share.smbURL) else { return nil }
+        return discovered.first { smbResourceIdentity($0.share.smbURL) == identity }?.share.mountPoint
+    }
+
     /// True when the kernel reports a different volume (SMB or not) at the configured
     /// location. That is a location conflict, not "this share happens to be unmounted".
     func isLocationOccupied(_ share: SMBShareConfig) -> Bool {
@@ -660,11 +691,11 @@ final class ApplicationModel {
         }
     }
 
-    /// Exceptions only. A user eject, a disabled target, an unchecked server and a
-    /// not-yet-mounted share are all normal states, not problems.
+    /// Exceptions only. A user eject, a disabled target, an unchecked server, a share
+    /// mounted elsewhere and a not-yet-mounted share are all normal states, not problems.
     func isException(_ availability: TargetAvailability) -> Bool {
         switch availability {
-        case .unreachable, .authenticationRequired, .failed, .locationMismatch: true
+        case .unreachable, .authenticationRequired, .failed, .locationOccupied: true
         default: false
         }
     }
@@ -693,7 +724,10 @@ final class ApplicationModel {
         let path = identity.flatMap { mountObservations[$0] } ?? .absent
         let mounted = identity != nil && path == .smb(identity: identity!)
         let occupiedByAnotherVolume = isLocationOccupied(share)
-        let issue: AutomntIssue? = observed?.issue ?? (occupiedByAnotherVolume ? .pathConflict : nil)
+        // The same share mounted at another path is a fact from the kernel table; the
+        // configured path being taken is a different fact and must not read as failure.
+        let actual = actualMountPoint(of: share)
+        let issue: AutomntIssue? = observed?.issue
         let selectedThisRound: Bool
         if let selection, let host {
             selectedThisRound = selection.checkedServers.contains(managedServerIdentity(host))
@@ -703,10 +737,8 @@ final class ApplicationModel {
         return ShareDetailBuilder.build(share: share,
             expectedMountPoint: share.mountPoint,
             mounted: mounted,
-            // A volume really is there, but it is not this share, so the actual location
-            // is unknown rather than equal to the configured one.
-            actualMountPoint: mounted ? share.mountPoint : (occupiedByAnotherVolume ? "" : nil),
-            observedAt: observed?.observedAt ?? ((mounted || occupiedByAnotherVolume) ? mountObservedAt : nil),
+            actualMountPoint: actual,
+            observedAt: observed?.observedAt ?? ((mounted || actual != nil || occupiedByAnotherVolume) ? mountObservedAt : nil),
             serverReachable: host.flatMap { serverReachable(managedServerIdentity($0)) },
             selectedThisRound: selectedThisRound,
             automationEnabled: snapshot?.configuration.isAutomationEnabled ?? false,
@@ -714,7 +746,8 @@ final class ApplicationModel {
             shareEnabled: share.enabled,
             suppressed: identity.map { suppressedIdentities.contains($0) } ?? false,
             recovering: identity.map { isWorking(.singleShareMount, target: $0) || isWorking(.normalEject, target: $0) } ?? false,
-            recoveryFailed: observed?.status == .failed || (occupiedByAnotherVolume && observed == nil),
+            locationOccupied: occupiedByAnotherVolume,
+            recoveryFailed: observed?.status == .failed,
             issue: issue)
     }
 
@@ -835,7 +868,8 @@ final class ApplicationModel {
     /// A full round runs the same bounded evaluation the background service uses and
     /// reports its real result; it does not simulate one.
     func tryFullRound() async {
-        guard configurationChangesAllowed, let authorization, let base = snapshot else { return }
+        guard configurationChangesAllowed, let authorization else { return }
+        guard let base = latestSnapshotForAction() else { return }
         // A previous round may have left a launch intent whose child exited. Clear it
         // only when the evaluation lock proves no worker is still alive.
         try? WorkerOperationStore(authorizedDirectory: authorization.url).abandonPendingForRepair()
@@ -870,8 +904,40 @@ final class ApplicationModel {
         }
     }
 
+    /// Opens a concrete mount path without assuming it is this share's configured path.
+    /// Used for "open the actual location" and for inspecting an occupied location.
+    func openPathInFinder(_ path: String) {
+        let url = URL(fileURLWithPath: path)
+        guard FileManager.default.fileExists(atPath: path) else {
+            issue = String(localized: "That folder is no longer available. Refresh the list and check the current location.")
+            return
+        }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        issue = nil
+    }
+
+    /// Adopts the location where the same SMB identity is already mounted as the
+    /// configured mount point. One revision-checked save; nothing is ejected or moved.
+    @discardableResult
+    func useActualMountPoint(_ share: SMBShareConfig, base: ConfigSnapshot) -> Bool {
+        guard let identity = smbResourceIdentity(share.smbURL),
+              let actual = actualMountPoint(of: share), actual != share.mountPoint,
+              ShareFormFields.isValidMountPath(actual) else { return false }
+        let saved = save(base) { configuration in
+            for hostIndex in configuration.hosts.indices {
+                guard let shareIndex = configuration.hosts[hostIndex].shares.firstIndex(where: {
+                    smbResourceIdentity($0.smbURL) == identity
+                }) else { continue }
+                configuration.hosts[hostIndex].shares[shareIndex].mountPoint = actual
+            }
+        }
+        if saved { notice = String(localized: "Using the current mount location. Future mounts use the new location.") }
+        return saved
+    }
+
     func mount(host: HostConfig, share: SMBShareConfig) async {
-        guard let base = snapshot, let identity = smbResourceIdentity(share.smbURL) else { return }
+        guard let base = latestSnapshotForAction(),
+              let identity = smbResourceIdentity(share.smbURL) else { return }
         guard !busy, let operation = begin(.singleShareMount, target: identity) else { return }
         refreshActionReadiness()
         guard let authorization, manualMountReady else {
@@ -899,7 +965,8 @@ final class ApplicationModel {
     /// Normal eject: non-forced, with no routine confirmation. A busy volume is
     /// reported as a failure and is never escalated to a forced eject.
     func eject(host: HostConfig, share: SMBShareConfig) async {
-        guard let base = snapshot, let identity = smbResourceIdentity(share.smbURL) else { return }
+        guard let base = latestSnapshotForAction(),
+              let identity = smbResourceIdentity(share.smbURL) else { return }
         guard !busy, let operation = begin(.normalEject, target: identity) else { return }
         refreshActionReadiness()
         guard let authorization, manualMountReady else {
@@ -940,8 +1007,43 @@ final class ApplicationModel {
             refreshStatus()
             return true
         } catch {
+            if (error as? AutomntIssue) == .configurationConflict {
+                configurationConflictDetected = true
+            }
             show(error)
             return false
+        }
+    }
+
+    /// Re-reads the latest configuration after a revision conflict. The form keeps every
+    /// typed value; only the baseline for the next save changes. This never mounts,
+    /// ejects, or writes anything.
+    func reloadAfterConfigurationConflict() {
+        guard let authorization else { return }
+        do {
+            snapshot = try FileConfigRepository(authorizedDirectory: authorization.url).read()
+            configurationConflictDetected = false
+            issue = nil
+            notice = String(localized: "Reloaded the latest settings. Your input is kept; check it before saving.")
+            refreshActionReadiness()
+            refreshStatus()
+        } catch {
+            show(error)
+        }
+    }
+
+    /// Re-reads the configuration right before an action. A revision saved elsewhere is
+    /// not an error: the action continues on the latest snapshot. Returns nil only when
+    /// the configuration really cannot be read, and shows that failure.
+    private func latestSnapshotForAction() -> ConfigSnapshot? {
+        guard let authorization else { return snapshot }
+        do {
+            snapshot = try FileConfigRepository(authorizedDirectory: authorization.url).read()
+            configurationConflictDetected = false
+            return snapshot
+        } catch {
+            show(error)
+            return nil
         }
     }
 
@@ -982,6 +1084,13 @@ final class ApplicationModel {
                 await activateAppBackground(repair: true)
             }
         }
+    }
+
+    /// 挂载范围（FR-027）。改变它只写配置；下一轮评估、排序说明与 CLI 共用同一字段。
+    /// 默认 `first_reachable` 保持升级前行为，因此不需要在保存时触发额外副作用。
+    func saveMountPolicy(_ policy: MountPolicy, base: ConfigSnapshot) {
+        guard save(base, { $0.mountPolicy = policy }) else { return }
+        notice = String(localized: "Mount scope saved. The next round checks servers in this scope.")
     }
 
     /// Retry limits come from the shared bounds; invalid input is reported per field
@@ -1235,7 +1344,7 @@ final class ApplicationModel {
 
     func message(for issue: AutomntIssue) -> String {
         switch issue {
-        case .configurationConflict: String(localized: "The configuration changed. Reload it before continuing.")
+        case .configurationConflict: String(localized: "The configuration changed in another window or from the command line. Reload the latest settings; your input is kept.")
         case .authorizationRequired: String(localized: "Choose the Automnt folder in your Library/Application Support folder and grant access.")
         case .incompatibleOwner: String(localized: "App background mounting is not active. Set up the app’s background service before using this action.")
         case .volumeBusy: String(localized: "The shared folder is in use. Close files and apps using it, then try ejecting again.")
@@ -1396,6 +1505,15 @@ struct AutomntApp: App {
                 Button("Add Shared Folder…") { addShareRequest.present() }
                     .disabled(!model.configurationChangesAllowed)
                     .keyboardShortcut("n", modifiers: .command)
+            }
+            CommandMenu("Servers") {
+                // 不使用右键“上移/下移”，但保留可发现的菜单与 Option+方向键等价操作。
+                Button("Move Earlier") { model.moveSelectedServer(earlier: true) }
+                    .keyboardShortcut(.upArrow, modifiers: [.option])
+                    .disabled(!model.canMoveSelectedServer(earlier: true))
+                Button("Move Later") { model.moveSelectedServer(earlier: false) }
+                    .keyboardShortcut(.downArrow, modifiers: [.option])
+                    .disabled(!model.canMoveSelectedServer(earlier: false))
             }
             CommandGroup(replacing: .help) {
                 Button("User Guide") { helpDestination = .guide }

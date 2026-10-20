@@ -51,7 +51,6 @@ struct MainWindowView: View {
             model.installWindowCloseGuard(window)
             model.installMainWindowFramePersistence(window)
         })
-        .toolbar { toolbar }
         .sheet(isPresented: addSheet) {
             AddShareView(model: model)
         }
@@ -62,11 +61,15 @@ struct MainWindowView: View {
             }
             .frame(minWidth: 460, idealWidth: 620, minHeight: 480, idealHeight: 680)
         }
+        .onAppear { model.selectedServerIdentity = selectedServer }
         .onChange(of: model.requestedDetail, initial: true) { _, request in openRequestedDetail(request) }
         .onChange(of: inventory.managed.map(\.identity) + inventory.addable.map(\.identity), initial: true) { _, _ in
             reconcileSelection()
         }
-        .onChange(of: selectedServer) { _, _ in shareSearch = "" }
+        .onChange(of: selectedServer) { _, identity in
+            shareSearch = ""
+            model.selectedServerIdentity = identity
+        }
         .onChange(of: scenePhase) { _, phase in
             // Re-reading on activation catches a CLI save and a background state change
             // without a polling loop and without evaluating or mounting anything.
@@ -102,15 +105,25 @@ struct MainWindowView: View {
     private var compactLayout: some View {
         NavigationStack(path: $compactPath) {
             List {
-                Section("Managed") {
+                Section {
                     ForEach(filtered(inventory.managed)) { server in
                         NavigationLink(value: CompactRoute.server(server.identity)) {
-                            ServerRow(model: model, server: server)
+                            ServerRow(model: model, server: server,
+                                showsDragHandle: !isFiltering && model.configurationChangesAllowed)
                         }
-                        .contextMenu { moveMenu(server) }
+                        .accessibilityAction(named: Text("Move Earlier")) {
+                            moveServer(server.identity, to: managedIndex(of: server) - 1)
+                        }
+                        .accessibilityAction(named: Text("Move Later")) {
+                            moveServer(server.identity, to: managedIndex(of: server) + 1)
+                        }
                     }
                     .onMove { source, destination in move(source, to: destination) }
                     .moveDisabled(isFiltering || !model.configurationChangesAllowed)
+                } header: {
+                    Text("Managed")
+                } footer: {
+                    orderFootnote
                 }
                 if model.configurationAccess.allowsChanges {
                     Section("Available to Add") {
@@ -129,6 +142,8 @@ struct MainWindowView: View {
             .navigationTitle("Servers")
             .searchable(text: $searchText, prompt: Text("Search servers"))
             .overlay { emptyState }
+            .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
+            .safeAreaInset(edge: .bottom, spacing: 0) { globalActionsBar }
             .navigationDestination(for: CompactRoute.self) { route in
                 compactDestination(route)
             }
@@ -155,6 +170,7 @@ struct MainWindowView: View {
 
     /// Selection only falls back when its identity truly disappeared; refresh, adding and
     /// ordering never move it. The compact stack drops pushed objects that are gone.
+    /// The model copy feeds the Servers menu's keyboard move commands.
     private func reconcileSelection() {
         if let selectedServer, inventory.server(identity: selectedServer) == nil {
             self.selectedServer = inventory.managed.first?.identity ?? inventory.addable.first?.identity
@@ -185,14 +201,24 @@ struct MainWindowView: View {
 
     private var sidebar: some View {
         List(selection: $selectedServer) {
-            Section("Managed") {
+            Section {
                 ForEach(filtered(inventory.managed)) { server in
-                    ServerRow(model: model, server: server)
+                    ServerRow(model: model, server: server,
+                        showsDragHandle: !isFiltering && model.configurationChangesAllowed)
                         .tag(server.identity)
-                        .contextMenu { moveMenu(server) }
+                        .accessibilityAction(named: Text("Move Earlier")) {
+                            moveServer(server.identity, to: managedIndex(of: server) - 1)
+                        }
+                        .accessibilityAction(named: Text("Move Later")) {
+                            moveServer(server.identity, to: managedIndex(of: server) + 1)
+                        }
                 }
                 .onMove { source, destination in move(source, to: destination) }
                 .moveDisabled(isFiltering || !model.configurationChangesAllowed)
+            } header: {
+                Text("Managed")
+            } footer: {
+                orderFootnote
             }
             if model.configurationAccess.allowsChanges {
                 Section("Available to Add") {
@@ -208,6 +234,74 @@ struct MainWindowView: View {
         .listStyle(.sidebar)
         .navigationTitle("Servers")
         .overlay { emptyState }
+        .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
+        .safeAreaInset(edge: .bottom, spacing: 0) { globalActionsBar }
+    }
+
+    /// Global actions belong to the whole window; they sit at the sidebar bottom rather
+    /// than sharing a toolbar with the selected server's own actions.
+    private var globalActionsBar: some View {
+        HStack(spacing: 12) {
+            Button("Add Shared Folder…", systemImage: "plus") { showingAddShare = true }
+                .disabled(!model.configurationChangesAllowed)
+                .help("Add Shared Folder…")
+            Button("Try Automatic Mounting Now", systemImage: "bolt") {
+                Task { await model.tryFullRound() }
+            }
+            .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+            .help("Try Automatic Mounting Now")
+            Spacer(minLength: 0)
+            SettingsLink { Label("Settings", systemImage: "gearshape") }
+                .help("Settings")
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    /// The order footnote follows the mount policy instantly, so the two strategies are
+    /// never blended into one sentence.
+    @ViewBuilder
+    private var orderFootnote: some View {
+        if isFiltering {
+            Text("Clear the search to change the order.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if model.snapshot?.configuration.isMountAllEnabled == true {
+            Text("Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text("Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func managedIndex(of server: ServerInventory.Server) -> Int {
+        inventory.managed.firstIndex(where: { $0.identity == server.identity }) ?? -1
+    }
+
+    /// Option+arrow keeps keyboard order changes without a context menu. The same
+    /// controller saves immediately, so keyboard, VoiceOver and drag share one path.
+    private func handleOrderKey(_ press: KeyPress) -> KeyPress.Result {
+        guard press.modifiers.contains(.option), model.configurationChangesAllowed, !isFiltering else {
+            return .ignored
+        }
+        guard let identity = selectedServer,
+              let index = inventory.managed.firstIndex(where: { $0.identity == identity }) else {
+            return .ignored
+        }
+        let target = press.key == .upArrow ? index - 1 : index + 1
+        guard target >= 0, target < inventory.managed.count else { return .ignored }
+        moveServer(identity, to: target)
+        return .handled
     }
 
     /// The same empty state serves the wide sidebar and the compact server list; it is
@@ -225,17 +319,6 @@ struct MainWindowView: View {
         } else if model.configurationAccess.allowsChanges && model.hasConfiguration && inventory.managed.isEmpty && inventory.addable.isEmpty {
             ContentUnavailableView("No Servers", systemImage: "server.rack",
                 description: Text("Add a shared folder by its complete SMB address."))
-        }
-    }
-
-    @ViewBuilder
-    private func moveMenu(_ server: ServerInventory.Server) -> some View {
-        if let index = inventory.managed.firstIndex(where: { $0.identity == server.identity }) {
-            // Keyboard and VoiceOver equivalent of the drag: the same controller saves.
-            Button("Move Earlier") { moveServer(server.identity, to: index - 1) }
-                .disabled(index == 0 || isFiltering || !model.configurationChangesAllowed)
-            Button("Move Later") { moveServer(server.identity, to: index + 1) }
-                .disabled(index >= inventory.managed.count - 1 || isFiltering || !model.configurationChangesAllowed)
         }
     }
 
@@ -260,7 +343,7 @@ struct MainWindowView: View {
     }
 
     private func moveServer(_ identity: String, to destination: Int) {
-        guard destination >= 0, destination < inventory.managed.count else { return }
+        guard !isFiltering, destination >= 0, destination < inventory.managed.count else { return }
         // The controller reports a no-op instead of saving an unchanged order.
         model.moveServer(identity: identity, to: destination)
     }
@@ -346,25 +429,6 @@ struct MainWindowView: View {
 
     // MARK: - Toolbar and status
 
-    @ToolbarContentBuilder
-    private var toolbar: some ToolbarContent {
-        ToolbarItem {
-            Button("Add Shared Folder…", systemImage: "plus") { showingAddShare = true }
-                .disabled(!model.configurationChangesAllowed)
-                .help("Add Shared Folder…")
-        }
-        ToolbarItem {
-            Button("Try Automatic Mounting Now", systemImage: "bolt") {
-                Task { await model.tryFullRound() }
-            }
-            .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-            .help("Try Automatic Mounting Now")
-        }
-        ToolbarItem {
-            SettingsLink { Label("Settings", systemImage: "gearshape") }
-                .help("Settings")
-        }
-    }
 }
 
 /// One status surface for saved intent versus actual background service. It replaces
@@ -497,8 +561,12 @@ private struct DetailMessageCard: View {
 private struct ServerRow: View {
     let model: ApplicationModel
     let server: ServerInventory.Server
+    /// Managed rows show the system drag handle so reordering is discoverable; the
+    /// whole row stays draggable. Addable rows have no order and no handle.
+    var showsDragHandle = false
 
     var body: some View {
+        HStack(alignment: .center, spacing: 8) {
         VStack(alignment: .leading, spacing: 2) {
             Label(server.displayName, systemImage: "server.rack")
                 .lineLimit(1)
@@ -518,6 +586,15 @@ private struct ServerRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+        }
+        if showsDragHandle {
+            Spacer(minLength: 4)
+            Image(systemName: "line.3.horizontal")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .help("Drag to change the order")
+                .accessibilityHidden(true)
+        }
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
@@ -572,8 +649,53 @@ private struct ServerSharesView: View {
         query.isEmpty || share.name.localizedCaseInsensitiveContains(query)
     }
 
+    private struct AttentionShare: Identifiable {
+        let share: ServerInventory.Share
+        let reason: String
+        var id: String { share.identity }
+    }
+
+    /// Shares that need attention, with the same status source the rows use. The server
+    /// summary is a count; this list is what the count refers to.
+    private var attentionShares: [AttentionShare] {
+        guard let host else { return [] }
+        return server.managedShares.compactMap { share in
+            guard let config = host.shares.first(where: { smbResourceIdentity($0.smbURL) == share.identity }) else {
+                return nil
+            }
+            let availability = model.availability(of: config)
+            guard model.isException(availability) else { return nil }
+            return AttentionShare(share: share, reason: ShareRowView.statusLabel(availability))
+        }
+    }
+
     var body: some View {
         List {
+            if !attentionShares.isEmpty {
+                Section {
+                    ForEach(attentionShares) { entry in
+                        Button { openDetail(entry.share) } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Text(entry.share.name).lineLimit(1).help(entry.share.name)
+                                Spacer(minLength: 12)
+                                Text(entry.reason)
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                                Image(systemName: "chevron.right")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                                    .accessibilityHidden(true)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(String(localized: "Opens this shared folder’s details."))
+                    }
+                } header: {
+                    Text(String(format: String(localized: "%lld shared folders need attention"), attentionShares.count))
+                }
+            }
             if let host {
                 Section {
                     Toggle("Include This Server in Automatic Mounting", isOn: Binding(
@@ -625,17 +747,19 @@ private struct ServerSharesView: View {
         .navigationTitle(server.displayName)
         .navigationSubtitle(server.host)
         .toolbar {
+            // Per-server actions live here, next to the server they act on. Global
+            // actions stay at the sidebar bottom, so a gear here never means app settings.
             ToolbarItem {
-                Menu {
-                    Button("Refresh Status") { model.reload() }
-                        .disabled(model.busy)
-                    Divider()
-                    Button("Server Settings…") { showingServerSettings = true }
-                        .disabled(host == nil)
-                } label: {
-                    Label("More", systemImage: "ellipsis.circle")
+                Button("Refresh Status", systemImage: "arrow.clockwise") { model.reload() }
+                    .disabled(model.busy)
+                    .help("Refresh Status")
+            }
+            ToolbarItem {
+                Button("Server Settings…", systemImage: "slider.horizontal.3") {
+                    showingServerSettings = true
                 }
-                .help("More")
+                .disabled(host == nil)
+                .help("Server Settings…")
             }
         }
         .sheet(isPresented: $showingServerSettings) {
@@ -726,8 +850,9 @@ private struct ServerSharesView: View {
     }
 }
 
-/// One share row: name, status and a single primary action. Address, locations,
-/// indexing, editing and removal live in the detail sheet.
+/// One share row. The whole row (and its trailing chevron) opens the detail; the row
+/// never carries a state-dependent action button, so its entry point does not move.
+/// Finder, mount, eject and location actions live in the detail and the context menu.
 struct ShareRowView: View {
     @Bindable var model: ApplicationModel
     let host: HostConfig?
@@ -749,6 +874,7 @@ struct ShareRowView: View {
         case .usable: String(localized: "Available")
         case .notMounted: String(localized: "Not mounted")
         case .locationMismatch: String(localized: "Mounted at a different location")
+        case .locationOccupied: String(localized: "Location occupied")
         case .suppressedForThisSession: String(localized: "Ejected for this session")
         case .notEvaluatedThisRound: String(localized: "Not checked in the last round")
         case .unreachable: String(localized: "Server not reachable")
@@ -758,6 +884,28 @@ struct ShareRowView: View {
     }
 
     var body: some View {
+        if share.managed {
+            Button { openDetail(share) } label: { managedLabel }
+                .buttonStyle(.plain)
+                .accessibilityLabel(accessibilityText)
+                .accessibilityHint(String(localized: "Opens this shared folder’s details."))
+                .contextMenu { managedMenu }
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                addableLabel
+                Spacer(minLength: 12)
+                Button("Add") { model.addShare(smbURL: share.smbURL) }
+                    .disabled(model.busy)
+            }
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+            .onTapGesture { openDetail(share) }
+            .accessibilityElement(children: .contain)
+            .contextMenu { Button("Show Details") { openDetail(share) } }
+        }
+    }
+
+    private var managedLabel: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(share.name).lineLimit(1).help(share.name)
@@ -767,44 +915,42 @@ struct ShareRowView: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 12)
-            primaryAction
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
-        .onTapGesture { openDetail(share) }
-        .contextMenu {
-            Button("Show Details") { openDetail(share) }
-            if let config = configuredShare, let host {
-                if model.availability(of: config) == .usable {
-                    Button("Eject") { Task { await model.eject(host: host, share: config) } }
-                } else {
-                    Button("Mount This Shared Folder") { Task { await model.mount(host: host, share: config) } }
-                }
-            }
+    }
+
+    private var addableLabel: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(share.name).lineLimit(1).help(share.name)
+            Text(statusText)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
         }
+        .padding(.vertical, 2)
+    }
+
+    private var accessibilityText: String {
+        "\(share.name), \(statusText)"
     }
 
     @ViewBuilder
-    private var primaryAction: some View {
-        if !share.managed {
-            Button("Add") { model.addShare(smbURL: share.smbURL) }
-                .disabled(model.busy)
-        } else if let config = configuredShare {
+    private var managedMenu: some View {
+        Button("Show Details") { openDetail(share) }
+        if let config = configuredShare, let host {
             switch model.availability(of: config) {
-            case .usable:
+            case .usable, .locationMismatch:
                 Button("Open in Finder") { model.openInFinder(config) }
-            case .locationMismatch:
-                Button("Review Locations") { openDetail(share) }
-            case .authenticationRequired, .failed:
-                // Sign-in and share failures need the cause and the next step, which the
-                // detail states; opening a not-mounted folder would report the wrong reason.
-                Button("Show Details") { openDetail(share) }
-            case .unreachable:
-                Button("Try Again") { Task { if let host { await model.mount(host: host, share: config) } } }
-                    .disabled(host == nil)
+                Button("Eject") { Task { await model.eject(host: host, share: config) } }
+            case .locationOccupied:
+                Button("Show the Occupying Folder in Finder") { model.openPathInFinder(config.mountPoint) }
             default:
-                Button("Mount This Shared Folder") { Task { if let host { await model.mount(host: host, share: config) } } }
-                    .disabled(host == nil)
+                Button("Mount This Shared Folder") { Task { await model.mount(host: host, share: config) } }
             }
         }
     }

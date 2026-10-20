@@ -183,21 +183,61 @@ public enum BackgroundEvaluator {
     }
 
     /// 可注入核心：async 探活与 worker 副作用均来自参数，判定来自共享 `RecoveryVolumeDecisionPolicy`。
+    ///
+    /// 挂载范围（FR-027）：`first_reachable` 只处理首个可达服务器的启用共享；
+    /// `all_reachable` 按保存顺序处理所有可达服务器。两种策略都按顺序探测与执行，不并行；
+    /// 单个服务器不可达或单个共享失败不阻止其余服务器继续，结果按目标逐项记录。
     static func evaluate(directory: URL, snapshot: ConfigSnapshot, backend: BackendState,
                          deadline: ContinuousClock.Instant, probe: any ReachabilityProbe,
                          effects: BackgroundVolumeEffects,
                          isolation: isolated (any Actor)? = #isolation) async throws -> BackgroundEvaluationSummary {
-        guard let host = try await HostPriorityEvaluator.firstReachable(in: snapshot.configuration,
-            deadline: deadline, probe: probe) else {
-            return BackgroundEvaluationSummary(issue: .offline)
+        let configuration = snapshot.configuration
+        let policy = configuration.effectiveMountPolicy
+        let reachable = try await HostPriorityEvaluator.reachableHosts(in: configuration,
+            deadline: deadline, probe: probe, stopAfterFirst: policy == .firstReachable)
+        guard !reachable.isEmpty else {
+            return BackgroundEvaluationSummary(issue: ContinuousClock.now < deadline ? .offline : .timeout)
         }
+        // first_reachable preserves the historical single-host round; all_reachable walks
+        // every reachable host in the same saved order.
+        let hosts = policy == .allReachable ? reachable : Array(reachable.prefix(1))
+        var observations: [VolumeObservation] = []
+        var firstIssue: AutomntIssue?
+        var retrySuggested = false
+        for host in hosts {
+            guard ContinuousClock.now < deadline else { break }
+            let outcome = try await evaluateHost(host, directory: directory, snapshot: snapshot,
+                backend: backend, deadline: deadline, effects: effects)
+            observations.append(contentsOf: outcome.observations)
+            if firstIssue == nil { firstIssue = outcome.issue }
+            retrySuggested = retrySuggested || outcome.retrySuggested
+        }
+        // superseded 剔除唯一实现在 `RecoverySupersededPolicy`（新主机已同一路径接管）。
+        let filtered = supersededFiltered(observations, configuration: configuration)
+        return BackgroundEvaluationSummary(observations: filtered, issue: firstIssue,
+            retrySuggested: retrySuggested)
+    }
+
+    /// One host's complete share pass. An early exit stops this host only; the caller
+    /// decides whether another reachable host still runs (all_reachable).
+    private struct HostEvaluation {
+        let observations: [VolumeObservation]
+        let issue: AutomntIssue?
+        let retrySuggested: Bool
+    }
+
+    private static func evaluateHost(_ host: HostConfig, directory: URL, snapshot: ConfigSnapshot,
+                                     backend: BackendState, deadline: ContinuousClock.Instant,
+                                     effects: BackgroundVolumeEffects,
+                                     isolation: isolated (any Actor)? = #isolation) async throws -> HostEvaluation {
         var observations: [VolumeObservation] = []
         var deferred = false
         var definiteFailure: AutomntIssue?
         for share in host.shares where share.enabled {
             try Task.checkCancellation()
             guard ContinuousClock.now < deadline, let identity = smbResourceIdentity(share.smbURL) else {
-                return BackgroundEvaluationSummary(observations: observations, issue: .timeout)
+                return HostEvaluation(observations: observations, issue: .timeout,
+                    retrySuggested: deferred || definiteFailure != nil)
             }
             let recovery = RecoveryStateRepository(url: directory.appendingPathComponent("mount-recovery-state.plist")).read()
             let path = effects.mountPathState(share.mountPoint)
@@ -206,9 +246,13 @@ public enum BackgroundEvaluator {
             // 挂载点状态门（非恢复规则）：不可用/占用/其他身份一律阻断。
             if let blocked = BaselineMountDecision.block(path: path, identity: identity) {
                 switch blocked {
-                case .blocked(let issue): return BackgroundEvaluationSummary(observations: observations, issue: issue)
+                case .blocked(let issue):
+                    return HostEvaluation(observations: observations, issue: issue,
+                        retrySuggested: deferred || definiteFailure != nil)
                 case .inspectExisting: break
-                case .mount, .suppressed, .deferred: return BackgroundEvaluationSummary(observations: observations, issue: .pathConflict)
+                case .mount, .suppressed, .deferred:
+                    return HostEvaluation(observations: observations, issue: .pathConflict,
+                        retrySuggested: deferred || definiteFailure != nil)
                 }
             }
 
@@ -221,7 +265,8 @@ public enum BackgroundEvaluator {
                 let response = try effects.inspect(share, host, snapshot, backend, directory, deadline)
                 if let observation = response.observation { observations.append(observation) }
                 if let issue = response.issue {
-                    return BackgroundEvaluationSummary(observations: observations, issue: issue)
+                    return HostEvaluation(observations: observations, issue: issue,
+                        retrySuggested: deferred || definiteFailure != nil)
                 }
                 judgment = judge(identity: identity, share: share, configuration: snapshot.configuration,
                     recovery: recovery, present: true, health: healthEvidence(of: response.observation))
@@ -236,7 +281,8 @@ public enum BackgroundEvaluator {
                     _ = observation
                     let cleaned = try effects.cleanup(share, host, snapshot, backend, directory, deadline)
                     if let issue = cleaned.issue {
-                        return BackgroundEvaluationSummary(observations: observations, issue: issue)
+                        return HostEvaluation(observations: observations, issue: issue,
+                            retrySuggested: deferred || definiteFailure != nil)
                     }
                     // Clear the obsolete failed observation before the replacement mount.
                     observations.removeLast()
@@ -282,24 +328,25 @@ public enum BackgroundEvaluator {
                     definiteFailure = issue
                     continue
                 }
-                return BackgroundEvaluationSummary(observations: observations, issue: issue)
+                return HostEvaluation(observations: observations, issue: issue,
+                    retrySuggested: deferred || definiteFailure != nil)
             }
             // Mount confirmation establishes kernel identity only; verify access in a new child.
             let healthRemaining = ContinuousClock.now.duration(to: deadline).components
             let healthSeconds = Double(healthRemaining.seconds) + Double(healthRemaining.attoseconds) / 1e18
             guard healthSeconds > 0 else {
                 if let observation = response.observation { observations.append(observation) }
-                return BackgroundEvaluationSummary(observations: observations, issue: .timeout)
+                return HostEvaluation(observations: observations, issue: .timeout,
+                    retrySuggested: deferred || definiteFailure != nil)
             }
             let healthResponse = try effects.inspect(share, host, snapshot, backend, directory, deadline)
             if let observation = healthResponse.observation { observations.append(observation) }
             if let issue = healthResponse.issue {
-                return BackgroundEvaluationSummary(observations: observations, issue: issue)
+                return HostEvaluation(observations: observations, issue: issue,
+                    retrySuggested: deferred || definiteFailure != nil)
             }
         }
-        // superseded 剔除唯一实现在 `RecoverySupersededPolicy`（新主机已同一路径接管）。
-        let filtered = supersededFiltered(observations, configuration: snapshot.configuration)
-        return BackgroundEvaluationSummary(observations: filtered, issue: definiteFailure,
+        return HostEvaluation(observations: observations, issue: definiteFailure,
             retrySuggested: deferred || definiteFailure != nil)
     }
 

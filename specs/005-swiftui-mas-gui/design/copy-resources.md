@@ -433,3 +433,64 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 - “Try Automatic Mounting Now”使用闪电图标，tooltip 同名；不是刷新。
 - “Refresh Status”和“Server Settings…”收进“更多”菜单。
 - 轮次启动被残留 worker intent 阻塞时，提示“上一次挂载操作没有完成。请先修复后台挂载，再重试本轮检查。”，不再使用“无法确认该操作”。
+
+
+# 2026-10-21 位置、共享行、排序与配置冲突
+
+| ID | 中文候选 | 语境/行为 |
+| --- | --- | --- |
+| location.mountedElsewhere | 挂载在其他位置 | 同一共享身份已在另一路径；不表示挂载失败 |
+| location.actualHelp | 这个共享文件夹已经挂载在另一个位置。使用配置位置的任务可能找不到它。 | 详情解释，列出配置/实际位置 |
+| location.useActual | 使用此位置 | 把配置挂载位置改为当前实际路径；不迁移、不弹出 |
+| location.openActual | 在 Finder 中打开实际位置 | 只打开实际路径，不打开配置路径 |
+| location.occupied | 位置已被占用 | 配置位置被另一个卷占用，不是恢复失败 |
+| location.occupiedHelp | 配置的挂载位置被另一个卷占用。Automnt 不会替换它。 | 说明不提供弹出占用卷主按钮 |
+| location.showOccupying | 在 Finder 中显示占用位置 | 只查看，不弹出 |
+| location.updated | 已使用当前挂载位置。以后会按新位置挂载。 | 改位置成功后的确认 |
+| share.review | 查看详情 | 行尾 chevron/整行进入详情；不再按状态换主按钮 |
+| share.attentionHelp | 查看每个共享文件夹的原因和下一步。 | 服务器详情顶部的问题摘要卡 |
+| server.orderHelpFirst | 按此顺序检查服务器，找到第一个可达的服务器后停止。 | 默认 first_reachable |
+| server.orderHelpAll | 按此顺序检查所有可达的服务器。 | all_reachable |
+| server.orderDrag | 拖动调整顺序 | 拖拽把手 tooltip |
+| server.orderFiltered | 清除搜索后可调整顺序。 | 过滤时禁用排序 |
+| server.mountScope | 挂载范围 | 设置项名称 |
+| server.mountScopeFirst | 只挂载第一个可达的服务器 | 默认选项 |
+| server.mountScopeAll | 挂载所有可达的服务器 | 可选策略 |
+| server.mountScopeHelp | 服务器按左侧顺序检查。选择第一项时，找到第一个可达服务器后停止；选择第二项时，继续检查并处理所有可达服务器的共享文件夹。 | 设置说明，随选项变化 |
+| config.conflict | 配置已在另一个窗口或命令行中更新。重新读取最新设置后再继续。 | 不再只写“配置已更改” |
+| config.reload | 重新读取设置 | 冲突卡的明确入口 |
+| config.reloadedDraft | 已重新读取最新设置。你的输入还在，请核对后再保存。 | 表单内重新读取后 |
+| config.conflictHelp | 重新读取不会挂载、弹出或覆盖你正在输入的内容。 | 冲突说明辅助 |
+
+# 2026-10-21 实现定稿文案
+
+上一节的候选表用于评审；实际落盘以九语资源 `apps/Automnt/Resources/Localizable.xcstrings` 的键为准。本节记录实现采用的英文源键与简体中文，二者与资源条目一致；其余八语由同一批条目提供（草稿，待母语审校）。
+
+| 英文源键 | 简体中文 | 语境 |
+| --- | --- | --- |
+| Mount Scope | 挂载范围 | 设置「自动挂载」组选择器名称 |
+| First Reachable Server | 首个可达服务器 | 默认选项（first_reachable） |
+| All Reachable Servers | 所有可达服务器 | 可选策略（all_reachable） |
+| Servers are checked in the order shown in the sidebar. The first option stops at the first reachable server; the second also mounts the shared folders of every other reachable server. | 服务器按侧栏显示的顺序检查。选择第一项时，找到第一个可达服务器后停止；选择第二项时，还会挂载其余所有可达服务器的共享文件夹。 | 选择器说明，随选项解释差别 |
+| Mount scope saved. The next round checks servers in this scope. | 挂载范围已保存。下一轮检查会按这个范围执行。 | 保存后的确认 |
+| Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait. | 拖动行的把手可以调整顺序。一次检查按此顺序进行，找到第一个可达服务器后停止，后面的服务器会等待。 | 默认策略的排序脚注 |
+| Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted. | 拖动行的把手可以调整顺序。按此顺序检查所有可达服务器，并挂载它们的共享文件夹。 | all_reachable 的排序脚注 |
+| Drag to change the order | 拖动调整顺序 | 拖拽把手 tooltip |
+| Clear the search to change the order. | 清除搜索后再调整顺序。 | 过滤时脚注，说明排序禁用原因 |
+| Mounted at a different location | 挂载在其他位置 | 行/详情状态：同一身份挂在别处，可用 |
+| This shared folder is already mounted at another location, so tasks that use the configured location may not find it. Open it there or use that location. | 这个共享文件夹已经挂载在另一个位置，使用配置位置的任务可能找不到它。请在那里打开它，或改用那个位置。 | 位置不同的下一步与影响说明 |
+| Open the Actual Location in Finder | 在 Finder 中打开实际位置 | 打开实际挂载路径，不是配置路径 |
+| Use This Location | 使用此位置 | 把配置位置改为当前实际路径 |
+| Using the current mount location. Future mounts use the new location. | 已改用当前挂载位置。以后会按新位置挂载。 | 改位置成功后的确认 |
+| Location occupied | 位置被占用 | 行状态：配置路径被其他卷占用 |
+| Location occupied by another volume | 位置被另一个卷占用 | 详情状态标题 |
+| Another volume occupies the configured location. Automnt will not replace it. Show it in Finder, or choose a different location for this shared folder. | 配置的挂载位置被另一个卷占用。Automnt 不会替换它。可在 Finder 中查看它，或为这个共享文件夹选择其他位置。 | 占用状态的下一步；不提供弹出占用卷 |
+| Show the Occupying Folder in Finder | 在 Finder 中显示占用位置 | 只查看占用路径 |
+| Opens this shared folder’s details. | 打开此共享文件夹的详情。 | 行/问题列表的辅助功能提示 |
+| %lld shared folders need attention | %lld 个共享文件夹需要处理 | 服务器详情问题列表标题（复用既有键） |
+| The configuration changed in another window or from the command line. Reload the latest settings; your input is kept. | 配置已在另一个窗口或命令行中更改。请重新读取最新设置；你的输入会保留。 | 保存冲突说明 |
+| Reload Settings | 重新读取设置 | 冲突卡的明确入口 |
+| Reloaded the latest settings. Your input is kept; check it before saving. | 已重新读取最新设置。你的输入仍然保留；保存前请核对。 | 重新读取成功后的确认 |
+| Reloading does not mount, eject or overwrite what you typed. | 重新读取不会挂载、弹出或覆盖你输入的内容。 | 冲突卡辅助说明，说明安全边界 |
+| Every enabled server is checked in the saved order, so this server was not reached in the last round. It is not an error. | 所有启用的服务器都会按保存的顺序检查，所以上一轮没有访问到这台服务器。这不是错误。 | 「上轮未检查」在 all_reachable 下的解释 |
+| That folder is no longer available. Refresh the list and check the current location. | 该文件夹已不可用。请刷新列表并检查当前位置。 | 打开已消失的实际/占用路径 |
