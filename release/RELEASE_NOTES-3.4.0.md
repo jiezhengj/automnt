@@ -13,7 +13,7 @@ Automnt 3.4.0 完成 Feature 005：原生 SwiftUI 图形界面、GUI/CLI 共用�
 
 # 下载
 
-- `automnt`：预编译命令行二进制（macOS 27 / Apple silicon）。
+- `automnt`：预编译命令行二进制（macOS 27 / Apple silicon）。单独下载后需先 `chmod +x automnt`；zip 内的 `payload/automnt` 保留执行权限。
 - `Automnt-3.4.0-offline.zip`：签名 GUI + CLI + 安装/限制/版本说明。
 - `Automnt-3.4.0-offline.zip.sha256`：离线包校验值。
 

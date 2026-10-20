@@ -5,6 +5,15 @@
 | 中文 | [README.zh.md](./README.zh.md) | [ARCHITECTURE.zh.md](./ARCHITECTURE.zh.md) |
 | English | [README.en.md](./README.en.md) | [ARCHITECTURE.en.md](./ARCHITECTURE.en.md) |
 
+# 下载 / Download
+
+从 [GitHub Releases](https://github.com/jiezhengj/automnt/releases) 下载：
+
+- `Automnt-3.4.0-offline.zip`：签名 GUI + CLI + 安装与限制说明。
+- `automnt`：预编译 CLI；单独下载后先运行 `chmod +x automnt`。
+
+当前构建使用免费 Apple Development 签名，未公证，也未提交 App Store；仅支持 macOS 27.0+ / Apple silicon。完整限制见 [已知限制](./release/offline/known-limitations.zh.md)。
+
 # 简介 / Overview
 
 macOS 原生轻量级网络存储（SMB）自动化挂载工具。基于目标主机 TCP 445 端口服务可达性探测与事件驱动响应，提供完全静默、免密码、断网自动超时清理与丢失自动恢复的稳定挂载体验。

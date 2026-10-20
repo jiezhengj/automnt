@@ -1,4 +1,4 @@
-This is a local offline build of Automnt for the same Mac or the same development team. It is not a public distribution channel. A free Apple Development signature is not a Developer ID signature and is not notarized; Gatekeeper may block it on other Macs.
+This is the free offline build of Automnt 3.4.0, distributed through GitHub Releases. It uses a free Apple Development signature, is not notarized, and is not distributed through the App Store; Gatekeeper may block it on other Macs.
 
 # Contents
 
@@ -22,7 +22,10 @@ shasum -a 256 -c Automnt-3.4.0-offline.zip.sha256
 
 # Install the command line (optional)
 
+`payload/automnt` keeps its executable bit when unzipped. If you download the standalone `automnt` release asset, browsers usually drop it; run:
+
 ```sh
+chmod +x automnt
 ./automnt --install
 ```
 
