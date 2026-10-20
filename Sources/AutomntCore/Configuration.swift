@@ -311,7 +311,13 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
         // 缺省语义：键缺失 = 启用（FR-008 默认启用）
         self.autoMountRecovery = try container.decodeIfPresent(Bool.self, forKey: .autoMountRecovery)
         self.automationEnabled = try container.decodeIfPresent(Bool.self, forKey: .automationEnabled)
-        self.mountPolicy = try container.decodeIfPresent(MountPolicy.self, forKey: .mountPolicy)
+        // A newer writer's unknown policy must not make the whole configuration
+        // unreadable; it falls back to the default (first reachable) instead.
+        if let raw = try container.decodeIfPresent(String.self, forKey: .mountPolicy) {
+            self.mountPolicy = MountPolicy(rawValue: raw)
+        } else {
+            self.mountPolicy = nil
+        }
     }
 
     public func encode(to encoder: Encoder) throws {

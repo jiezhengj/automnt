@@ -6152,7 +6152,7 @@ func usageText() -> String {
 
     选项:
       --init [--reset]            运行交互式初始化配置向导 (--reset 重置现有配置)
-      --config                    运行日常配置管理菜单 (管理挂载目标、网络策略、更新信道)
+      --config                    运行日常配置管理菜单 (管理挂载目标、网络策略、挂载范围、更新信道)
       --mount <smb-url>           只挂载一个已在配置中的共享 (例如 smb://server.example/share)
       --eject <smb-url>           普通弹出该共享 (非强制；占用时如实失败，尊重本次会话的弹出意愿)
       --install                   部署并激活当前用户的 LaunchAgent 自启动服务
@@ -6182,7 +6182,7 @@ func usageText() -> String {
 
     Options:
       --init [--reset]            Run setup wizard (--reset rebuilds existing config)
-      --config                    Daily configuration menu (shares, profiles, updates)
+      --config                    Daily configuration menu (shares, profiles, mount scope, updates)
       --mount <smb-url>           Mount one configured share only (e.g. smb://server.example/share)
       --eject <smb-url>           Ordinary eject of that share (never forced; busy fails honestly and your intent is respected)
       --install                   Deploy and activate user LaunchAgent daemon

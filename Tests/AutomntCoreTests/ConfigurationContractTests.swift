@@ -130,4 +130,17 @@ struct ConfigurationContractTests {
         #expect(final.configuration.effectiveMountPolicy == .firstReachable)
         #expect(final.configuration.hosts == first.configuration.hosts)
     }
+
+    /// 未来版本写入未知 mount_policy 时，旧版本仍须能读取配置并使用默认策略，
+    /// 不能因一个枚举值让整个配置不可读。
+    @Test func unknownMountPolicyValueFallsBackToDefault() throws {
+        let plist: [String: Any] = [
+            "version": AutomntBuildVersion.value,
+            "mount_policy": "serial_then_parallel",
+        ]
+        let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+        let decoded = try PropertyListDecoder().decode(AutomntConfig.self, from: data)
+        #expect(decoded.mountPolicy == nil)
+        #expect(decoded.effectiveMountPolicy == .firstReachable)
+    }
 }
