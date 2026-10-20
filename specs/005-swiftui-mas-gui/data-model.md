@@ -1,6 +1,6 @@
 # 活动意图
 
-**存储（方案 A）**：CLI-only、GUI-only 与共同安装均以真实用户 `~/Library/Application Support/automnt/automnt.plist` 为唯一活动业务配置。真实 home 由账户身份（getpwuid/getuid）解析，不使用沙盒 HOME/Application Support 或 App Group 业务副本。程序定位并在合法权限内准备目录；首次、设置、CLI 共用和权限恢复均不要求识别内部路径或选目录，必要授权仅真实系统许可下允许/拒绝。目录 0700、配置 0600、同目录原子替换，稳定锁 inode 不替换。保留 hosts/shares、profiles 兼容桥接、retry_policy、auto_mount_recovery、version 和无凭据未知字段，缺恢复开关仍为启用。首次有效添加才生成配置；取消、未授权/读取失败不写配置、不新挂载或接管，旧快照过期只读。目录缺失时由程序在已获合法权限内准备；权限不足显示准确原因与重试，不临时要求选择父目录或回退容器。固定真实路径、目录身份/符号链接核对、仓库 CAS 与访问状态保护已有基础；user-selected entitlement/书签仅恢复合法选择授权，不证明任意外部目录的 generic Allow/Deny。T083 先论证各身份读写/锁/原子替换机制，T084 再实现入口，T093 验证独立后台；均为已追加未完成任务。方案 A 架构保留，NSOpenPanel/父 scope/子书签属于历史实施范围，不迁移 CLI 至 App Group、不建第二来源或轮询同步、不静默停旧服务。
+**存储（方案 A）**：CLI-only、GUI-only 与共同安装均以真实用户 `~/Library/Application Support/automnt/automnt.plist` 为唯一活动业务配置。真实 home 由账户身份（getpwuid/getuid）解析，不使用沙盒 HOME/Application Support 或 App Group 业务副本。程序定位并在合法权限内准备目录；首次、设置、CLI 共用和权限恢复均不要求识别内部路径或选目录，必要授权仅真实系统许可下允许/拒绝。目录 0700、配置 0600、同目录原子替换，稳定锁 inode 不替换。保留 hosts/shares、profiles 兼容桥接、retry_policy、auto_mount_recovery、mount_policy、version 和无凭据未知字段，缺恢复开关仍为启用、缺挂载范围仍为 `first_reachable`。首次有效添加才生成配置；取消、未授权/读取失败不写配置、不新挂载或接管，旧快照过期只读。目录缺失时由程序在已获合法权限内准备；权限不足显示准确原因与重试，不临时要求选择父目录或回退容器。固定真实路径、目录身份/符号链接核对、仓库 CAS 与访问状态保护已有基础；user-selected entitlement/书签仅恢复合法选择授权，不证明任意外部目录的 generic Allow/Deny。T083 先论证各身份读写/锁/原子替换机制，T084 再实现入口，T093 验证独立后台；均为已追加未完成任务。方案 A 架构保留，NSOpenPanel/父 scope/子书签属于历史实施范围，不迁移 CLI 至 App Group、不建第二来源或轮询同步、不静默停旧服务。
 
 | 对象 | 字段与关系 | 校验 |
 | --- | --- | --- |
@@ -8,6 +8,7 @@
 | SMBShareConfig | name、smb_url、mount_point、enabled，归属一个 host | SMB URL 必填且包含合法 host 与非空 share，禁止用户名/密码、查询或片段；共享名及有效挂载位置不可空；添加/编辑先验证，缺 URL 不能写入。挂载身份规范化；同一主机内重复身份/挂载路径冲突拒绝；跨主机备用目标允许共用路径，按主机顺序排他，不同时挂载；路径来自产品推导或明确选择 |
 | 活动配置快照 | 原配置数据及内容摘要 revision | 保存时 compare-and-swap；并发改动提示重新读取/审阅，不覆盖别人修改 |
 | 自动化意图 | automation_enabled，缺省沿用已有启用状态 | 与 auto_mount_recovery 区分；停用禁止新挂载，不卸载现有卷；两入口同一键 |
+| 挂载范围 | mount_policy：first_reachable（缺省）/all_reachable | CLI 配置菜单与 GUI 设置写同一字段；all_reachable 仍按保存顺序顺序检查、有界时间窗、单 owner，不并行探测 |
 
 保留未知字段只能保留无凭据的既有扩展；密码进入配置即拒绝。version 是产品版本字段，不当作 schema revision 或并发 token。旧 CLI 的兼容读取/保存及新字段保留须回归验证；未协作版本接管先升级或停用，不允许盲目并发。
 
