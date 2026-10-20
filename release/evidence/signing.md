@@ -261,3 +261,9 @@ App/helper/worker 的稳定签名标识各不相同，因此不要求三者具�
 # 当前运行验收边界
 
 继续用已获授权的免费 Apple Development 身份开展真实签名 GUI/helper 运行验证，付费账号不是完整界面实施前置。验证采用的系统认证与沙盒/helper 能力、唯一共享配置所有权、真实自动挂载和三类恢复；新 HTML/原生 demo、unsigned build、typecheck 和历史逻辑测试均不能替代。本轮未执行新的签名、Keychain 或 SMB 探针。
+
+# 2026-10-20 GUI 安装位置与旧测试副本清理
+
+- 历史遗留 `~/Applications/Automnt Development.app` 是 2026-10-11 服务发现测试用的临时副本（见本文件前述记录），与正式 App 使用同一 bundle ID，但二进制、图标与资源均为旧构建；不是当前发布产物，已删除。
+- 先前打包落在 `~/Applications` 是打包步骤的选择，不是产品要求；本轮统一安装到 `/Applications/Automnt.app`，并删除 `~/Applications/Automnt.app` 与 `Automnt Development.app`。
+- 已刷新 LaunchServices，仅保留 `/Applications/Automnt.app`；实际运行路径与唯一副本均已核对。配置目录保持全新欢迎状态，未生成业务配置。
