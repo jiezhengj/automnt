@@ -2,6 +2,20 @@
 
 automnt is a native, lightweight SMB auto-mounting tool for macOS that matches network policies based on target host TCP 445 reachability and mounts shares through macOS NetFS. If usable credentials exist in Keychain, mounting proceeds silently without interactive password prompts; mount failures return clear status codes and diagnostic logs.
 
+# Project Origin and Core Problem
+
+This project began with recurring SMB problems experienced by its maintainer on macOS. The following describes the maintainer's reported experience; the macOS version where Finder behavior changed has not been verified.
+
+- Earlier macOS versions allowed the maintainer to add a server host itself to the Finder sidebar and browse its shares. In recent major versions, that workflow no longer works as before.
+- Even a specific SMB share saved in the sidebar may lose its entry after a restart or similar event when the volume is not automatically mounted. **automnt does not currently solve disappearing Finder sidebar entries.**
+- More seriously, a task that reads or writes files on an SMB volume can fail before the user realizes the share is not mounted. The user then has to interrupt the workflow, connect manually in Finder, and retry the task.
+
+The maintainer's Windows experience is that a task can access a network path without a separate manual mounting step, provided the server is reachable and credentials and permissions are valid. This comparison describes the desired user experience; automnt does not implement Windows-style connection on arbitrary path access.
+
+**automnt's core value is automatic mounting: when the server is reachable and configuration and credentials are valid, background mounting and recovery aim to make configured SMB volumes ready before tasks access them, reducing failures caused by an absent mount.** The current event-driven mechanism can delay recovery and does not guarantee successful access at every moment or when a server or credentials are unavailable.
+
+The CLI and the GUI share one configuration and the same automatic-mounting policy. The CLI remains the free, scriptable entry point; the GUI owns status, graphical setup, and recovery guidance. Manual mounting/retry is still an exceptional fallback, not a substitute for automatic mounting; a product centered on clicking to mount would not fulfill this project's purpose, since Finder already offers manual connection.
+
 # Key Features
 
 - **Silent Background Mounting**: Operates entirely in the background using macOS native `NetFS.framework`, mounting volumes without opening Finder windows or interrupting desktop workflows.
@@ -21,7 +35,17 @@ automnt is a native, lightweight SMB auto-mounting tool for macOS that matches n
 - **Fallback When Recovery Fails**: Healthy ejection and session suppression do not trigger failure notifications. If actual recovery fails, a plain-text notification lists the shares that were not restored and points at **Remount now**, at most once per round and twice per volume per session. A session boundary or successful mount resets that count.
 - **Automatic Recovery Switch**: Toggle it from **Auto-recovery switch** in the `automnt --config` main menu (enabled by default). Turning it off falls back to the current behavior — evaluate on login and network changes only — while **Remount now** stays usable. It is written only on **Save and exit**; `Esc` leaves it unchanged.
 
-**Boundary**: automnt exposes no user-facing eject/unmount action. It may force-clean a detected dead mount before recovery. Healthy ejection refers to an action the user initiates in the system (e.g. Finder).
+**Boundary**: the CLI exposes `--mount`/`--eject`, and the GUI exposes ordinary eject in a share's details. Neither treats forced unmount as a routine action; a busy volume fails honestly. The program may still clean a detected dead mount before recovery. Healthy ejection includes actions initiated in the system (e.g. Finder) or in the product entry points.
+
+
+# GUI and offline distribution (current scope)
+
+- The GUI and CLI share `~/Library/Application Support/automnt/automnt.plist` and the same mounting/recovery policy. Whether background work continues after quitting the GUI follows the real background state.
+- On first launch the program prepares the fixed settings directory itself; it never asks the user to pick an internal folder. Existing CLI targets appear automatically.
+- Servers are grouped as managed or available to add; shares support single-row add, edit, remove, and ordinary eject. Removal changes management only and never ejects or deletes files or system credentials.
+- Background automatic mounting needs system approval for the background item; without it the UI reports the real state and never pretends success.
+- This build uses a free Apple Development signature for local/same-team offline verification. It is not a public distribution channel and is not submitted to the App Store. The prebuilt CLI and source builds coexist; building from source is optional.
+- See `release/offline/` for the offline archive, checksum and install notes; see `release/offline/known-limitations.en.md` for current limits.
 
 # Quick Start
 

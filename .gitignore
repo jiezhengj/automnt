@@ -16,8 +16,15 @@ DerivedData/
 *.swiftpm/
 Packages/
 
+# Stray clang module cache created when a build argument was parsed as a path (-Xcc)
+apps/Automnt/Automnt.xcodeproj/-Xcc/
+
 # Python tooling
 __pycache__/
 *.py[cod]
 
 /.agent-state/spec_kit_component_update_cache.json
+
+# Local agent tooling state (not project content)
+.agent-cli-delegation.json
+.agent-state/

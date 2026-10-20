@@ -11,7 +11,7 @@ macOS 原生轻量级网络存储（SMB）自动化挂载工具。基于目标�
 
 A native, lightweight network storage (SMB) automation tool for macOS. Powered by target host TCP 445 reachability probing and event-driven daemon evaluation, providing silent, password-free, bounded cleanup, and automatic mount-loss recovery.
 
-交互式终端菜单（3.2.0）为初始化与日常配置提供方向键选择、空格多选、长列表滚动和 Esc 取消；配置修改仅在明确选择保存并退出后写入。
+交互式终端菜单（3.2.0）为初始化与日常配置提供方向键选择、空格多选、长列表滚动和 Esc 取消；配置修改仅在明确选择保存并退出后写入。图形界面与 CLI 共用同一配置与自动挂载规则。
 
 Interactive terminal menus (3.2.0) provide arrow-key selection, Space multi-selection, scrolling for long lists, and Escape cancellation during setup and configuration. Configuration changes are written only after choosing Save and exit.
 
@@ -23,9 +23,9 @@ Automatic mount-loss recovery (3.3.0): once the remote host is reachable again, 
 
 Healthy ejection and session suppression remain silent. Only actual recovery failures trigger a merged notification that points to **Remount now** in `automnt --config`, at most once per round and twice per volume per session. **Auto-recovery switch** defaults to enabled and takes effect only after **Save and exit**; Escape discards unsaved edits. Disabling it keeps login and network-change evaluation and the manual action.
 
-**边界说明**：automnt 不提供面向使用者的弹出/卸载入口；程序可在恢复前强制清理检测到的死卷。上述健康“弹出”指识别使用者在系统（如 Finder）中发起的动作。
+**边界说明**：CLI 提供 `--mount`/`--eject`，图形界面在共享详情中提供普通弹出；两者都把强制卸载留给恢复前的死卷清理，繁忙卷如实失败。上述健康“弹出”包括使用者在系统（如 Finder）或产品入口中发起的动作。
 
-**Boundary**: automnt exposes no user-facing eject/unmount action. It may force-clean a detected dead mount before recovery. Healthy ejection refers to an action the user initiates in the system (e.g. Finder).
+**Boundary**: the CLI exposes `--mount`/`--eject`, and the GUI exposes ordinary eject in share details. Both leave forced unmount to dead-mount cleanup before recovery; a busy volume fails honestly. Healthy ejection includes actions initiated in the system (e.g. Finder) or in the product entry points.
 
 仅支持 macOS 27.0 或更高版本的 Apple silicon（arm64）；不支持 Intel Mac。项目以 macOS 27 SDK 和新 API 为优先目标，不维护旧 macOS 或 Intel 的兼容代码；代码保持精简，且继续支持必要的配置升级迁移。
 

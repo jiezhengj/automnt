@@ -1,0 +1,9 @@
+// Shared development signing settings. Version metadata remains generated separately.
+#include "Version.xcconfig"
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Development
+// Supply DEVELOPMENT_TEAM and an exact CODE_SIGN_IDENTITY through xcodebuild.
+// Multiple local identities exist; this file intentionally selects no personal team.
+// Example: xcodebuild ... DEVELOPMENT_TEAM=<team> CODE_SIGN_IDENTITY=<certificate-hash>
+// Local inspection may explicitly disable signing with CODE_SIGNING_ALLOWED=NO.
+// Release verification rejects unsigned and ad-hoc output.

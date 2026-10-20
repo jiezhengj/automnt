@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Connected folder app icon">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#4D99FF"/>
+      <stop offset=".5" stop-color="#246BE9"/>
+      <stop offset="1" stop-color="#1543AF"/>
+    </linearGradient>
+    <radialGradient id="light" cx=".08" cy=".08" r=".96">
+      <stop stop-color="#AAD4FF" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#AAD4FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tab" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F4FAFF"/>
+      <stop offset="1" stop-color="#C8DCFF"/>
+    </linearGradient>
+    <linearGradient id="pocket" x1="0" y1="0" x2=".72" y2="1">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDF4FF"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="190%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+
+  <!-- Full bleed: operating systems may apply their own corner mask. -->
+  <rect width="1024" height="1024" fill="url(#sky)"/>
+  <rect width="1024" height="1024" fill="url(#light)"/>
+
+  <!-- The folder has only two planes, keeping the silhouette legible at small sizes. -->
+  <path d="M216 438H805V710C805 765 766 798 710 798H282C226 798 197 762 197 708V445Z"
+        transform="translate(8 13)" fill="#0E328A" opacity=".22" filter="url(#soft-shadow)"/>
+  <path d="M222 426V334C222 308 243 287 269 287H420C439 287 451 293 464 306L510 356H747C781 356 805 380 805 414V672H222Z"
+        fill="url(#tab)"/>
+  <path d="M224 422H799C818 422 831 436 831 454V699C831 742 800 773 757 773H267C224 773 193 742 193 699V454C193 436 206 422 224 422Z"
+        fill="url(#pocket)"/>
+
+  <!-- One continuous connected loop replaces separate overlapping chain parts. -->
+  <path d="M512 565
+           C480 524 450 499 414 499
+           C371 499 343 528 343 568
+           C343 608 371 637 414 637
+           C453 637 478 608 512 565
+           C546 523 573 499 611 499
+           C653 499 681 529 681 568
+           C681 607 653 637 611 637
+           C570 637 544 609 512 565Z"
+        fill="none" stroke="#2057C8" stroke-width="48"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

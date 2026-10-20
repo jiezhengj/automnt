@@ -1,0 +1,226 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "Automnt: Automatic recovery incomplete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt: Automatic recovery incomplete"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt：自动恢复未完成"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt：自動復原未完成"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt：自動復旧が完了していません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt: 자동 복구 미완료"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt: Automatische Wiederherstellung unvollständig"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt : Rétablissement automatique incomplet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt: Recuperación automática incompleta"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt: Recuperação automática incompleta"
+          }
+        }
+      }
+    },
+    "%lld shared folders could not be mounted automatically. Open Automnt to review.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "One shared folder could not be mounted automatically. Open Automnt to review."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld shared folders could not be mounted automatically. Open Automnt to review."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 个共享文件夹未能自动挂载。请打开 Automnt 查看详情。"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hant": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個共享檔案夾未能自動掛載。請打開 Automnt 查看詳細資訊。"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld 個の共有フォルダを自動でマウントできませんでした。Automnt を開いて詳細を確認してください。"
+                }
+              }
+            }
+          }
+        },
+        "ko": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "공유 폴더 %lld개를 자동으로 마운트하지 못했습니다. Automnt를 열어 자세히 확인하세요."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ein freigegebener Ordner konnte nicht automatisch verbunden werden. Öffne Automnt, um die Details zu prüfen."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld freigegebene Ordner konnten nicht automatisch verbunden werden. Öffne Automnt, um die Details zu prüfen."
+                }
+              }
+            }
+          }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Un dossier partagé n’a pas pu être monté automatiquement. Ouvrez Automnt pour consulter les détails."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld de dossiers partagés n’ont pas pu être montés automatiquement. Ouvrez Automnt pour consulter les détails."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld dossiers partagés n’ont pas pu être montés automatiquement. Ouvrez Automnt pour consulter les détails."
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No se ha podido montar automáticamente una carpeta compartida. Abre Automnt para consultar los detalles."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No se han podido montar automáticamente %lld de carpetas compartidas. Abre Automnt para consultar los detalles."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "No se han podido montar automáticamente %lld carpetas compartidas. Abre Automnt para consultar los detalles."
+                }
+              }
+            }
+          }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Não foi possível montar automaticamente uma pasta compartilhada. Abra o Automnt para ver os detalhes."
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Não foi possível montar automaticamente %lld de pastas compartilhadas. Abra o Automnt para ver os detalhes."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Não foi possível montar automaticamente %lld pastas compartilhadas. Abra o Automnt para ver os detalhes."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

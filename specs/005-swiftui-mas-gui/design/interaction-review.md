@@ -1,0 +1,209 @@
+**当前规范（2026-10-13；保留方案 A 架构，撤回目录选择例外）**：程序决定并准备固定目录，GUI/CLI 使用真实用户的唯一活动配置及单后台 owner。首次、设置、CLI 共用和恢复均不让用户选择、寻找或手工创建内部目录；之前 NSOpenPanel/父目录选择例外撤回。仅在真实系统授权需要时允许/拒绝，普通应用 alert 不产生沙盒文件权限；免目录选择机制尚未证实，不承诺通用 Allow/Deny API。失败不创建平行配置、不显示零目标、不新挂载或接管，已有快照只读。历史 290 项测试、签名与中文首次窗口不证明当前权限、独立 helper 生命周期、MAS 或九语验收。本轮仅文档，最新规格覆盖旧实现与历史评审。
+
+# 当前审计状态与验收范围
+
+下文历史轮次正文、测试数字和证据原样保留，只适用于当时版本。现有应用已有单行添加、完整无凭据 SMB URL、用途说明、访问状态与 CAS，不应描述为完全未实现。确认缺口包括已管理服务器新增发现共享未合并、编辑开始 revision/身份及保存基线不足、实际退出草稿保护未接通、生命周期观察不足、无选择引导及窄导航不足。保存后反复提示为尚未复现的用户反馈，不将全部 save 判为故障；共享编辑与原生 demo 的成功关闭证据不证明服务器编辑或实际退出通过。
+
+指定图标源与 Assets 不一致，需同源全部尺寸再生成、内容新鲜度校验和新构建真实 Finder .app/Dock 验收，旧尺寸检查不证明完成。CLI 中断 owner 转换已有通用协调器，但 GUI app-only 调用不是 CLI owner 的生产恢复入口；历史楔住风险保留，后续 T092 显式恢复，不人工改业务配置。免目录选择机制待当前 Apple 资料与真实身份验证，2018 归档指南不作当前机制证明；历史 290 tests/签名/中文窗口不证明新权限、独立 helper、MAS 或九语。
+
+T083–T094 已追加至[主任务清单](../tasks.md)，全部未完成；本文件引用其编号，不表示实现或验收通过。依次覆盖授权架构、统一访问、图标、发现合并、编辑 CAS/dirty/身份、实际退出草稿、生命周期刷新、无选择/窄导航、字段校验文案、owner 中断恢复、真实后台矩阵和全界面原生九语验收。 T093/T094 仍需 GUI 退出、真实登录/重启/升级、网络变化及 SMB 文件访问、九语可靠审校/长变量/宽窄窗/大字/浅深色/键盘/VoiceOver/保存退出焦点/真实图标矩阵；支持/法律/URL未确认。本轮不改代码/资产/demo、不构建或新增真实运行结果。
+
+# 2026-10-12 签名构建与真实 SMB 运行验收
+
+维护者随后要求用免费 Apple Development 身份做真实签名构建与真实运行验收，并授权卸载旧安装、替换工作区根二进制。**本轮不再只是逻辑层证据**：以下均在真实 macOS 27 环境、真实 SMB 目标上执行。
+
+## 环境与授权边界
+
+- 签名身份：`Apple Development: developer@example.test (ABCDE12345)`，Team `TEAMID1234`（免费账号，无可分发/公证含义）。
+- 真实目标：局域网 NAS `nas.example.test`（共享 `personal_folder`/`finalhome`，TCP 445 可达）与 Tailscale 远程 `198.51.100.10`（同共享）。
+- 已按维护者指示 `launchctl bootout` 并删除旧 `com.user.automnt` LaunchAgent 与 `~/Library/Application Support/automnt`，其后全部数据由**新版本程序自身**在真实环境生成（未手工代写 plist）。未推送、未发布、未递增版本号。
+
+## 真实签名产物
+
+| 命令 | 结果 |
+| --- | --- |
+| `xcodebuild Release`（Apple Development, Manual） | BUILD SUCCEEDED |
+| `scripts/verify-signature.sh` | exit 0（app/helper/worker 同团队、entitlements 精确匹配、嵌套 seal 通过） |
+| 三个产物 Designated Requirement | 各自 identifier 稳定（`org.automnt.automnt` / `…worker` / `…helper`），同一 leaf 证书与 Team；身份连续 |
+| `scripts/build.sh` 产出的 CLI + `codesign --identifier automnt` | strict 验证 exit 0；`--self-test` 295 passed / 0 failed |
+| 工作区根 `automnt` 替换 | 已替换为 3.4.0 签名候选（`Identifier=automnt`），`--version`=3.4.0，`--self-test` 295/0；替换前确认目标为非 symlink 本地文件 |
+
+**发现并修正的真实缺陷（构建脚本层）**：`scripts/build.sh` 原先不执行任何签名，而 CLI 的 `--install`/`BinarySigningPolicy` 要求候选具备 `anchor apple generic and identifier "automnt"` 的有效签名——因此该脚本的默认输出**无法自我安装/替换**（实测报“代码签名无效或与已安装版本身份不兼容”）。同时确认签名 identifier 必须恰为 `automnt`（用 `org.automnt.cli` 或省略都会被拒）。**已修复**：脚本现在显式签名并 `--strict` 验证，身份优先复用现有根二进制已用的证书（因为 Designated Requirement 内嵌叶子证书 CN，换证书会改变系统识别到的程序身份，与宪法 V 冲突），否则回退到本机任一 Apple Development/Developer ID Application；找不到身份时明确告警而不静默产出无法安装的二进制。可用 `AUTOMNT_SIGN_IDENTITY` 显式指定。修复后实测：脚本产物 `signed: … (identifier automnt)`、strict 通过、`--install` 真实注册成功；并且新产物满足被替换方（根二进制）的 Designated Requirement，**身份连续性保持**。
+
+**发现并修复的真实缺陷（全新安装永远失败）**：`CLIOwnership.registrationRefusal()` 在**无配置文件**的首次安装时，让 `FileConfigRepository.read()` 的 ENOENT 落入通用 `catch`，返回 `requiresRepair`；而 `--install` 在调用 `performRegistration()` 之前先做该预检，于是**全新机器上的首次安装必然被拒**（日志 `CLI registration precheck failed: … Code=2 "No such file or directory"`）。`performRegistration()` 本身已正确处理“无配置不建立与文件不符的所有权状态”分支，只是永远轮不到执行。修复：在预检中把 ENOENT 与真正的读取失败分开，前者放行给 `performRegistration()`。修复后在同一台真实干净系统上 `--install` 成功注册 `com.user.automnt`（此前每次必失败）。`swift test` 285 项仍全绿。
+
+**发现但未修复的真实缺陷（CLI 无中断转换恢复入口）**：真实测试中我用 `launchctl kickstart -k` 在服务转换进行中重启了守护进程，使持久状态停在 `owner=cli / phase=stopping`（journal 的 `pending` 未完成）。此后 CLI 的所有入口（`--install`、`--config`、直接运行评估）都只返回 `requiresRepair`/`transitionInFlight`，**没有任何 CLI 修复入口**：`HandoffCoordinator.recoverInterruptedTransition` 只有 GUI 调用，而 GUI 的调用点又显式要求 `owner != .cli`，因此 CLI 拥有的楔住状态在两端都无法恢复。最终用 `--uninstall --purge` 清理后重建才恢复。这是真实的健壮性缺口（触发条件是我人为中断转换，但同类中断在崩溃/强杀时也可能出现），应补一个 CLI 侧的显式恢复入口。
+
+
+## 真实运行验收结果
+
+1. **CLI 安装自身**：签名候选 `--install` 成功写入规范目录并注册 `com.user.automnt`；`launchctl list` 可见服务。
+2. **真实普通弹出**：`automnt --eject smb://nas.example.test/personal_folder` → 成功；内核挂载表中该卷确实消失，另一卷 `finalhome` 未受影响。非强制路径确认。
+3. **真实重新挂载**：`automnt --mount` 同目标 → 成功；挂载表恢复该身份，`ls /Volumes/personal_folder` 真实可读。全程使用系统钥匙串凭据，**无密码提示**。
+4. **会话抑制解除**：被弹出后状态为 `suppressed`；执行 `--mount` 后真实落盘变为 `attached`（同一次实验 0→1 挂载）。证实“显式挂载恢复该目标资格”的实现有效。
+5. **守护进程尊重用户弹出**：弹出 `finalhome` 后触发评估，日志明确 `跳过会话抑制中的共享: /Volumes/finalhome`，未重挂。用户意图被真实尊重。
+6. **核心能力（登录后自动挂载）**：停止服务、卸载全部共享（0 挂载）、清除派生的运行时恢复状态以等同新会话，随后 `launchctl bootstrap` 触发登录态评估 → 守护进程自动挂载两个卷，日志 `✓ 自动恢复成功: 2 个卷`、`[DONE] … 2/2`，`/Volumes/finalhome` 与 `/Volumes/personal_folder` 均真实可读。**这是本产品立项目标的端到端通过。**
+7. **首可达排他策略（真实）**：配置两个真实主机时，日志只探测顺位 1 并命中，顺位 2 未被探测。
+8. **真实顺位调整**：通过 `automnt --config` 把 Tailscale 提到顺位 1，配置落盘顺序真实改变；再次评估时守护进程改为只探测并选择 `198.51.100.10`（日志 `顺位命中！(目标 198.51.100.10:445 可达)`）。滚动到远程主机：`--mount smb://198.51.100.10/personal_folder` 成功，挂载表显示 `//user@198.51.100.10/personal_folder`，文件可读。**局域网与远程两条路径均实测可用。**
+9. **签名 GUI 真实运行**：`open` 启动签名 app，进程存活、无崩溃报告；真实窗口出现且标题为真实主机 `198.51.100.10`；界面按新设计渲染：左侧「已管理 / 可添加」两组、行内「已管理 0 · 可添加 1」摘要，右侧共享行 `personal_folder` 与单一「添加」主动作，底部真实状态「后台挂载: 已关闭 / 尚未运行过任何一轮」。系统同时弹出“Automnt 软件可在后台运行”的登录项提示（后台注册真实生效）。
+
+## 本轮暴露、尚未解决的缺口
+
+- **沙盒 GUI 与 CLI 用了两个不同目录（真实根因已定位）**：
+  - CLI（`getActiveInstalledDir()`）读写 `~/Library/Application Support/automnt/automnt.plist`（实测存在，1997 字节，2 个真实主机）。
+  - GUI（`ApplicationModel.restore()` → `permissions.internalDirectory()` → `SharedContainer.locate()`）读写 App Group 容器 `~/Library/Group Containers/TEAMID1234.org.automnt.shared/Library/Application Support/automnt/`（实测**为空**）。
+  - 因此 GUI 显示「已管理 0」，而 CLI 配置里有 2 个主机。设计承诺的“合法 CLI 配置自动呈现”在真实沙盒下**未闭环**。这是本轮最重要的真实发现，且不是编码疏漏，而是**架构取舍问题**（见下）。
+- **GUI 的“后台挂载: 已关闭”**：GUI 首次运行尚未建立自己的后台所有权状态，与 CLI 已注册的 `com.user.automnt` 并存，属单 owner 协调未收敛。
+- **`scripts/build.sh` 不含签名步骤**（见上），其默认产物无法自我安装/替换。
+- 仍**未**验证：真实繁忙弹出失败（未构造占用场景）、认证失效后的失败恢复、真实重启/登录系统事件（用 `bootstrap` 与派生状态清除等效模拟）、通知投递、多语言实机布局、VoiceOver 与浅深色/较大文字、GUI 的拖放/焦点/滚动/窄窗。
+
+## 需要维护者决定的取舍：GUI 如何看到 CLI 配置
+
+现象：沙盒 GUI 打不开 `~/Library/Application Support/automnt`，于是显示“没有任何已管理服务器”，而 CLI 里明明配好了两台。可选做法及其用户可见变化与风险：
+
+| 方案 | 用户看到什么 | 风险/代价 |
+| --- | --- | --- |
+| A. 一次性授权配置文件夹 | 首次打开弹一次“允许 Automnt 访问其配置文件夹”，之后自动同步 | 需要一次文件夹授权对话框，接近此前被撤销的“选择内部目录”，但是一次性的、目录已固定，不是让用户挑位置 |
+| B. CLI 也改用 App Group 容器 | 两入口天然共享配置，无任何授权提示 | App Group 路径含 Team ID，开源用户自行编译/自签时会落到不同路径，**破坏 CLI 的可移植性与既有用户配置位置**，且需迁移 |
+| C. GUI 不走沙盒 | 直接读写规范目录，无提示 | 很可能不符合 Mac App Store 沙盒要求，与商店渠道目标冲突 |
+| D. GUI 用特权 helper 代读配置 | 无提示即可看到 CLI 配置 | helper 需承担配置读写所有权，复杂度与安全面显著上升，仍需与 CLI 协调单 owner |
+
+现状相当于 A 被撤销后没有任何替代方案，因而承诺落空；建议先定方向再继续实施。
+
+
+# 2026-10-12 实施轮与本地门禁证据
+
+维护者在文档/demo 修订后授权“继续 Implement”。本轮按新设计完成**本地**代码实现，并以移除旧设计为前提：`apps/Automnt` 中旧排序草稿（`orderBase`/`orderedHosts`/`moveDraft`/`cancelOrder`/`saveHostOrder`/Save-Cancel/`confirmingOrderQuit`）、CLI 配置导入/检查入口、独立密码管理（`CredentialView.swift` 已删）与例行弹出确认均已删除（grep 计数为 0）。主界面改为 `.onMove` 放下即 CAS 保存 + 撤销、管理/可添加两组、独立服务器开关、一行一个主动作、普通弹出直接且非强制。
+
+本轮新增核心：`ManagedServerOrder`/`ServerOrderUndo`/`ManagedServerOrderController`、`ManagedMembership`/`Controller`、`ServerInventory`、`ShareDetail`/`ShareDetailBuilder`/`DetailActionPolicy`、`OperationPresentation`/`OperationLedger`/`EvaluationSelection`、`SettingsSurface`、`RetryPolicyBounds`；CLI 新增 `--mount`/`--eject`（T077，含 `Tests/AutomntCLITests/`）。平台侧补 `MountedShareDiscovery.mountedIdentities()` 与 `NotificationPermission.authorizationState` 映射。
+
+本地门禁（Lead 独立复跑，非采信报告）：
+
+| 门禁 | 命令 | 结果 |
+| --- | --- | --- |
+| 单元/集成测试 | `swift test` | 285 tests 全绿（Core 178 / Platform 83 / CLI 24） |
+| SwiftPM 构建 | `swift build` | exit 0 |
+| 九语本地化 | `python3 scripts/verify-localization.py` | exit 0（244 文案 × 9 语无缺、无回填） |
+| Swift6 并发结构 | `python3 scripts/verify-swift6-concurrency.py` | exit 0 |
+| 发布扁平构建 | `bash scripts/build.sh .build/...` | exit 0，版本 3.4.0 |
+| CLI 内置自测 | `automnt --self-test`（新构建产物） | 295 passed / 0 failed |
+| 签名 Release | `xcodebuild Release`（Apple Development） | BUILD SUCCEEDED |
+| 签名与权益 | `scripts/verify-signature.sh` | exit 0（app/helper/worker 同团队、entitlements 精确匹配、嵌套 seal 通过，未启动可执行文件） |
+
+本轮修正的自身缺陷（均由测试或复核暴露，未被报告掩盖）：`OperationLedger.finish` 未回传 `begin` 的同一实例导致条目泄漏；`ManagedMembership` 首版把跨服务器同路径误判为重复（设计允许复用）；`RetryPolicyBounds` 对单字段越界重复报错；**Core 曾返回英文 `String(localized:)`，而本地化门禁只扫描 `apps/Automnt`，等于九语必然漏译**——已改为 Core 返回语义值、文案归 app 层，现 Core 有 0 处用户可见字符串。CLI 侧另修复 flock 同进程不可重入导致的自锁、以及相对路径经 `URL(fileURLWithPath:)` 绝对化绕过校验。
+
+**明确未验证（本地门禁不能替代）**：真实 SMB 挂载与真实内核普通弹出、隔离子进程真实跨进程链路、会话抑制真实写入、系统认证复用、CLI 透明配置与单 owner 协调、真实窗口拖放/焦点/滚动/窄窗/VoiceOver、九语真实译文长度下的布局、浅深色/较大文字/减少动态效果、通知前台抑制与退出后投递、诊断真实导出。这些需要可达 SMB 目标、系统授权与实机走查，且本轮刻意未触碰机器上运行中的 3.3.2 实装（其 LaunchAgent 仍在活动，用户目录中 `automnt.plist` 与 `bin/automnt` 未被改动）。未推送、未发布、未递增版本号。
+
+# 本轮完整产品修订与验证
+
+统一方案见 [product-design.md](product-design.md)，交互契约见 [experience-design.md](../contracts/experience-design.md)。规格/计划/数据/四类契约/任务/两份清单/视觉/文案/本地化/辅助功能/支持已同步全产品范围，新增任务 T071–T078 未勾选，旧进展不推定新增行为已完成。
+
+[HTML 原型](interaction-prototype.html)已覆盖同屏首次四类入口、管理/发现分组、五服务器六共享、原列表拖放及键盘重排/撤销、首可达结果、后台待批准、关联草稿、主动弹出、位置不符、设置授权、通知最新状态、帮助/关于/诊断和菜单关系。Playwright 本地 Chromium 实际检查通过：目标库存、完整评估后续未检查、添加与后台启用分离、URL推导位置、dirty取消继续编辑保留值、保存失败保留输入、成功关闭、键盘重排/撤销/并发冲突回退、通知授权、菜单打开、主动挂载与普通弹出、通知定位当前问题、帮助/关于及配置读取错误。捕获 pageerror 为0；HTML截图已查看，保留左右紧凑结构。额外检查服务器地址/端口/时限成组保存及取消保留草稿、窄窗返回流程通过；位置占用拒绝覆盖已有卷的模拟流程通过。鼠标拖放保存及搜索过滤禁拖放、端口/时限保存后回读、跨服务器复用位置及同服务器冲突拒绝检查通过。完整窄窗/辅助功能/语言矩阵尚未实测。
+
+[SwiftUI 预览](NativeDesignPreview.swift)已同步全产品入口、状态、原生列表 onMove、revision保护撤销、搜索过滤禁排序、服务器连接关联编辑、路径占用保护、设置与菜单目标绑定。`xcrun swiftc -parse-as-library specs/005-swiftui-mas-gui/design/NativeDesignPreview.swift -o .build/NativeDesignPreview` 返回0。只证明编译；尚未运行验收原生拖放、焦点、滚动、窄窗、VoiceOver和系统能力。
+
+两个 demo 为虚构内存模拟，不读写正式配置、不访问网络/Keychain/挂载/后台服务；原生预览唯一系统交互是只读订阅卷宗挂载/卸载通知以演示重新激活刷新，不执行卸载或挂载。HTML只演示部分入口，完整许可、真实导出/帮助链接等以契约和原生预览为准，不据HTML占位内容判定产品交付。透明CLI配置、单后台转换、系统认证、路径占用、真实通知/退出后台和九语可靠复核仍未验证。历史截图/外部PASS不证明本方案获批或实现完成。本次无应用代码、版本/二进制、真实系统设置、提交、推送或发布修改。
+
+# 交付状态
+
+2026-10-11 本轮：维护者要求先修订相关文档与 demo，应用实施暂缓。此前批准旧设计与完整 SwiftUI 实施的记录仅覆盖当时范围，不构成新版设计已通过或本轮应用修改授权。原生外观、九语、VoiceOver 和后台核心能力仍须实际验证；无推送或发布授权。
+
+2026-10-08维护者要求结束多轮外部设计收敛并勾选checklist。需求质量清单已复核通过；第16轮AGY PASS、Pi NOT_PASS两项已查证修订并完成浏览器/SDK复验，详见[第16轮裁定](round16-adjudication.md)。第17轮AGY/Pi两会话取消，自动目标暂停；当前修订版没有双新PASS。本决定不等于真实原生/九语/VoiceOver验收完成，不授权业务实施或发布。
+
+2026-10-08：维护者授权制作原型和视觉资产，并已评审候选 01，要求 100% 原生 macOS 27 SwiftUI 设计、准确自然的各语种文案和用户视角动作命名。当时修订为候选 04，记录仅覆盖历史版本。T058/T059 保持未完成：文件生成及自动检查不能代替 SC-010 的维护者批准。没有业务代码、后台服务、真实配置、系统权限或页面发布变更。
+
+历史原型入口为 `interaction-prototype.html`，直接用浏览器打开本地文件。顶部场景/浅深/宽窄/菜单预览为设计工具；不属于最终产品控制。无网络资源、无外部字体、无配置文件或 localStorage，CSP 禁止网络连接。通用 SMB 语法示例不作为默认输入。
+
+# 历史第13轮集中修订验证
+
+Pi精确续接恢复完整NOT_PASS报告，28份冻结输入终态不变，无第二份有效意见。已修接管页null.after、菜单缺授权/离线/失败静默成功、3.8秒反馈消失。接管标注恢复，菜单三态保持并给持续修复说明，4.1秒后反馈仍可读，零JS异常；SDK类型检查通过，九场景及总览刷新。详细证据见round13-adjudication.md。当前修订版待复审，未取得双PASS。
+
+# 历史第12轮集中修订验证
+
+Pi NOT_PASS、AGY 401认证失效无完整报告，41份冻结输入终态未变。已查证修复逐目标检查/部分失败、停止等待保持自动挂载原值、非空凭据分支，补失败目标登录信息入口与辅助功能说明。浏览器true/false原值保留、空值拦截/填齐前进、beta失败修复打开beta均通过，无JS错误；SDK类型检查通过，九图及总览刷新。Pi广域搜索少量历史片段暴露已披露，未作为阻塞证据。详细记录见round12-adjudication.md。
+
+设计图中的审阅选择器与“刚刚”为模拟标注，正式商店截图必须剔除；索引长说明纳入九语压力样本，原生预览审阅工具不进入产品。尚无当前版本双PASS。
+
+# 历史第11轮集中修订验证
+
+AGY PASS、Pi NOT_PASS，40份冻结材料终态校验未变，详见round11-adjudication.md。Pi三项实证缺口已修：备用主动作“挂载”、每目标位置/授权/启用确认、失败目标明确移除。额外修排序保存/取消焦点。浏览器双目标确认及剩零目标回选择均通过；SDK用-parse-as-library类型检查通过；九张场景及总览已重生。原生视觉/VoiceOver/九语/后台运行仍待实施实证，不继承历史PASS。
+
+# 历史第10轮集中修订验证
+
+两份完整报告均NOT_PASS，详见round10-adjudication.md。已修隐藏菜单时清登录偏好、服务器级索引设置、主动作先于索引结果、排序Esc取消、原生通知拒绝后系统设置分流及菜单审阅分支。浏览器实测索引开关仅改所选服务器，Esc清排序草稿并恢复保存顺序，无JS错误；SDK类型检查通过。九张场景图及九格总览统一刷新，窄窗失败主动作首屏可读，设置底部授权/语言/帮助完整展示。当前复审尚未启动，不继承历史PASS。
+
+# 历史第9轮集中修订验证
+
+第9轮新会话AGY PASS、Pi NOT_PASS；尚无双通过。核实并补齐菜单空态/目标失效/忙碌分支、主备排他状态、独立索引防护、显式通知授权与拒绝后系统设置入口、九语术语候选。浏览器验证空菜单目标数0且可添加、备用默认待选择、忙碌禁用冲突操作、失效/移除目标执行拒绝、拒绝通知不再重复请求、索引受限不改健康动作，新增检查无JS错误。新增内容均仅在内存运行。发现并修复Esc关闭设置后页面状态未返回的问题；整组相关流程复验通过。SDK类型检查通过；七场景PNG与总览统一刷新。九语候选表不代替母语审校。下次双审须全新会话、重新随机并冻结同一版输入。
+
+# 历史第8轮修订验证
+
+第8轮AGY与Pi均完成有效独立评审，均NOT_PASS；修订聚焦设置分组、动作与焦点、重复目标、逐共享授权和过期资产。历史第6轮权限来源误述已在round6-adjudication.md更正。已验证服务器地址三种路径、服务停止失败的保存意图、Settings/菜单过渡不覆盖共享挂载状态；Swift目标SDK类型检查通过。已统一帮助/空态/移除说明、清不可达旧帮助分支并补文案资源；全量HTML文案与错误审校、九语及真实原生视觉仍待完成。
+
+2026-10-08 第7轮修订后重新生成七张浏览器图及visual-board，所有截图明确设置场景选择器、主题和宽窄状态；正常1440×1050画布，窄详情窗600宽。深色Settings四帮助入口和窄窗失败原因/主动作已目视检查；生成源与图片SHA256记录在本轮临时证据中。Settings帮助位于可滚动弹层末端。浏览器中支持正文中文/English切换通过，Swift目标SDK类型检查通过；真实SwiftUI布局/VoiceOver未验证。图像仅为流程构图参考，不是商店截图或原生合规证明。
+
+# 本轮场景与追溯
+
+以下是本轮待验证场景，旧 FR/任务引用仅供追溯，不代表旧实现已满足新流程。
+
+| 场景 | 操作与预期 | 需求 / 任务 |
+| --- | --- | --- |
+| 主列表 | 左侧平铺服务器名与已管理/可添加数量及异常摘要，无共享展开或动作；右侧选中服务器标题、独立开关、紧凑共享组，无固定第三列；刷新和添加保持选择/焦点/滚动 | FR-024/026；T013/T031/T058/T062 |
+| 按需详情与窄窗 | 行内仅名称/状态/Finder或修复或添加；URL/路径/索引/编辑/移除用 sheet，工具栏 fullURL；窄窗服务器→共享→详情及返回保留状态，多主机多卷样本复验 | FR-009/010/024；T028/T036/T058/T062/T070 |
+| 单行添加 | 点击某行添加，立即保存该共享；成功移入已管理组，失败留原行与原因 | FR-001/002/021；T013/T032 |
+| 无已挂载共享 | 工具栏完整 SMB URL 入口可达；Finder 为次级空状态指导 | FR-001/002/021；T013/T058 |
+| 手动 URL | 输入一个完整共享 URL；无密码页、无多选、无内部目录选择 | FR-001/002；T013/T032 |
+| 系统认证 | Finder/macOS 完成 SMB 认证；验证沙盒/helper 实际复用，未验证时不假报通过 | FR-008/014；T014/T015/T016 |
+| 既有 CLI 配置 | 自动显示既有配置，不要求检查或导入；共享配置所有权尚未实现 | FR-005/006/014；T022–T027 |
+| 编辑保存 | 成功关闭编辑器并重置 dirty；失败保留草稿；非活动窗口字段仍可编辑 | FR-003/006/021；T032/T036 |
+| 服务器开关 | 标签为“自动挂载此服务器的共享”，解释独立；已有挂载保留 | FR-004/021；T033 |
+| Spotlight | 说明减少磁盘与网络索引活动及搜索受限；不自动删除已有索引，实际效果待验证 | FR-023；T020/T036 |
+| 后台恢复 | 在可达、配置有效及系统认证可用条件下验证退出/登录/网络变化恢复；手动挂载仅兜底 | FR-004/007/014；T016/T061 |
+| 弹出/移除 | 忙碌不强制；仅移除配置不删远端文件；主动弹出后的自动化条件如实显示 | FR-003/019/021；T019/T032/T035 |
+| 设置、菜单、通知与诊断 | 系统设置分流、最新状态、脱敏预览、声音偏好；不以演示证明运行 | FR-003/004/022；T030/T034/T035 |
+| 关闭/退出草稿 | 保存/放弃/继续编辑；失败不退出、不丢输入 | FR-007/021；T031/T035 |
+| 窄窗与辅助功能 | 九语、长变量、浅深色、键盘、VoiceOver 和较大文字在真实窗口复验 | FR-009/010；T028/T036/T060 |
+
+# 历史第2至4轮修订与验证
+
+历史第二轮独立报告为 AGY PASS、Pi NOT_PASS，同材料 hash 核对无变更；宿主确认 Pi 所指全局自动恢复落点、多共享日常独立控制缺口成立，不能按 AGY 单份结论结案。已补自动恢复、四层开关语义、菜单登录独立 opt-in 与前台失败状态展示政策。网页现有两个服务器及三个共享，各共享和服务器独立启用；Settings 关闭返回原页面。
+
+当前浏览器验证：共享一关闭不影响共享二，服务器关闭不改共享偏好，自动挂载关闭禁用恢复控件但保留恢复值；JavaScript 错误为零。SwiftUI 预览新增恢复及登录菜单控件，macOS 27.2 SDK 类型检查通过。六张日常/设置/空状态/窄窗截图已刷新，深色设置图人工查看各控件与辅助说明可见；添加截图与总览随后已同步为候选 03，展示多共享选择；完整向导双共享保存验证通过，模拟目录授权前收集输入，保留每项位置。真实窗口、注册登录项、通知与声音、无障碍与九语验收均未执行。
+
+候选04已同步逐共享菜单、登录信息独立管理、Settings帮助入口与FR019登录菜单追溯。第4轮Pi NOT_PASS唯一阻塞菜单目标已修；AGY没有有效报告，不计PASS，详见 round4-adjudication.md。浏览器验证弹出一个目标不影响其余、帮助返回、凭据删除取消、排序冲突保留草稿/重新读取；五张浅深日常/设置参考与窄窗参考刷新。data-model新增全局意图与系统服务组合呈现，后台契约说明nil查询静默的通知可达性限制。文案资源完整语境清单仍待补，不称全界面本地化完成；设计review不代替真实原生实施验收。
+
+# 历史浏览器本地核查记录
+
+使用既有 Chrome 与 Node Playwright，`file://` 打开原型。已实际操作：完整添加、保存冲突重读、密码离开步骤清除、普通卸载忙碌失败与成功抑制、通知点击、五类修复、等待取消、删除、全部状态及窄窗口；JavaScript 错误 0。生成浅/深健康、失败、设置、空状态、凭据步骤与窄窗口截图。首次 Python Playwright 不完整、Node 默认浏览器缺失，随后采用已安装 Chrome 完成，未下载或安装浏览器。
+
+人工图像检查：浅色健康页与深色设置页文字/操作可见；图标 SVG 与 1024 PNG 成功生成。系统字体与原生语义控件仍需 SwiftUI 实机复验；浏览器检查不证明 VoiceOver、TCC、Keychain、NetFS、SMAppService、通知退出后投递或 macOS 窗口关闭行为。
+
+# 审阅记录与已知限制
+
+维护者候选 01 审阅与候选 04/图标 03 再审均属历史。当前直接使用维护者已替换的 SVG/PNG；旧资产审批与构建结果不作为当前批准。本轮未勾选需求检查清单或 T058/T059/T060。
+
+- 长期原则已写入 AGENTS.md，FR-009/019/023 与体验契约同步；后续 Feature 同样遵守原生系统默认/语义样式、用户场景与独立本地化规则。
+- 撤销固定网页字号/色值/圆角/焦点/卡片/提示条作为原生规范。新增 NativeDesignPreview.swift，使用 NavigationSplitView、List、Form/Section/LabeledContent、Toggle、Settings、SettingsLink、sheet/alert、系统 SF Symbols 与 secondary 文本。已以 Swift 6.4 / macOS 27.2 target 编译通过，不证明窗口视觉或系统能力通过。预览仅内存模拟，不调用配置、挂载、Keychain、服务或网络。
+- 全界面审查覆盖开关后果、菜单、离线/授权/登录失败/已弹出、接管、诊断、通知、添加、冲突、取消/删除/退出；动作与说明分离，工程术语留在契约/标注。例如“关闭自动挂载”配“已经挂载的共享文件夹仍可使用。”，用户动作采用“弹出”“挂载”。模拟触发器不进入发布资源。
+- localization.md 已提供语境、行为边界、中文与英文核心候选、九语审校安排，尚无可靠九语完整译文；不标 T060 完成。
+- 浏览器候选 02 重验：完整添加、密码清除、冲突、弹出忙碌与成功、通知最新状态、五类修复、取消、删除、全部场景及窄窗口通过，JavaScript 错误 0。当时生成七张 PNG 与视觉总览；这是历史检查记录；全部旧场景 PNG 与 visual-board 已退役但保留文件，旧验证不覆盖本轮。全部是网页流程/构图参考。
+- 维护者补充动画/动效/音效必须先评估定案、Agent 负责自定义资产和声音关闭闭环：逐场景采用/不采用及理由已加入 visual-system.md；新增原型/原生预览“通知声音”开关及语境文案，FR-022、plan、体验契约和 T016/T030/T033/T036/T059 同步。失败仅系统默认声音可关闭，后台读取持久化偏好；无自定义音效，故无需音频生成资产，未来改变必须先由 Agent 生成与交付并追加任务。本轮为设计模拟，持久化/后台/听验仍未实施。
+- 2026-10-08 重做官方资料 web_fetch 成功，原非公网解析阻塞已解除；通过官方 DocC JSON 核查 HIG 布局、文案、按钮与辅助功能的可见正文，并取得 WWDC26 指南、Liquid Glass 与 foregroundStyle 内容。长返回有裁剪，不称全文审阅或逐条读完 macOS 27 规范。详见 visual-system.md 查证记录；真实原生窗口、系统无障碍/语言/材料验证仍待完成。
+
+1. 多主机多卷检查左侧平铺摘要、右侧紧凑共享组、无固定第三列、按需 sheet、工具栏 fullURL；窄窗服务器→共享→详情及返回、刷新/添加保持选择/焦点/滚动，逐行添加立即保存。
+2. 检查次级 Finder 空状态指导与工具栏完整 SMB URL 入口，不出现八步、密码管理、多选、CLI 导入检查或内部目录选择。
+3. 检查保存成功关闭并清 dirty、失败留草稿及非活动窗口字段编辑；系统认证和共享配置所有权不得以 demo 代验。
+4. 检查服务器开关原文及独立解释、Spotlight 索引活动与搜索后果、不自动删除已有索引。
+5. 图标直接使用维护者替换资产；Automnt 为临时名且来源受质疑。浅深色、小尺寸与系统资产管线仍需当前实机证据。
+6. 全部旧 PNG 与 visual-board 保留为历史截图，不用于当前视觉验收；新 HTML/原生 demo 不能证明真实业务、系统认证、后台恢复、九语或 VoiceOver 通过。
+
+2026-10-11 同步文档与隔离 demo；历史各轮报告和测试结果原样保留在对应历史章节。2026-10-12 起应用实施已获授权并完成本地实现与门禁验证（见本文首节）；**真实目标系统验收仍待完成**，不得以本地门禁取而代之。
+
+左右结构采纳前的本地核查（仅当时 demo，不覆盖当前结构与导航状态）：HTML JavaScript 语法与纯内存模型检查通过；覆盖完整 URL/挂载位置校验、规范化重复身份、添加和编辑保存成功/失败/冲突、已发现候选复用与失败保留。原生 demo 以本机 macOS 27 SDK 编译成功，同类纯内存模型检查通过。通知声音默认开启；从属开关保留偏好并按上级禁用，索引意图按服务器保存。当时记录已核对 Feature 文档与相关发布证据的本地链接和空白格式；任务文件实际有 79 次编号条目、70 个唯一编号，T009–T012 存在历史重复条目，本轮保持标识和勾选状态原样。未启动真实 SMB 测试或系统服务；窗口视觉、非活动窗口交互、VoiceOver、九语、真实配置和系统认证均未因此通过。
+
+
+# 2026-10-11 左右结构 demo 核查
+
+HTML 已改为左侧服务器摘要与右侧所选服务器紧凑共享组；5 台服务器各 6 个共享的虚构场景包含连接失败摘要。Headless Chromium 实际交互通过：服务器与行数量、切换选择、添加失败及成功、刷新保持选择、添加保持滚动和键盘焦点、编辑成功关闭、冲突保留输入、窄窗口返回、服务器索引 sheet 和 Finder 空状态；无页面 JavaScript 错误。网页截图仅作为构图参考。
+
+原生 demo 的宽窗采用 NavigationSplitView，共享详情用按需 sheet；窄窗采用 NavigationStack，按服务器→共享→详情返回。最终版本以本机 SDK 编译成功，纯内存模型检查覆盖 5×6 示例、唯一位置、刷新稳定身份、添加成功/失败/冲突及地址/路径校验。原生真实窗口的滚动、宽窄切换、焦点恢复、VoiceOver 和九语仍未实际验收，不能据此勾选运行任务。所有数据留在隔离内存 demo，未执行真实 SMB、配置、Keychain 或后台服务操作。

@@ -117,3 +117,12 @@ Upon mount completion, automnt applies two-tier indexing suppression:
 - **Precompiled Binary Delivery**: Downloads official `automnt` binaries from GitHub Releases, avoiding user-side build dependencies.
 - **Transactional Staging**: Validates binary integrity in sandbox staging before atomically replacing `~/Library/Application Support/automnt/bin/automnt`.
 - **Integrity Self-Healing**: Checks `InstallState` on launch, repairing missing LaunchAgent plists or stripped shell PATHs automatically.
+
+# Shared GUI and CLI Boundary
+
+The GUI (`apps/Automnt`), the independent helper/worker, and the CLI share the configuration, mount, recovery, conflict and redaction rules in `Sources/AutomntCore`. The GUI neither parses CLI output nor keeps a second mount policy; the two kernel call sites stay separate by build shape, and a change to one must be checked against the other.
+
+- The single active configuration remains `~/Library/Application Support/automnt/automnt.plist`. The program resolves/prepares the fixed directory; the GUI reaches it through an exact home-relative entitlement and never asks the user to pick an internal folder.
+- Background automatic mounting runs in system-launched helper/worker processes. Whether it continues after quitting the GUI follows the real background state, and the UI shows that state rather than the configured intent.
+- Both entry points provide ordinary eject: the GUI in share details, the CLI as `--eject`. A busy volume fails honestly and is not routinely escalated to a forced unmount.
+- Offline builds use a free Apple Development signature for local/same-team verification. `scripts/archive.sh` produces the app, prebuilt CLI, checksums and manifest; the App Store path is deferred.

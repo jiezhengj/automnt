@@ -125,3 +125,12 @@ func queryActiveKernelMounts() -> [ActiveMountRecord] {
 - **预编译分发**：自升级直接拉取 GitHub Release 中的 `automnt` 二进制包，绕过终端用户的本地编译环境需求。
 - **原子部署与校验**：新程序下载后在临时目录执行 `--version` 语法自检，验证成功后通过文件系统原子替换安装到 `~/Library/Application Support/automnt/bin/automnt`。
 - **安装状态自愈**：主程序启动时由 `InstallState` 执行自检。若发现 LaunchAgent 缺失、Shell 环境变量丢失或文件损坏，自动原地修复。
+
+# 图形界面与 CLI 共用边界
+
+图形界面（`apps/Automnt`）、独立 helper/worker 与 CLI 共用 `Sources/AutomntCore` 的配置、挂载、恢复、冲突与脱敏规则。GUI 不解析 CLI 输出，也不维护第二套挂载判定；两处内核调用按各自构建方式分置，修改其一必须核对另一处。
+
+- 唯一活动配置仍是 `~/Library/Application Support/automnt/automnt.plist`；固定目录由程序解析/准备，GUI 通过精确 home-relative entitlement 访问，不要求用户选择内部目录。
+- 后台自动挂载由系统按需启动的 helper/worker 执行；GUI 退出后是否继续由真实后台状态决定，界面显示实际状态而非配置意图。
+- GUI 与 CLI 都提供普通弹出：GUI 在共享详情中，CLI 为 `--eject`；繁忙卷如实失败，不例行升级为强制卸载。
+- 离线构建使用免费 Apple Development 签名，面向本机/同团队验证；`scripts/archive.sh` 生成 app、预编译 CLI、校验和与 manifest，App Store 路径延后。
