@@ -128,55 +128,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting cannot access the configuration folder. Keep Automnt open to manage your configuration; the background service has not been changed."
+            "value": "Automatic mounting can’t read your settings right now. Keep Automnt open to manage them; the background service has not been changed."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载无法访问配置文件夹。请保持 Automnt 打开以管理配置；后台服务未作更改。"
+            "value": "自动挂载暂时无法读取设置。请保持 Automnt 打开以管理设置；后台服务未作更改。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載無法存取設定檔案夾。請保持 Automnt 開啟以管理設定；背景服務未作變更。"
+            "value": "自動掛載暫時無法讀取設定。請保持 Automnt 開啟以管理設定；背景服務未作變更。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウントが設定フォルダにアクセスできません。設定を管理するには Automnt を開いたままにしてください。バックグラウンドサービスは変更されていません。"
+            "value": "自動マウントは現在設定を読み取れません。設定を管理するには Automnt を開いたままにしてください。バックグラウンドサービスは変更されていません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트가 설정 폴더에 접근할 수 없습니다. 설정을 관리하려면 Automnt를 열어 두세요. 백그라운드 서비스는 변경되지 않았습니다."
+            "value": "자동 마운트가 현재 설정을 읽을 수 없습니다. 설정을 관리하려면 Automnt를 열어 두세요. 백그라운드 서비스는 변경되지 않았습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Einbinden im Hintergrund kann nicht auf den Konfigurationsordner zugreifen. Lass Automnt zur Verwaltung der Konfiguration geöffnet. Der Hintergrunddienst wurde nicht geändert."
+            "value": "Das automatische Einbinden kann Ihre Einstellungen derzeit nicht lesen. Lassen Sie Automnt geöffnet, um sie zu verwalten; der Hintergrunddienst wurde nicht geändert."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le montage en arrière-plan ne peut pas accéder au dossier de configuration. Gardez Automnt ouvert pour gérer la configuration. Le service en arrière-plan n’a pas été modifié."
+            "value": "Le montage automatique ne peut pas lire vos réglages pour le moment. Laissez Automnt ouvert pour les gérer ; le service en arrière-plan n’a pas été modifié."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El montaje en segundo plano no puede acceder a la carpeta de configuración. Mantén Automnt abierto para gestionar la configuración. El servicio en segundo plano no se ha modificado."
+            "value": "El montaje automático no puede leer tus ajustes en este momento. Mantén Automnt abierto para gestionarlos; el servicio en segundo plano no ha cambiado."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A montagem em segundo plano não pode acessar a pasta de configuração. Mantenha o Automnt aberto para gerenciar a configuração. O serviço em segundo plano não foi alterado."
+            "value": "A montagem automática não consegue ler os ajustes agora. Mantenha o Automnt aberto para gerenciá-los; o serviço em segundo plano não foi alterado."
           }
         }
       }
@@ -10268,55 +10268,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting could not be changed. Check the configuration and background service before continuing."
+            "value": "Automatic mounting couldn’t be changed. Try again later."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法更改后台挂载。请先检查配置和后台服务。"
+            "value": "无法更改自动挂载。请稍后重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法變更背景掛載。請先檢查設定和背景服務。"
+            "value": "無法變更自動掛載。請稍後重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウントを変更できませんでした。続行する前に設定とバックグラウンドサービスを確認してください。"
+            "value": "自動マウントを変更できませんでした。しばらくしてから再度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트를 변경할 수 없습니다. 계속하기 전에 구성과 백그라운드 서비스를 확인하세요."
+            "value": "자동 마운트를 변경하지 못했습니다. 잠시 후 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Hintergrund-Verbinden konnte nicht geändert werden. Prüfe Konfiguration und Hintergrunddienst, bevor du fortfährst."
+            "value": "Das automatische Einbinden konnte nicht geändert werden. Versuchen Sie es später erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le montage en arrière-plan n’a pas pu être modifié. Vérifiez la configuration et le service en arrière-plan avant de continuer."
+            "value": "Le montage automatique n’a pas pu être modifié. Réessayez plus tard."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cambiar el montaje en segundo plano. Comprueba la configuración y el servicio en segundo plano antes de continuar."
+            "value": "No se pudo cambiar el montaje automático. Inténtalo de nuevo más tarde."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível alterar a montagem em segundo plano. Verifique a configuração e o serviço em segundo plano antes de continuar."
+            "value": "Não foi possível alterar a montagem automática. Tente novamente mais tarde."
           }
         }
       }
@@ -10328,55 +10328,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting could not be confirmed. Check the background state and try again."
+            "value": "Automatic mounting status is unavailable right now. Try again later."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法确认后台挂载。请检查后台状态后重试。"
+            "value": "暂时无法确认自动挂载状态。请稍后重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法確認背景掛載。請檢查背景狀態後再試一次。"
+            "value": "暫時無法確認自動掛載狀態。請稍後重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウントを確認できませんでした。バックグラウンドの状態を確認して、もう一度お試しください。"
+            "value": "自動マウントの状態を現在確認できません。しばらくしてから再度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트를 확인할 수 없습니다. 백그라운드 상태를 확인한 후 다시 시도하세요."
+            "value": "자동 마운트 상태를 지금 확인할 수 없습니다. 잠시 후 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Hintergrund-Verbinden konnte nicht bestätigt werden. Prüfe den Hintergrundstatus und versuche es erneut."
+            "value": "Der Status des automatischen Einbindens ist derzeit nicht verfügbar. Versuchen Sie es später erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le montage en arrière-plan n’a pas pu être confirmé. Vérifiez l’état en arrière-plan et réessayez."
+            "value": "L’état du montage automatique est indisponible pour le moment. Réessayez plus tard."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo confirmar el montaje en segundo plano. Comprueba el estado en segundo plano e inténtalo de nuevo."
+            "value": "El estado del montaje automático no está disponible en este momento. Inténtalo de nuevo más tarde."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível confirmar a montagem em segundo plano. Verifique o estado em segundo plano e tente novamente."
+            "value": "O status da montagem automática está indisponível agora. Tente novamente mais tarde."
           }
         }
       }
@@ -10448,55 +10448,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting: applying your setting"
+            "value": "Automatic mounting: applying your setting"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载：正在应用你的设置"
+            "value": "自动挂载：正在应用设置"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載：正在套用你的設定"
+            "value": "自動掛載：正在套用設定"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント：設定を適用中"
+            "value": "自動マウント：設定を適用中"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트: 설정 적용 중"
+            "value": "자동 마운트: 설정 적용 중"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Verbinden: Einstellung wird angewendet"
+            "value": "Automatisches Einbinden: Einstellung wird angewendet"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan : application de votre réglage"
+            "value": "Montage automatique : application du réglage"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano: aplicando tu ajuste"
+            "value": "Montaje automático: aplicando el ajuste"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano: aplicando sua configuração"
+            "value": "Montagem automática: aplicando o ajuste"
           }
         }
       }
@@ -10508,55 +10508,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting: could not be confirmed"
+            "value": "Automatic mounting: status unavailable"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载：无法确认"
+            "value": "自动挂载：暂时无法确认"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載：無法確認"
+            "value": "自動掛載：暫時無法確認"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント：確認できません"
+            "value": "自動マウント：状態を確認できません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트: 확인할 수 없음"
+            "value": "자동 마운트: 상태를 확인할 수 없습니다"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Verbinden: konnte nicht bestätigt werden"
+            "value": "Automatisches Einbinden: Status nicht verfügbar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan : impossible à confirmer"
+            "value": "Montage automatique : état indisponible"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano: no se pudo confirmar"
+            "value": "Montaje automático: estado no disponible"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano: não foi possível confirmar"
+            "value": "Montagem automática: status indisponível"
           }
         }
       }
@@ -10568,55 +10568,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting: off"
+            "value": "Automatic mounting: off"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载：已关闭"
+            "value": "自动挂载：已关闭"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載：已關閉"
+            "value": "自動掛載：已關閉"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント：オフ"
+            "value": "自動マウント：オフ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트: 꺼짐"
+            "value": "자동 마운트: 꺼짐"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Einbinden: aus"
+            "value": "Automatisches Einbinden: aus"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan : désactivé"
+            "value": "Montage automatique : désactivé"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano: desactivado"
+            "value": "Montaje automático: desactivado"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano: desativada"
+            "value": "Montagem automática: desativada"
           }
         }
       }
@@ -10628,55 +10628,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting: running"
+            "value": "Automatic mounting: running"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载：正在运行"
+            "value": "自动挂载：运行中"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載：正在執行"
+            "value": "自動掛載：執行中"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント：実行中"
+            "value": "自動マウント：実行中"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트: 실행 중"
+            "value": "자동 마운트: 실행 중"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Verbinden: läuft"
+            "value": "Automatisches Einbinden: aktiv"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan : actif"
+            "value": "Montage automatique : actif"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano: en ejecución"
+            "value": "Montaje automático: activo"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano: em execução"
+            "value": "Montagem automática: ativa"
           }
         }
       }
@@ -10688,55 +10688,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting: the command-line service is in control"
+            "value": "Automatic mounting: managed by the command-line version"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载：命令行服务正在控制"
+            "value": "自动挂载：由命令行版本管理"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載：命令列服務正在控制"
+            "value": "自動掛載：由命令列版本管理"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント：コマンドラインサービスが制御中"
+            "value": "自動マウント：コマンドライン版が管理"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트: 명령줄 서비스가 제어 중"
+            "value": "자동 마운트: 명령줄 버전에서 관리"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Verbinden: Der Befehlszeilendienst hat die Kontrolle"
+            "value": "Automatisches Einbinden: wird von der Befehlszeilenversion verwaltet"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan : le service en ligne de commande est aux commandes"
+            "value": "Montage automatique : géré par la version en ligne de commande"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano: el servicio de línea de comandos tiene el control"
+            "value": "Montaje automático: gestionado por la versión de línea de comandos"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano: o serviço de linha de comando está no controle"
+            "value": "Montagem automática: gerenciada pela versão de linha de comando"
           }
         }
       }
@@ -10748,55 +10748,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting: waiting for approval in Login Items"
+            "value": "Automatic mounting: waiting for approval in Login Items"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载：等待在“登录项”中批准"
+            "value": "自动挂载：等待在“登录项”中允许"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載：等待在「登入項目」中批准"
+            "value": "自動掛載：等待在「登入項目」中允許"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント：「ログイン項目」での承認待ち"
+            "value": "自動マウント：ログイン項目での承認待ち"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트: 로그인 항목 승인 대기 중"
+            "value": "자동 마운트: 로그인 항목 승인 대기 중"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Verbinden: wartet auf Freigabe in den Anmeldeobjekten"
+            "value": "Automatisches Einbinden: wartet auf Zustimmung in den Anmeldeobjekten"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan : en attente d’autorisation dans les éléments d’ouverture"
+            "value": "Montage automatique : en attente d’autorisation dans les éléments d’ouverture"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano: esperando aprobación en Ítems de inicio"
+            "value": "Montaje automático: esperando aprobación en Ítems de inicio"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano: aguardando aprovação em Itens de Início"
+            "value": "Montagem automática: aguardando aprovação nos Itens de Início"
           }
         }
       }
@@ -14108,55 +14108,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No round has run yet."
+            "value": "Shared folders haven’t been checked yet."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚未运行过任何一轮。"
+            "value": "尚未检查共享文件夹。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚未執行過任何一輪。"
+            "value": "尚未檢查共享資料夾。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "まだ確認は実行されていません。"
+            "value": "共有フォルダはまだ確認されていません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아직 실행된 회차가 없습니다."
+            "value": "공유 폴더를 아직 확인하지 않았습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Es wurde noch keine Runde ausgeführt."
+            "value": "Freigegebene Ordner wurden noch nicht geprüft."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun cycle n’a encore été exécuté."
+            "value": "Les dossiers partagés n’ont pas encore été vérifiés."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aún no se ha ejecutado ninguna ronda."
+            "value": "Todavía no se han comprobado las carpetas compartidas."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nenhuma rodada foi executada ainda."
+            "value": "As pastas compartilhadas ainda não foram verificadas."
           }
         }
       }
@@ -19448,55 +19448,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allow Access to Configuration Folder…"
+            "value": "Try Again…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "允许访问配置文件夹…"
+            "value": "重试…"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "允許存取設定檔案夾…"
+            "value": "重試…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定フォルダへのアクセスを許可…"
+            "value": "再試行…"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "구성 폴더 접근 허용…"
+            "value": "다시 시도…"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zugriff auf Konfigurationsordner erlauben…"
+            "value": "Erneut versuchen…"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autoriser l’accès au dossier de configuration…"
+            "value": "Réessayer…"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir acceso a la carpeta de configuración…"
+            "value": "Reintentar…"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir acesso à pasta de configuração…"
+            "value": "Tentar novamente…"
           }
         }
       }
@@ -19808,55 +19808,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The saved folder access could not be renewed. Allow access again to read your current configuration."
+            "value": "Automnt couldn’t read its settings. Try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法更新已保存的文件夹访问记录。请重新允许访问，以读取当前配置。"
+            "value": "Automnt 无法读取自己的设置。请重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法更新已儲存的檔案夾存取記錄。請重新允許存取，以讀取目前設定。"
+            "value": "Automnt 無法讀取自己的設定。請重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存されたフォルダへのアクセスを更新できませんでした。現在の設定を読むには、もう一度アクセスを許可してください。"
+            "value": "Automnt は設定を読み取れませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "저장된 폴더 접근 권한을 갱신하지 못했습니다. 현재 구성을 읽으려면 접근을 다시 허용하세요."
+            "value": "Automnt가 설정을 읽지 못했습니다. 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der gespeicherte Ordnerzugriff konnte nicht erneuert werden. Erlaube den Zugriff erneut, um die aktuelle Konfiguration zu lesen."
+            "value": "Automnt konnte seine Einstellungen nicht lesen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’accès enregistré au dossier n’a pas pu être renouvelé. Autorisez à nouveau l’accès pour lire votre configuration actuelle."
+            "value": "Automnt n’a pas pu lire ses réglages. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo renovar el acceso guardado a la carpeta. Permite el acceso de nuevo para leer la configuración actual."
+            "value": "Automnt no pudo leer sus ajustes. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível renovar o acesso salvo à pasta. Permita o acesso novamente para ler sua configuração atual."
+            "value": "O Automnt não conseguiu ler os ajustes. Tente novamente."
           }
         }
       }
@@ -19868,55 +19868,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt can no longer access the configuration folder. Allow access again. Your configuration has not been replaced."
+            "value": "Automnt couldn’t read its settings. Try again. Your settings have not been replaced."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 已无法访问配置文件夹。请重新允许访问。原配置未被替换。"
+            "value": "Automnt 无法读取自己的设置。请重试。你的设置没有被替换。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 已無法存取設定檔案夾。請重新允許存取。原設定未被取代。"
+            "value": "Automnt 無法讀取自己的設定。請重試。你的設定未被取代。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt は設定フォルダにアクセスできなくなりました。もう一度アクセスを許可してください。設定は置き換えられていません。"
+            "value": "Automnt は設定を読み取れませんでした。もう一度お試しください。設定は置き換えられていません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt가 구성 폴더에 더 이상 접근할 수 없습니다. 접근을 다시 허용하세요. 구성은 교체되지 않았습니다."
+            "value": "Automnt가 설정을 읽지 못했습니다. 다시 시도하세요. 설정은 바뀌지 않았습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt kann nicht mehr auf den Konfigurationsordner zugreifen. Erlaube den Zugriff erneut. Deine Konfiguration wurde nicht ersetzt."
+            "value": "Automnt konnte seine Einstellungen nicht lesen. Versuchen Sie es erneut. Ihre Einstellungen wurden nicht ersetzt."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt ne peut plus accéder au dossier de configuration. Autorisez à nouveau l’accès. Votre configuration n’a pas été remplacée."
+            "value": "Automnt n’a pas pu lire ses réglages. Réessayez. Vos réglages n’ont pas été remplacés."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt ya no puede acceder a la carpeta de configuración. Permite el acceso de nuevo. Tu configuración no se ha reemplazado."
+            "value": "Automnt no pudo leer sus ajustes. Inténtalo de nuevo. Tus ajustes no se han reemplazado."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Automnt não consegue mais acessar a pasta de configuração. Permita o acesso novamente. Sua configuração não foi substituída."
+            "value": "O Automnt não conseguiu ler os ajustes. Tente novamente. Seus ajustes não foram substituídos."
           }
         }
       }
@@ -20048,55 +20048,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Access to Automnt Settings"
+            "value": "Automnt Can’t Open Its Settings"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "访问 Automnt 设置"
+            "value": "无法打开 Automnt 的设置"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "存取 Automnt 設定"
+            "value": "無法開啟 Automnt 的設定"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt の設定へのアクセス"
+            "value": "Automnt の設定を開けません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 설정 접근"
+            "value": "Automnt 설정을 열 수 없습니다"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zugriff auf die Automnt-Einstellungen"
+            "value": "Automnt-Einstellungen können nicht geöffnet werden"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Accès aux réglages d’Automnt"
+            "value": "Impossible d’ouvrir les réglages d’Automnt"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acceso a los ajustes de Automnt"
+            "value": "No se pueden abrir los ajustes de Automnt"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acesso aos ajustes do Automnt"
+            "value": "Não foi possível abrir os ajustes do Automnt"
           }
         }
       }
@@ -20168,55 +20168,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Access was not granted. Continue to allow access to Automnt’s settings."
+            "value": "Automnt couldn’t open its settings. Try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚未获得访问权限。继续以允许 Automnt 访问设置。"
+            "value": "Automnt 无法打开自己的设置。请重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "尚未取得存取權限。請繼續以允許 Automnt 存取設定。"
+            "value": "Automnt 無法開啟自己的設定。請重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクセスが許可されていません。続けて、Automnt の設定へのアクセスを許可してください。"
+            "value": "Automnt の設定を開けませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "접근 권한이 부여되지 않았습니다. 계속 진행하여 Automnt 설정에 대한 접근을 허용하세요."
+            "value": "Automnt 설정을 열지 못했습니다. 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Zugriff wurde nicht erlaubt. Fahre fort, um den Zugriff auf die Automnt-Einstellungen zu erlauben."
+            "value": "Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’accès n’a pas été autorisé. Continuez pour autoriser l’accès aux réglages d’Automnt."
+            "value": "Automnt n’a pas pu ouvrir ses réglages. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se ha concedido acceso. Continúa para permitir el acceso a los ajustes de Automnt."
+            "value": "Automnt no pudo abrir sus ajustes. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O acesso não foi autorizado. Continue para permitir o acesso aos ajustes do Automnt."
+            "value": "O Automnt não conseguiu abrir os ajustes. Tente novamente."
           }
         }
       }
@@ -20228,55 +20228,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt could not access its settings. Allow access so it can prepare them for you."
+            "value": "Automnt couldn’t open its settings. Try again. If this keeps happening, reinstall Automnt or contact support."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 无法访问设置。允许访问后，应用会自动准备设置。"
+            "value": "Automnt 无法打开自己的设置。请重试；如果仍然失败，请重新安装 Automnt 或联系支持。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 無法存取設定。允許存取後，App 會自動準備設定。"
+            "value": "Automnt 無法開啟自己的設定。請重試；若仍失敗，請重新安裝 Automnt 或聯絡支援。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt が設定にアクセスできませんでした。設定を準備できるように、アクセスを許可してください。"
+            "value": "Automnt の設定を開けませんでした。もう一度お試しください。解決しない場合は、Automnt を再インストールするか、サポートにお問い合わせください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt가 설정에 접근할 수 없습니다. 설정을 준비할 수 있도록 접근을 허용하세요."
+            "value": "Automnt 설정을 열지 못했습니다. 다시 시도하세요. 계속 문제가 발생하면 Automnt를 다시 설치하거나 지원팀에 문의하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt konnte nicht auf seine Einstellungen zugreifen. Erlaube den Zugriff, damit Automnt sie für dich vorbereiten kann."
+            "value": "Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut. Wenn das Problem weiterhin besteht, installieren Sie Automnt neu oder wenden Sie sich an den Support."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt n’a pas pu accéder à ses réglages. Autorisez l’accès pour qu’Automnt puisse les préparer pour vous."
+            "value": "Automnt n’a pas pu ouvrir ses réglages. Réessayez. Si le problème persiste, réinstallez Automnt ou contactez l’assistance."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt no pudo acceder a sus ajustes. Permite el acceso para que pueda prepararlos."
+            "value": "Automnt no pudo abrir sus ajustes. Inténtalo de nuevo. Si el problema continúa, reinstala Automnt o contacta con el servicio de asistencia."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Automnt não conseguiu acessar seus ajustes. Permita o acesso para que ele possa prepará-los para você."
+            "value": "O Automnt não conseguiu abrir os ajustes. Tente novamente. Se o problema continuar, reinstale o Automnt ou fale com o suporte."
           }
         }
       }
@@ -20288,55 +20288,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The saved access to your settings has expired. Allow access again to continue."
+            "value": "Automnt couldn’t open its settings. Try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已保存的访问权限已失效。请重新允许访问以继续。"
+            "value": "Automnt 无法打开自己的设置。请重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已儲存的存取權限已失效。請重新允許存取以繼續。"
+            "value": "Automnt 無法開啟自己的設定。請重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定へのアクセス許可の有効期限が切れています。続けるには、もう一度アクセスを許可してください。"
+            "value": "Automnt の設定を開けませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "저장된 설정 접근 권한이 만료되었습니다. 계속하려면 접근을 다시 허용하세요."
+            "value": "Automnt 설정을 열지 못했습니다. 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die gespeicherte Zugriffsberechtigung für deine Einstellungen ist abgelaufen. Erlaube den Zugriff erneut, um fortzufahren."
+            "value": "Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’autorisation d’accès enregistrée pour vos réglages a expiré. Autorisez à nouveau l’accès pour continuer."
+            "value": "Automnt n’a pas pu ouvrir ses réglages. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El permiso guardado para acceder a tus ajustes ha caducado. Permite el acceso de nuevo para continuar."
+            "value": "Automnt no pudo abrir sus ajustes. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A permissão salva para acessar seus ajustes expirou. Permita o acesso novamente para continuar."
+            "value": "O Automnt não conseguiu abrir os ajustes. Tente novamente."
           }
         }
       }
@@ -20348,55 +20348,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt can no longer access its settings. Allow access again to continue."
+            "value": "Automnt couldn’t open its settings. Try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 已无法访问设置。请重新允许访问以继续。"
+            "value": "Automnt 无法打开自己的设置。请重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt 已無法存取設定。請重新允許存取以繼續。"
+            "value": "Automnt 無法開啟自己的設定。請重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt が設定にアクセスできなくなりました。続けるには、もう一度アクセスを許可してください。"
+            "value": "Automnt の設定を開けませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt가 더 이상 설정에 접근할 수 없습니다. 계속하려면 접근을 다시 허용하세요."
+            "value": "Automnt 설정을 열지 못했습니다. 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt kann nicht mehr auf seine Einstellungen zugreifen. Erlaube den Zugriff erneut, um fortzufahren."
+            "value": "Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt ne peut plus accéder à ses réglages. Autorisez à nouveau l’accès pour continuer."
+            "value": "Automnt n’a pas pu ouvrir ses réglages. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt ya no puede acceder a sus ajustes. Permite el acceso de nuevo para continuar."
+            "value": "Automnt no pudo abrir sus ajustes. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Automnt não pode mais acessar seus ajustes. Permita o acesso novamente para continuar."
+            "value": "O Automnt não conseguiu abrir os ajustes. Tente novamente."
           }
         }
       }
@@ -20408,55 +20408,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your saved settings could not be read. Try again, or allow access again to restore permission."
+            "value": "Automnt couldn’t read your settings. Try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法读取已保存的设置。请重试，或重新允许访问。"
+            "value": "Automnt 无法读取你的设置。请重试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法讀取已儲存的設定。請重試，或重新允許存取。"
+            "value": "Automnt 無法讀取你的設定。請重試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存された設定を読み込めませんでした。もう一度試すか、アクセスを再度許可してください。"
+            "value": "Automnt は設定を読み取れませんでした。もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "저장된 설정을 읽을 수 없습니다. 다시 시도하거나 접근을 다시 허용하세요."
+            "value": "Automnt가 설정을 읽지 못했습니다. 다시 시도하세요."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Deine gespeicherten Einstellungen konnten nicht gelesen werden. Versuche es erneut oder erlaube den Zugriff erneut, um die Berechtigung wiederherzustellen."
+            "value": "Automnt konnte Ihre Einstellungen nicht lesen. Versuchen Sie es erneut."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vos réglages enregistrés n’ont pas pu être lus. Réessayez ou autorisez à nouveau l’accès pour rétablir la permission."
+            "value": "Automnt n’a pas pu lire vos réglages. Réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron leer tus ajustes guardados. Inténtalo de nuevo o permite el acceso de nuevo para restablecer el permiso."
+            "value": "Automnt no pudo leer tus ajustes. Inténtalo de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível ler seus ajustes salvos. Tente novamente ou permita o acesso novamente para restaurar a permissão."
+            "value": "O Automnt não conseguiu ler os ajustes. Tente novamente."
           }
         }
       }
@@ -20528,55 +20528,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allow Access…"
+            "value": "Try Again"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "允许访问…"
+            "value": "重试"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "允許存取…"
+            "value": "重試"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクセスを許可…"
+            "value": "再試行"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "접근 허용…"
+            "value": "다시 시도"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zugriff erlauben…"
+            "value": "Erneut versuchen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autoriser l’accès…"
+            "value": "Réessayer"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir acceso…"
+            "value": "Reintentar"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir Acesso…"
+            "value": "Tentar novamente"
           }
         }
       }
@@ -20588,55 +20588,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Allow Access"
+            "value": "Try Again"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "允许访问"
+            "value": "重试"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "允許存取"
+            "value": "重試"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクセスを許可"
+            "value": "再試行"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "접근 허용"
+            "value": "다시 시도"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zugriff erlauben"
+            "value": "Erneut versuchen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Autoriser l’accès"
+            "value": "Réessayer"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir acceso"
+            "value": "Reintentar"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Permitir Acesso"
+            "value": "Tentar novamente"
           }
         }
       }
@@ -21897,6 +21897,246 @@
           "stringUnit": {
             "state": "translated",
             "value": "Isso apaga os arquivos de registro locais do Automnt. Exportações de diagnóstico já salvas não são afetadas."
+          }
+        }
+      }
+    },
+    "Automnt keeps its settings on this Mac. Shared folders you have already added will appear automatically.": {
+      "comment": "2026-10-20 first-run/access copy revision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt keeps its settings on this Mac. Shared folders you have already added will appear automatically."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 会把设置保存在这台 Mac 上。已经添加过的共享文件夹会自动显示。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 會將設定儲存在這台 Mac 上。已加入的共享資料夾會自動顯示。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt の設定はこの Mac に保存されます。追加済みの共有フォルダは自動的に表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt는 설정을 이 Mac에 저장합니다. 이미 추가한 공유 폴더는 자동으로 표시됩니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt speichert seine Einstellungen auf diesem Mac. Bereits hinzugefügte freigegebene Ordner werden automatisch angezeigt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt conserve ses réglages sur ce Mac. Les dossiers partagés déjà ajoutés apparaissent automatiquement."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt guarda sus ajustes en este Mac. Las carpetas compartidas que ya hayas añadido aparecerán automáticamente."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Automnt mantém os ajustes neste Mac. As pastas compartilhadas já adicionadas aparecem automaticamente."
+          }
+        }
+      }
+    },
+    "Automnt couldn’t read your settings. Try again. It has not replaced them.": {
+      "comment": "2026-10-20 first-run/access copy revision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt couldn’t read your settings. Try again. It has not replaced them."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 无法读取你的设置。请重试，原设置未被替换。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 無法讀取你的設定。請重試，原設定未被取代。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt は設定を読み取れませんでした。もう一度お試しください。設定は置き換えられていません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt가 설정을 읽지 못했습니다. 다시 시도하세요. 기존 설정은 바뀌지 않았습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt konnte Ihre Einstellungen nicht lesen. Versuchen Sie es erneut. Sie wurden nicht ersetzt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt n’a pas pu lire vos réglages. Réessayez. Ils n’ont pas été remplacés."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt no pudo leer tus ajustes. Inténtalo de nuevo. No se han reemplazado."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Automnt não conseguiu ler os ajustes. Tente novamente. Eles não foram substituídos."
+          }
+        }
+      }
+    },
+    "Welcome to Automnt": {
+      "comment": "2026-10-20 first-run/access copy revision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome to Automnt"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "欢迎使用 Automnt"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歡迎使用 Automnt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt へようこそ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt에 오신 것을 환영합니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Willkommen bei Automnt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenue dans Automnt"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te damos la bienvenida a Automnt"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boas-vindas ao Automnt"
+          }
+        }
+      }
+    },
+    "Add a shared folder to get started. Automnt will mount it automatically when the server is available.": {
+      "comment": "2026-10-20 first-run/access copy revision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a shared folder to get started. Automnt will mount it automatically when the server is available."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加一个共享文件夹即可开始。服务器可用时，Automnt 会自动挂载它。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "加入一個共享資料夾即可開始。伺服器可用時，Automnt 會自動掛載它。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共有フォルダを追加して始めましょう。サーバーが利用可能になると、Automnt が自動的にマウントします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유 폴더를 추가하여 시작하세요. 서버를 사용할 수 있으면 Automnt가 자동으로 마운트합니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fügen Sie einen freigegebenen Ordner hinzu, um zu beginnen. Automnt bindet ihn automatisch ein, sobald der Server verfügbar ist."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez un dossier partagé pour commencer. Automnt le montera automatiquement lorsque le serveur sera disponible."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade una carpeta compartida para empezar. Automnt la montará automáticamente cuando el servidor esté disponible."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione uma pasta compartilhada para começar. O Automnt vai montá-la automaticamente quando o servidor estiver disponível."
           }
         }
       }

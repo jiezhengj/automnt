@@ -358,18 +358,31 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 | ID | 简体中文候选 | English candidate | 语境/行为 |
 | --- | --- | --- | --- |
 | configAccess.title | 开始使用 Automnt | Get Started with Automnt | 首次/取消 ContentUnavailableView 标题 |
-| configAccess.help | Automnt 需要读取和保存自身设置。已经配置的共享文件夹会自动显示。 | Automnt needs access to read and save its settings. Shared folders you’ve already configured will appear automatically. | 说明用户可理解的用途，不要求先了解 CLI 或内部目录 |
+| configAccess.help | Automnt 会把设置保存在这台 Mac 上。已经添加过的共享文件夹会自动显示。 | Automnt keeps its settings on this Mac. Shared folders you have already added will appear automatically. | 说明设置位置与自动显示，不要求理解内部目录或权限 |
 | configAccess.continue | 继续… | Continue… | 首次/拒绝后继续访问；按已验证机制需要时调用真实系统许可，不打开内部目录选择器 |
-| configAccess.grant | 允许访问… | Allow Access… | 按实际原因恢复访问，普通 alert 不授予沙盒访问，不承诺通用 API |
-| configAccess.panelPrompt | 允许访问 | Allow Access | 历史 NSOpenPanel 资源 ID，仅留追溯，不是当前配置访问动作；不自行命名系统许可按钮 |
+| configAccess.grant | 重试 | Try Again | 实际读取失败后的重试；不暗示系统授权面板，不承诺通用 API |
+| configAccess.panelPrompt | 重试 | Try Again | 历史资源 ID，仅留追溯；当前固定目录由程序准备，不出现系统授权按钮 |
 | configAccess.cancelled | 尚未允许 Automnt 访问设置。准备好后，可以继续。 | Automnt doesn’t have access to its settings yet. Continue when you’re ready. | 仍未授权，恢复 Continue… 焦点，无零目标统计 |
-| configAccess.wrongDirectory | 未能获得设置访问权限。请重新允许访问。 | Access to Automnt’s settings wasn’t granted. Allow access to try again. | 历史错选分支 ID；当前首次/恢复无选目录步骤，不要求重选或定位内部路径 |
-| configAccess.prepareFailed | 未能准备 Automnt 的设置：{reason}。请重试。 | Automnt couldn’t prepare its settings: {reason}. Try again. | 保留自然脱敏原因；只有实际权限不足给允许访问，其他失败不指示无效授权，不要求手工创建 |
-| configAccess.stale | 需要重新允许 Automnt 访问设置。 | Allow Automnt to access its settings again. | 访问记录不能安全更新，不暴露书签术语 |
-| configAccess.revoked | Automnt 无法再访问设置。请重新允许访问。 | Automnt can no longer access its settings. Allow access again. | 实际权限失效，不当作目标消失 |
-| configAccess.readFailed | 未能读取设置：{reason} | Couldn’t read settings: {reason} | 有权限但读/解析失败；原因不含内部完整路径 |
+| configAccess.wrongDirectory | 无法打开 Automnt 的设置。请重试。 | Automnt couldn’t open its settings. Try again. | 实际校验失败；不要求重选目录或理解权限 |
+| configAccess.prepareFailed | 无法打开 Automnt 的设置。请重试。 | Automnt couldn’t open its settings. Try again. | 不展示内部原因给大众用户；诊断可另记脱敏原因 |
+| configAccess.stale | 无法打开 Automnt 的设置。请重试。 | Automnt couldn’t open its settings. Try again. | 固定目录不需要书签续期；不暴露内部术语 |
+| configAccess.revoked | 无法打开 Automnt 的设置。请重试。 | Automnt couldn’t open its settings. Try again. | 实际读取失败，不当作目标消失 |
+| configAccess.readFailed | Automnt 无法读取你的设置。请重试。 | Automnt couldn’t read your settings. Try again. | 读/解析失败；原因不进入大众界面，诊断另记脱敏信息 |
 | configAccess.retry | 重新读取 | Reload | 不创建新配置 |
-| configAccess.backgroundHelp | 自动挂载暂时无法读取设置。请打开 Automnt 查看原因并恢复访问。 | Automatic mounting can’t read its settings right now. Open Automnt to check the cause and restore access. | 表达影响与按原因的下一步，不把解析/IO 失败一律当权限不足，不显示内部协议 |
+| configAccess.backgroundHelp | 自动挂载暂时无法读取设置。请保持 Automnt 打开以管理设置；后台服务未作更改。 | Automatic mounting can’t read your settings right now. Keep Automnt open to manage them; the background service has not been changed. | 表达影响与下一步，不显示内部协议或权限术语 |
+
+| firstRun.title | 欢迎使用 Automnt | Welcome to Automnt | 全新无配置时详情区标题 |
+| firstRun.help | 添加一个共享文件夹即可开始。服务器可用时，Automnt 会自动挂载它。 | Add a shared folder to get started. Automnt will mount it automatically when the server is available. | 一句用途，不要求理解后台/权限 |
+| firstRun.action | 添加共享文件夹… | Add Shared Folder… | 首个主动作 |
+| status.noRound | 尚未检查共享文件夹。 | Shared folders haven’t been checked yet. | 替代“尚未运行过任何一轮” |
+| status.autoMount.unavailable | 自动挂载：暂时无法确认 | Automatic mounting: status unavailable | 状态不可确认，不暗示权限被拒 |
+| status.autoMount.off | 自动挂载：已关闭 | Automatic mounting: off | 用户可理解的关闭状态 |
+| status.autoMount.running | 自动挂载：运行中 | Automatic mounting: running | 实际运行状态 |
+| status.autoMount.waiting | 自动挂载：等待在“登录项”中允许 | Automatic mounting: waiting for approval in Login Items | 系统待批准 |
+| status.autoMount.applying | 自动挂载：正在应用设置 | Automatic mounting: applying your setting | 切换中 |
+| status.autoMount.cli | 自动挂载：由命令行版本管理 | Automatic mounting: managed by the command-line version | 实际 owner 为 CLI |
+
+2026-10-20 修正：固定目录缺失属于首次启动，不是访问错误；程序启动时自行准备，不再显示“访问 Automnt 设置/允许访问”。只有真实读取失败才显示“无法打开 Automnt 的设置”+“重试”。按钮设置 intrinsic width（`fixedSize`）并保留横/纵回退，逐语验证德语等长标签不截断。状态文案统一“自动挂载/检查”，不使用“后台挂载/一轮”。
 
 废弃 configAccess.create 和带 folderPath 的指导，不新增内部位置字段、选择/更改/导入资源。首次、设置、菜单和恢复支持均无内部目录选择、查找或手工创建；程序准备固定位置，真实许可按需要允许/拒绝，机制仍待验证。拒绝/取消回发起按钮并持续给出原因，成功访问自动读取已有共享，不额外通知/声音，沿系统动效。读失败不显示零目标，已有快照只读；显式诊断可显示路径并按导出规则脱敏。历史 290 项测试/签名/中文首次窗口见[方案 A 实施证据](../../../release/evidence/option-a-authorization.md)，不证明最新权限、helper 生命周期、MAS 或九语。未来 T084/T091/T094 验统一访问、准确字段原因及全界面九语长译文/窄窗/大字/键盘/VoiceOver/拒绝保存退出焦点。
 

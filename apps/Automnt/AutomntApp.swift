@@ -128,20 +128,16 @@ final class ApplicationModel {
     var configurationAccessMessage: String {
         switch configurationAccess {
         case .awaitingAuthorization, .cancelled:
-            String(localized: "Automnt needs permission to read and save your settings. Shared folders you have already configured will appear automatically.")
-        case .wrongDirectory:
+            String(localized: "Automnt keeps its settings on this Mac. Shared folders you have already added will appear automatically.")
+        case .wrongDirectory, .directoryMissing, .bookmarkStale, .permissionRevoked:
             String(localized: "Access was not granted. Continue to allow access to Automnt’s settings.")
-        case .directoryMissing:
-            String(localized: "Automnt could not access its settings. Allow access so it can prepare them for you.")
-        case .bookmarkStale:
-            String(localized: "The saved access to your settings has expired. Allow access again to continue.")
-        case .permissionRevoked:
-            String(localized: "Automnt can no longer access its settings. Allow access again to continue.")
         case .readFailed:
             String(localized: "Your saved settings could not be read. Try again, or allow access again to restore permission.")
         case .ready, .authorizedUnconfigured: ""
         }
     }
+    /// A clean install has no configuration yet; this is a welcome state, not an access error.
+    var isFirstRun: Bool { configurationAccess == .authorizedUnconfigured && !hasConfiguration }
     var busy = false
     var actionReadiness: ManualActionReadiness = .needsSetup
     var manualMountReady = false
@@ -355,9 +351,18 @@ final class ApplicationModel {
 
     // MARK: - Loading
 
+    /// The fixed directory is program-owned: create it on launch instead of treating a
+    /// missing directory as an access failure. Bookmark-based builds keep resolving.
+    private func openSettingsDirectory() throws -> AuthorizedDirectory {
+        if PermissionStore.hasFixedDirectoryEntitlement {
+            return try permissions.prepareFixedSettings()
+        }
+        return try permissions.resolve()
+    }
+
     func restore() {
         guard authorization == nil else { return }
-        do { try load(permissions.resolve()) }
+        do { try load(openSettingsDirectory()) }
         catch { accessFailed(error) }
     }
 
@@ -365,7 +370,7 @@ final class ApplicationModel {
         guard !busy else { return }
         busy = true
         defer { busy = false }
-        do { try load(permissions.prepareFixedSettings()) }
+        do { try load(openSettingsDirectory()) }
         catch { accessFailed(error) }
     }
 
@@ -385,7 +390,7 @@ final class ApplicationModel {
 
     func reload() {
         guard !busy else { return }
-        do { try load(permissions.resolve()) }
+        do { try load(openSettingsDirectory()) }
         catch { accessFailed(error) }
     }
 
@@ -416,7 +421,7 @@ final class ApplicationModel {
             // Preserve the last successful snapshot for read-only inspection.
             configurationReadFailed = true
             configurationAccess = .readFailed
-            issue = String(localized: "Your configuration could not be read. Check folder access and try again. Automnt has not created a new configuration.")
+            issue = String(localized: "Automnt couldn’t read your settings. Try again. It has not replaced them.")
         }
         let preference = NotificationPreferenceStore(authorizedDirectory: directory.url).readForDelivery()
         soundEnabled = preference.soundEnabled

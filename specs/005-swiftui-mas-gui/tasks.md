@@ -503,3 +503,6 @@ T061 编号已存在并保留；以下从 T062 追加，全部未勾选。本节
 - [x] T102 [US3] 在应用后台控制已配置的条件下验证 GUI 普通弹出与繁忙卷弹出（不 force、繁忙如实失败、成功后会话抑制与恢复）。
 - [x] T103 [US3] 实现日志保留政策（T003 方案 A）：按 7 天/5 MB 滚动清理本机日志，在设置或诊断提供“清除日志”，记录实际清理结果；不以政策文本代替行为验证。
   - 2026-10-20 已实现：`Sources/AutomntCore/LogRetention.swift`（7 天/5 MB、行边界裁剪、清除）、CLI 正常启动与 App 读取时执行、诊断页面“清除日志”入口与九语文案；`LogRetentionTests` 3 项与 CLI 分类测试通过，Package 306 项测试全绿。真实 UI 点击因屏幕锁定未复验。
+
+- [x] T104 [US3] 修正首次启动/设置读取失败的文案与按钮布局：固定目录缺失自动准备，不再显示“访问 Automnt 设置/允许访问”；全新无配置显示欢迎+添加共享；真实失败使用“无法打开 Automnt 的设置/重试”；状态统一“自动挂载/检查”；按钮 intrinsic width 并支持纵向回退，九语长标签不截断。
+  - 2026-10-20 完成：`restore/reload/authorize` 统一经 `openSettingsDirectory()` 准备固定目录；新增 `isFirstRun` 欢迎页；更新 configAccess/状态九语文案；`ContentUnavailableView` 动作按钮加 `fixedSize` 并保留横/纵回退。签名 GUI 重新构建、安装并逐语检查。

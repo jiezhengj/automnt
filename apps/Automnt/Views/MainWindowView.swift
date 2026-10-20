@@ -267,7 +267,9 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
+        if model.isFirstRun {
+            firstRunView
+        } else if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
             ScrollView {
                 configurationAccessView
             }
@@ -280,6 +282,20 @@ struct MainWindowView: View {
         } else {
             ContentUnavailableView("Choose a Server", systemImage: "server.rack",
                 description: Text("Choose a server on the left to see its shared folders."))
+        }
+    }
+
+    /// First launch after a clean install: the settings directory is ready, but no
+    /// shared folder exists yet. This is a welcome, not an "access" error.
+    private var firstRunView: some View {
+        ContentUnavailableView {
+            Label("Welcome to Automnt", systemImage: "externaldrive.badge.plus")
+        } description: {
+            Text("Add a shared folder to get started. Automnt will mount it automatically when the server is available.")
+        } actions: {
+            Button("Add Shared Folder…") { showingAddShare = true }
+                .keyboardShortcut(.defaultAction)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -302,14 +318,14 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var configurationAccessButtons: some View {
+        // ContentUnavailableView can compress action buttons to an equal narrow width;
+        // fixedSize keeps the localized label intact so the vertical fallback can take over.
         Button(model.configurationAccessButton) { Task { await model.authorizeConfiguration() } }
             .keyboardShortcut(.defaultAction)
-        if model.configurationAccess == .readFailed {
-            Button("Try Again") { model.reload() }
-        } else {
-            Button("Later") { model.configurationAccess = .cancelled }
-                .keyboardShortcut(.cancelAction)
-        }
+            .fixedSize(horizontal: true, vertical: false)
+        Button("Later") { model.configurationAccess = .cancelled }
+            .keyboardShortcut(.cancelAction)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     /// A "View details" request from the menu bar can arrive while a sheet is open;
@@ -351,20 +367,24 @@ struct MainWindowView: View {
 
     private var statusBar: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(backgroundLine)
-                Spacer()
-                if model.backend.needsUserAction {
-                    Button("Check Background Mounting") { model.refreshActionReadiness() }
-                        .buttonStyle(.link)
+            if model.hasConfiguration {
+                if !backgroundLine.isEmpty {
+                    HStack(spacing: 8) {
+                        Text(backgroundLine)
+                        Spacer()
+                        if model.backend.needsUserAction {
+                            Button("Check Background Mounting") { model.refreshActionReadiness() }
+                                .buttonStyle(.link)
+                        }
+                    }
                 }
-            }
-            if let observed = model.roundObservedAt {
-                LabeledContent("Last checked") { Text(observed, format: .dateTime) }
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("No round has run yet.")
-                    .foregroundStyle(.secondary)
+                if let observed = model.roundObservedAt {
+                    LabeledContent("Last checked") { Text(observed, format: .dateTime) }
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("No round has run yet.")
+                        .foregroundStyle(.secondary)
+                }
             }
             if model.configurationAccess.allowsChanges && model.snapshot?.configuration.isAutomationEnabled == false && model.hasConfiguration {
                 // A one-time, explicit next step; no permanent global switch lives here.
@@ -383,9 +403,7 @@ struct MainWindowView: View {
     }
 
     private var backgroundLine: String {
-        guard model.configurationAccess.allowsChanges else {
-            return String(localized: "Background mounting: could not be confirmed")
-        }
+        guard model.configurationAccess.allowsChanges else { return "" }
         return switch model.backend {
         case .running: String(localized: "Background mounting: running")
         case .awaitingApproval: String(localized: "Background mounting: waiting for approval in Login Items")

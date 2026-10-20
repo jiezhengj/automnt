@@ -383,3 +383,27 @@ Keychain适配采用Data Protection Keychain与LAContext.interactionNotAllowed�
 - X（维护者确认 A 后明确延后；以决策关闭，不表示已验证）
 
 tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建成功，`verify-signature`、本地化、Swift 6 结构门通过，`swift test` 306 项通过（Core 184/49、Platform 89/25、CLI 33/3）。X 类仍包括真实注销/重启、helper 跨会话、GUI 退出后后台 SMB、系统认证、VoiceOver/系统大字、双主机、后台弹出、付费账号与商店；这些不因勾选被视为已验证。
+
+# 2026-10-20 首次启动、设置读取失败文案与按钮截断修正
+
+## 现象与原因
+
+- 清空配置后首次打开显示“访问 Automnt 设置 / Automnt 无法访问设置 / 允许访问”，把“固定目录尚不存在”误判为访问失败。根因是 `restore()` 只调用 `permissions.resolve()`，目录缺失即抛 `directoryMissing`；程序本可在启动时准备该目录。
+- 同一界面主按钮被 `ContentUnavailableView` 压缩到与其他按钮等宽（中文仅 68pt），“允许访问…”显示为“允许访…”。
+- 页脚“后台挂载：无法确认”“尚未运行过任何一轮”使用内部状态机/评估轮次术语，大众用户无法据此行动。
+
+## 修正
+
+- `restore/reload/authorize` 统一经 `openSettingsDirectory()`：固定目录 entitlement 下调用 `prepareFixedSettings()`，启动时自动创建 0700 目录；仅真实读取/校验失败才进入错误页。
+- 新增首次欢迎页：“欢迎使用 Automnt” + 一句用途 + “添加共享文件夹…”。
+- 错误页改为“无法打开 Automnt 的设置” + “请重试” + “重试”；不再出现“允许访问/配置文件夹/权限”。
+- 操作按钮加 `fixedSize(horizontal: true, vertical: false)`，保留 `ViewThatFits` 横/纵回退，避免等宽压缩截断。
+- 页脚改为“自动挂载”与“检查”：无配置时隐藏状态；状态暂不可用时为“自动挂载：暂时无法确认”；未检查时为“尚未检查共享文件夹。”
+- 九语资源同步更新：新增欢迎/说明，修改 access/status/no-round 等键；德语等长标签实测。
+
+## 验证
+
+- `swift test` 306 项通过；本地化门通过（369 键、9 语言）。
+- 重建签名 GUI 并替换 `~/Applications/Automnt.app`；清空配置后启动自动创建 0700 目录并显示欢迎页。
+- 构造目录路径为普通文件的真实失败：中文/德语错误页均完整显示标题、说明与“重试”/“Erneut versuchen”；AX 宽度中文 50pt、德语 130pt，无截断；标题与正文正常换行。
+- 版本仍为 3.4.0，仅本地修复，未推送、未发布；推送前需按 PATCH 晋级 3.4.1。

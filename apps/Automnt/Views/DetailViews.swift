@@ -999,8 +999,9 @@ struct SettingsView: View {
             if !model.configurationAccess.allowsChanges {
                 Text(model.configurationAccessMessage)
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                Button("Allow Access…") { Task { await model.authorizeConfiguration() } }
+                Button(model.configurationAccessButton) { Task { await model.authorizeConfiguration() } }
                     .disabled(model.busy)
+                    .fixedSize(horizontal: true, vertical: false)
             } else if let configuration = model.snapshot?.configuration, let base = model.snapshot {
                 Toggle("Automatic Mounting", isOn: Binding(
                     get: { configuration.isAutomationEnabled },
