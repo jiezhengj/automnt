@@ -469,6 +469,10 @@ final class ApplicationModel {
         authorization = directory
         do {
             snapshot = try FileConfigRepository(authorizedDirectory: directory.url).read()
+            // A shutdown during a worker handoff can leave an intent whose child has
+            // already exited. The evaluation lock is the liveness fence: clear only
+            // when no worker holds it.
+            try? WorkerOperationStore(authorizedDirectory: directory.url).abandonPendingForRepair()
             configurationReadFailed = false
             configurationAccess = .ready
             issue = nil
@@ -771,6 +775,11 @@ final class ApplicationModel {
                 }
             }
             let store = BackendStateStore(authorizedDirectory: authorization.url)
+            if repair, let state = try? store.read(), state.phase == .failed {
+                // A failed transition can be fenced by a launch intent left by a worker
+                // that already exited. The lock proves no worker is still holding it.
+                try? WorkerOperationStore(authorizedDirectory: authorization.url).abandonPendingForRepair()
+            }
             let controls = AppServiceHandoffAdapter(authorizedDirectory: authorization.url, revision: base.revision)
             let adapter = EvaluatingHandoffAdapter(controls: controls,
                 applicationURL: Bundle.main.bundleURL, directory: authorization)

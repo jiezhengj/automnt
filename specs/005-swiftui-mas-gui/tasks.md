@@ -523,4 +523,4 @@ T061 编号已存在并保留；以下从 T062 追加，全部未勾选。本节
 
 - [x] T110 [US3] 用详情区原生状态卡取代底部状态条；失败/等待/过渡按状态给出真实修复或系统设置入口；自动挂载切换串行化，应用期间禁用开关。
   - 2026-10-20 完成 UI 与交互：移除底部 statusBar；新增状态卡（应用/失败/未运行/等待批准/命令行）、真实“修复后台挂载”、九语文案；总开关切换加 in-flight 锁，Settings 与启用卡禁用重复操作；添加成功提示按总开关区分。
-  - 未完成/待确认：当前机器的历史 failed journal（failure=signalUnavailable）在点击修复后未复测清除，后台注册 readiness 问题仍待单独诊断；不能声称该失败场景已恢复。
+  - 修复：根因是 `worker-operation.plist` 残留 `pending=true`，`verifyIdle()` 抛 `signalUnavailable`，failed journal 无法前进；新增 `abandonPendingForRepair()`，只在取得 evaluation lock（无 worker 存活）时清除 intent；修复流程与启动加载均调用。实测 failed→active，owner=app、last_verified=enabled、worker pending=false。

@@ -59,6 +59,26 @@ public struct WorkerOperationStore: Sendable {
         guard record.pending, record.id == id, record.revision == revision,
               record.generation == generation else { throw AutomntIssue.configurationConflict }
     }
+    /// Explicit repair for an abandoned launch intent. The evaluation lock is the
+    /// authoritative liveness fence: a child holds it while working, while the parent
+    /// never holds it while waiting. If the lock cannot be acquired, an operation may
+    /// still be alive and this method throws instead of erasing its intent.
+    @discardableResult
+    public func abandonPendingForRepair() throws -> Bool {
+        let lock = try StableFileLock(url: directory.appendingPathComponent("evaluation.lock"))
+        return try withExtendedLifetime(lock) {
+            do {
+                var record = try read()
+                guard record.pending else { return false }
+                record.pending = false
+                try write(record)
+                return true
+            } catch let error as NSError where error.domain == NSPOSIXErrorDomain && error.code == 2 {
+                return false
+            }
+        }
+    }
+
     /// Caller holds evaluation.lock; a pending child forbids session/state advancement too.
     public func verifyIdle() throws {
         do {

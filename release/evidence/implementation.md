@@ -451,3 +451,9 @@ tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建�
 - 总开关切换加入 `automationChangeInFlight` 串行锁，Settings 与启用卡在应用期间禁用；`saveAutomation` 保存后只运行一次后台激活。
 - 九语新增状态卡文案；本地化/签名构建通过。UI 截图确认失败状态显示“自动挂载没有完成”卡片，底部无状态条。
 - 未完成/待确认：本机历史 failed journal（failure=signalUnavailable）在点击修复后仍未复测清除，后台注册 readiness 问题待单独诊断；不得声称该场景已恢复。
+
+# 2026-10-20 修复 failed journal：worker intent 残留
+
+- 进一步定位：backend failed 的直接阻塞是 `worker-operation.plist` 残留 `pending=true`（19:11 的旧记录），`WorkerOperationStore.verifyIdle()` 因此抛 `signalUnavailable`；仅重试服务注册不会前进。
+- 修正：`WorkerOperationStore.abandonPendingForRepair()` 以 `evaluation.lock` 为存活栅栏，只有能取得锁（无 worker 存活）时才清除 intent；worker 仍持锁时抛出，不覆盖在途操作。`activateAppBackground(repair:)` 在 failed 状态和 `load()` 启动加载时调用。
+- 实测：一次修复后 backend `phase=active`、`owner=app`、`last_verified=enabled`、worker `pending=false`；主界面无状态卡、无底部状态条，两个共享可用。当前 `automation_enabled=true`。
