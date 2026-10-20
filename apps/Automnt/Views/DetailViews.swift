@@ -989,8 +989,9 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(minWidth: 460, idealWidth: 560, minHeight: 420)
+        .frame(minWidth: 560, idealWidth: 680, minHeight: 520, idealHeight: 620)
         .task { model.refreshLoginStatus() }
+        .background(WindowAccessor { model.installSettingsWindowFramePersistence($0) })
     }
 
     @ViewBuilder

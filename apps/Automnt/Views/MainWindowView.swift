@@ -47,7 +47,10 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 380, minHeight: 480)
-        .background(WindowAccessor { model.installWindowCloseGuard($0) })
+        .background(WindowAccessor { window in
+            model.installWindowCloseGuard(window)
+            model.installMainWindowFramePersistence(window)
+        })
         .toolbar { toolbar }
         .sheet(isPresented: addSheet) {
             AddShareView(model: model)
@@ -267,9 +270,7 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if model.isFirstRun {
-            firstRunView
-        } else if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
+        if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
             ScrollView {
                 configurationAccessView
             }
@@ -279,6 +280,8 @@ struct MainWindowView: View {
             ServerSharesView(model: model, server: server, shareSearch: $shareSearch) { share in
                 navigating = ShareNavigation(id: share.identity)
             }
+        } else if model.isFirstRun {
+            firstRunView
         } else {
             ContentUnavailableView("Choose a Server", systemImage: "server.rack",
                 description: Text("Choose a server on the left to see its shared folders."))

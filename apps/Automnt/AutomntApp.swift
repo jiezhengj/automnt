@@ -240,6 +240,66 @@ final class ApplicationModel {
         WindowCloseGuard.install(on: window, model: self)
     }
 
+    weak var mainWindow: NSWindow?
+    private static var framedWindows: Set<ObjectIdentifier> = []
+
+    /// Restores the user's last main-window frame, or saves the approved default on
+    /// first launch. AppKit keeps saving moves/resizes through the autosave name.
+    func installMainWindowFramePersistence(_ window: NSWindow) {
+        mainWindow = window
+        installWindowFrame(window, name: "AutomntMainWindowFrameV2",
+                           preferredContentSize: NSSize(width: 1103, height: 692),
+                           relativeTo: nil)
+    }
+
+    func installSettingsWindowFramePersistence(_ window: NSWindow) {
+        installWindowFrame(window, name: "AutomntSettingsWindowFrameV2",
+                           preferredContentSize: NSSize(width: 680, height: 620),
+                           relativeTo: mainWindow)
+    }
+
+    private func installWindowFrame(_ window: NSWindow, name: String,
+                                    preferredContentSize: NSSize,
+                                    relativeTo parent: NSWindow?) {
+        let key = ObjectIdentifier(window)
+        guard !Self.framedWindows.contains(key) else { return }
+        Self.framedWindows.insert(key)
+        // Read any saved frame before installing autosave: setFrameAutosaveName may
+        // otherwise persist the placeholder frame and make setFrameUsingName succeed.
+        if window.setFrameUsingName(name) {
+            window.setFrameAutosaveName(name)
+            clampOnScreen(window)
+            return
+        }
+        window.setFrameAutosaveName(name)
+        window.setContentSize(preferredContentSize)
+        if let parent {
+            center(window, over: parent)
+        } else {
+            clampOnScreen(window)
+        }
+        window.saveFrame(usingName: name)
+    }
+
+    private func center(_ window: NSWindow, over parent: NSWindow) {
+        var frame = window.frame
+        frame.origin = NSPoint(x: parent.frame.midX - frame.width / 2,
+                               y: parent.frame.midY - frame.height / 2)
+        if let visible = parent.screen?.visibleFrame {
+            frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+            frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+        }
+        window.setFrame(frame, display: true)
+    }
+
+    private func clampOnScreen(_ window: NSWindow) {
+        guard let visible = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+        var frame = window.frame
+        frame.origin.x = min(max(frame.minX, visible.minX), visible.maxX - frame.width)
+        frame.origin.y = min(max(frame.minY, visible.minY), visible.maxY - frame.height)
+        window.setFrame(frame, display: true)
+    }
+
     /// Returns whether the window may close immediately. A dirty draft starts the
     /// native confirmation after the AppKit close query returns.
     func requestWindowClose(_ window: NSWindow) -> Bool {
@@ -1282,7 +1342,7 @@ struct AutomntApp: App {
                 .sheet(item: $helpDestination) { destination in OfflineHelpView(destination: destination) }
                 .sheet(isPresented: $showingDiagnostics) { DiagnosticsView(model: model) }
         }
-        .defaultSize(width: 900, height: 620)
+        .defaultSize(width: 1103, height: 692)
         .defaultLaunchBehavior(launchedAtLogin && menuBarEnabled ? .suppressed : .presented)
         .commands {
             CommandGroup(replacing: .appTermination) {
@@ -1311,6 +1371,8 @@ struct AutomntApp: App {
                 .sheet(isPresented: $settingsDiagnostics) { DiagnosticsView(model: model) }
                 .task { await model.refreshNotificationPermission() }
         }
+        .defaultSize(width: 680, height: 620)
+        .windowResizability(.contentMinSize)
     }
 }
 
