@@ -212,6 +212,20 @@ public enum BackgroundEvaluator {
             if firstIssue == nil { firstIssue = outcome.issue }
             retrySuggested = retrySuggested || outcome.retrySuggested
         }
+        // all_reachable records every configured target: an unreachable server's enabled
+        // shares are reported as offline for their own identities instead of vanishing
+        // from the round. first_reachable keeps the historical single-host result.
+        if policy == .allReachable {
+            let visited = Set(hosts.map { "\($0.host):\($0.port)" })
+            for host in configuration.hosts where host.enabled {
+                guard !visited.contains("\(host.host):\(host.port)") else { continue }
+                for share in host.shares where share.enabled {
+                    guard let identity = smbResourceIdentity(share.smbURL) else { continue }
+                    observations.append(VolumeObservation(identity: identity, status: .offline,
+                        actualPath: nil, observedAt: Date()))
+                }
+            }
+        }
         // superseded 剔除唯一实现在 `RecoverySupersededPolicy`（新主机已同一路径接管）。
         let filtered = supersededFiltered(observations, configuration: configuration)
         return BackgroundEvaluationSummary(observations: filtered, issue: firstIssue,

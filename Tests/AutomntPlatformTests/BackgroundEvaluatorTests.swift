@@ -124,6 +124,55 @@ struct BackgroundEvaluatorTests {
         #expect(summary.retrySuggested == false)
     }
 
+    /// all_reachable：按保存顺序处理每个可达服务器，并为其自身的共享记录结果；
+    /// 不可达服务器的启用共享记为 offline，而不是从这一轮里消失。
+    @Test func allReachableRoundProcessesEveryHostAndRecordsOfflineForUnreachable() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("automnt-bg-scope-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let first = HostConfig(host: "first-scope.example", shares: [
+            SMBShareConfig(name: "A", smbURL: "smb://first-scope.example/A", mountPoint: "/Volumes/A")])
+        let second = HostConfig(host: "second-scope.example", shares: [
+            SMBShareConfig(name: "B", smbURL: "smb://second-scope.example/B", mountPoint: "/Volumes/B")])
+        let repository = FileConfigRepository(authorizedDirectory: directory)
+        var configuration = AutomntConfig(
+            retryPolicy: RetryPolicy(maxAttempts: 2, intervalMs: 100, maxTotalWindowMs: 5000),
+            hosts: [first, second], autoMountRecovery: true, automationEnabled: true)
+        configuration.mountPolicy = .allReachable
+        _ = try repository.create(configuration)
+        let snapshot = try repository.read()
+        let store = BackendStateStore(authorizedDirectory: directory)
+        _ = try store.initialize(revision: snapshot.revision)
+        let journal = try store.begin(desiredOwner: .app, expectedGeneration: 0, revision: snapshot.revision)
+        _ = try store.advance(id: journal.id, to: .activating, verifiedStatus: .stopped)
+        let backend = try store.advance(id: journal.id, to: .active, verifiedStatus: .enabled)
+
+        struct FirstOnlyProbe: ReachabilityProbe {
+            func isReachable(host: String, port: Int, timeoutMilliseconds: Int) async throws -> Bool {
+                host == "first-scope.example"
+            }
+        }
+        let a = smbResourceIdentity(first.shares[0].smbURL)!
+        let b = smbResourceIdentity(second.shares[0].smbURL)!
+        let box = Box()
+        box.inspectHealth[a] = WorkerMountResponse(observation: VolumeObservation(identity: a,
+            status: .healthy, actualPath: "/Volumes/A", observedAt: Date()), postMount: .notRequested)
+        box.mountResponse = { identity in
+            WorkerMountResponse(observation: VolumeObservation(identity: identity, status: .healthy,
+                actualPath: "/Volumes/A", observedAt: Date()), postMount: .notRequested)
+        }
+        let summary = (try? await BackgroundEvaluator.evaluate(directory: directory,
+            snapshot: snapshot, backend: backend,
+            deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+            probe: FirstOnlyProbe(), effects: effects(box, present: { _ in .absent })))
+            ?? BackgroundEvaluationSummary(issue: .signalUnavailable)
+        #expect(box.mounted == [a])
+        #expect(summary.observations.contains { $0.identity == a && $0.status == .healthy })
+        #expect(summary.observations.contains { $0.identity == b && $0.status == .offline })
+        #expect(summary.issue == nil)
+    }
+
     /// 2. missing + unreachable → offline（不挂载）。
     @Test func missingUnreachableHostReturnsOfflineWithoutMounting() async throws {
         let harness = try await makeHarness("bg-offline.example", shares: [("Shared", "/Volumes/Shared")])
