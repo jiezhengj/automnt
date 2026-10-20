@@ -429,3 +429,10 @@ tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建�
 - 修正：登录项未启用时不再显示不可用错误；只有实际登录项变更失败（`loginIssue`）时才显示具体恢复步骤与“检查一次”。说明文字改为用户收益：“开启后，登录时出现在菜单栏，方便挂载共享或打开设置；主窗口不会自动打开。”
 - 通知文案去掉防御性的“只对未自动挂载的共享发送”，改为“共享文件夹未能自动挂载时，Automnt 会通知你，方便及时处理”；状态标签改为“通知权限”，取值为未开启/已允许/已关闭/暂时无法读取；声音说明改为“关闭声音后仍会收到通知，只是没有提示音”。
 - 九语资源同步；设置页实测不再出现无上下文的登录项错误，通知分组文案完整可读。未在桌面生成新 zip；安装包仅保留 `/Applications/Automnt.app`。
+
+# 2026-10-20 菜单栏图标改为应用 SVG 派生的 template
+
+- 原实现使用 `systemImage: "externaldrive.badge.wifi"`，与产品图标无关；SF Symbol 的固有尺寸/基线导致菜单栏中偏小、偏上。
+- 从 `design/app-icon.svg` 的 infinity 连续环路派生菜单栏图标：去掉蓝色背景与文件夹（18pt 下不可读），保留加粗环路并放入圆角方形 template 底；18/36/54 px，`template-rendering-intent = template`，18pt 画布内居中。
+- 生成脚本 `scripts/generate-menubar-icon.swift` 可复现；`MenuBarExtra` 改为 `Label("Automnt", image: "MenuBarIcon").labelStyle(.iconOnly)`。
+- 已确认 `MenuBarIcon` 编译进 `Assets.car`，App 验签/本地化门通过。测试会话中菜单栏状态项未出现在可截图区域；用旧 SF Symbol 也不出现，判断为菜单栏可见性/会话限制，真实菜单栏位置待可见项复核。

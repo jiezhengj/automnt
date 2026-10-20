@@ -1361,8 +1361,11 @@ struct AutomntApp: App {
                 Button("Diagnostics") { showingDiagnostics = true }
             }
         }
-        MenuBarExtra("Automnt", systemImage: "externaldrive.badge.wifi", isInserted: $menuBarEnabled) {
+        MenuBarExtra(isInserted: $menuBarEnabled) {
             AutomntMenuView(model: model, menuBarEnabled: $menuBarEnabled)
+        } label: {
+            Label("Automnt", image: "MenuBarIcon")
+                .labelStyle(.iconOnly)
         }
         Settings {
             SettingsView(model: model, menuBarEnabled: $menuBarEnabled, helpDestination: $settingsHelpDestination,

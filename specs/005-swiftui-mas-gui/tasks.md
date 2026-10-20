@@ -514,3 +514,6 @@ T061 编号已存在并保留；以下从 T062 追加，全部未勾选。本节
 
 - [x] T107 [US3] 重写设置中的登录项与通知文案：移除常驻且含义不明的“检查登录设置/检查通知授权”，登录项不可用时给出“退出并从应用程序重新打开→检查一次”；通知说明“共享未能自动挂载时会通知你”，声音说明只影响提示音；九语同步并检查按钮宽度。
   - 2026-10-20 完成：登录项未启用时不再显示“不可用”，只有实际登录项变更失败才显示 loginIssue 与上下文“检查一次”；通知 purpose/denied/unavailable/sound 文案九语重写；状态标签改为“通知权限：未开启/已允许/已关闭/暂时无法读取”；SDD copy-resources/product-design/localization 同步。
+
+- [x] T108 [US3] 将菜单栏图标从随意 SF Symbol 改为从应用 SVG 派生的 18pt template 图标，修正大小、垂直居中与浅深色适配；保留可选菜单栏默认关闭。
+  - 2026-10-20 完成：新增 `MenuBarIcon.imageset`（18/36/54px，template）与 `scripts/generate-menubar-icon.swift`；`MenuBarExtra` 改为 `Label(image:)` + `.iconOnly`。资源已编译进 Assets.car，签名/本地化门通过；本机会话状态项未出现在可截图菜单栏区域（旧 SF Symbol 同样未出现），真实菜单位置待可见性恢复后复核。
