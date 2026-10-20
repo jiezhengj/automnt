@@ -389,10 +389,6 @@ struct MainWindowView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            if model.configurationAccess.allowsChanges && model.snapshot?.configuration.isAutomationEnabled == false && model.hasConfiguration {
-                // A one-time, explicit next step; no permanent global switch lives here.
-                onboarding
-            }
             if let issue = model.issue {
                 Text(issue).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             } else if let notice = model.notice {
@@ -417,17 +413,6 @@ struct MainWindowView: View {
         }
     }
 
-    @ViewBuilder
-    private var onboarding: some View {
-        if let snapshot = model.snapshot {
-            HStack(spacing: 8) {
-                Text("Automatic mounting is off, so your shared folders are not mounted for you after sign-in or network changes.")
-                Button("Turn On Automatic Mounting") { model.saveAutomation(true, base: snapshot) }
-                    .disabled(model.busy)
-                SettingsLink { Text("Explain in Settings") }
-            }
-        }
-    }
 }
 
 /// Sidebar row: name plus the managed / addable / problem counts. It never expands
@@ -502,6 +487,7 @@ private struct ServerSharesView: View {
     @Binding var shareSearch: String
     let openDetail: (ServerInventory.Share) -> Void
     @State private var showingServerSettings = false
+    @State private var automationPromptDismissed = false
 
     private var query: String { shareSearch.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -513,11 +499,11 @@ private struct ServerSharesView: View {
         List {
             if let host {
                 Section {
-                    Toggle("Automatically Mount This Server’s Shared Folders", isOn: Binding(
+                    Toggle("Include This Server in Automatic Mounting", isOn: Binding(
                         get: { model.snapshot?.configuration.hosts.first(where: { managedServerIdentity($0) == server.identity })?.enabled ?? host.enabled },
                         set: { enabled in toggleServer(enabled) }))
                         .disabled(model.busy)
-                    Text("When this is off, this server’s shared folders are no longer mounted automatically. Shared folders that are already mounted stay available.")
+                    Text(automaticMountingCaption)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -544,6 +530,11 @@ private struct ServerSharesView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if showsAutomationPrompt {
+                automationPrompt
+            }
+        }
         .searchable(text: $shareSearch, prompt: Text("Search shared folders"))
         .navigationTitle(server.displayName)
         .navigationSubtitle(server.host)
@@ -558,6 +549,45 @@ private struct ServerSharesView: View {
                 ServerSettingsView(model: model, host: host)
             }
         }
+    }
+
+    private var showsAutomationPrompt: Bool {
+        model.snapshot?.configuration.isAutomationEnabled == false &&
+        !server.managedShares.isEmpty &&
+        !automationPromptDismissed
+    }
+
+    private var automationPrompt: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Automatic Mounting Is Off")
+                    .font(.headline)
+                Text("Shared folders are added. Turn on automatic mounting so Automnt mounts them after sign-in or network changes.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 12)
+            Button("Turn On Automatic Mounting") {
+                if let base = model.snapshot { model.saveAutomation(true, base: base) }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(model.busy)
+            .fixedSize(horizontal: true, vertical: false)
+            Button("Later") { automationPromptDismissed = true }
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(12)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) { Divider() }
+        .onChange(of: server.managedShares.count) { _, _ in automationPromptDismissed = false }
+    }
+
+    private var automaticMountingCaption: String {
+        if model.snapshot?.configuration.isAutomationEnabled == false {
+            return String(localized: "The main automatic mounting switch is off. Turn it on to include this server.")
+        }
+        return String(localized: "When this is off, this server’s shared folders are no longer mounted automatically. Shared folders that are already mounted stay available.")
     }
 
     private var host: HostConfig? {

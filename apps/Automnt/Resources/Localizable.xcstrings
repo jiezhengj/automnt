@@ -22260,6 +22260,366 @@
           }
         }
       }
+    },
+    "Include This Server in Automatic Mounting": {
+      "comment": "2026-10-20 automatic mounting hierarchy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include This Server in Automatic Mounting"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此服务器参与自动挂载"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此伺服器參與自動掛載"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このサーバーを自動マウントに含める"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버를 자동 마운트에 포함"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Server in das automatische Einbinden einbeziehen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inclure ce serveur dans le montage automatique"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir este servidor en el montaje automático"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incluir este servidor na montagem automática"
+          }
+        }
+      }
+    },
+    "The main automatic mounting switch is off. Turn it on to include this server.": {
+      "comment": "2026-10-20 automatic mounting hierarchy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The main automatic mounting switch is off. Turn it on to include this server."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载总开关已关闭。开启总开关后，这个服务器才会自动挂载。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載總開關已關閉。開啟總開關後，這個伺服器才會自動掛載。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントの総スイッチがオフです。オンにすると、このサーバーが自動マウントの対象になります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트 전체 스위치가 꺼져 있습니다. 켜면 이 서버가 자동 마운트에 포함됩니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hauptschalter für automatisches Einbinden ist aus. Schalten Sie ihn ein, damit dieser Server einbezogen wird."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’interrupteur principal du montage automatique est désactivé. Activez-le pour inclure ce serveur."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El interruptor principal del montaje automático está desactivado. Actívalo para incluir este servidor."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O interruptor principal da montagem automática está desativado. Ative-o para incluir este servidor."
+          }
+        }
+      }
+    },
+    "Automatic Mounting Is Off": {
+      "comment": "2026-10-20 automatic mounting hierarchy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic Mounting Is Off"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动挂载已关闭"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動掛載已關閉"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントはオフです"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트가 꺼져 있습니다"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden ist aus"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique est désactivé"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El montaje automático está desactivado"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A montagem automática está desativada"
+          }
+        }
+      }
+    },
+    "Shared folders are added. Turn on automatic mounting so Automnt mounts them after sign-in or network changes.": {
+      "comment": "2026-10-20 automatic mounting hierarchy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shared folders are added. Turn on automatic mounting so Automnt mounts them after sign-in or network changes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共享文件夹已添加。开启自动挂载后，登录或网络变化时 Automnt 会自动挂载它们。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共享資料夾已加入。開啟自動掛載後，登入或網路變化時 Automnt 會自動掛載它們。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共有フォルダを追加しました。自動マウントをオンにすると、ログイン時やネットワーク変更時に Automnt が自動でマウントします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유 폴더를 추가했습니다. 자동 마운트를 켜면 로그인하거나 네트워크가 바뀔 때 Automnt가 자동으로 마운트합니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freigegebene Ordner wurden hinzugefügt. Schalten Sie das automatische Einbinden ein, damit Automnt sie bei der Anmeldung oder bei Netzwerkänderungen einbindet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les dossiers partagés ont été ajoutés. Activez le montage automatique pour qu’Automnt les monte à l’ouverture de session ou lors d’un changement de réseau."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se han añadido carpetas compartidas. Activa el montaje automático para que Automnt las monte al iniciar sesión o cuando cambie la red."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As pastas compartilhadas foram adicionadas. Ative a montagem automática para que o Automnt as monte ao iniciar sessão ou quando a rede mudar."
+          }
+        }
+      }
+    },
+    "Turning on automatic mounting…": {
+      "comment": "2026-10-20 automatic mounting hierarchy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turning on automatic mounting…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在开启自动挂载…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在開啟自動掛載…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントをオンにしています…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트를 켜는 중…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisches Einbinden wird eingeschaltet…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activation du montage automatique…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activando el montaje automático…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ativando a montagem automática…"
+          }
+        }
+      }
+    },
+    "Background mounting could not be changed. Check the service state and try again.": {
+      "comment": "2026-10-20 automatic mounting hierarchy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Background mounting could not be changed. Check the service state and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法更改自动挂载。请检查后台服务状态后重试。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法變更自動掛載。請檢查背景服務狀態後重試。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動マウントを変更できませんでした。バックグラウンドサービスの状態を確認して、もう一度お試しください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자동 마운트를 변경하지 못했습니다. 백그라운드 서비스 상태를 확인한 뒤 다시 시도하세요."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das automatische Einbinden konnte nicht geändert werden. Prüfen Sie den Dienststatus und versuchen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le montage automatique n’a pas pu être modifié. Vérifiez l’état du service et réessayez."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cambiar el montaje automático. Comprueba el estado del servicio y vuelve a intentarlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível alterar a montagem automática. Verifique o estado do serviço e tente novamente."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

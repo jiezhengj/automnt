@@ -517,3 +517,6 @@ T061 编号已存在并保留；以下从 T062 追加，全部未勾选。本节
 
 - [x] T108 [US3] 将菜单栏图标从随意 SF Symbol 改为从应用 SVG 派生的 18pt template 图标，修正大小、垂直居中与浅深色适配；保留可选菜单栏默认关闭。
   - 2026-10-20 完成：新增 `MenuBarIcon.imageset`（18/36/54px，template）与 `scripts/generate-menubar-icon.swift`；`MenuBarExtra` 改为 `Label(image:)` + `.iconOnly`。资源已编译进 Assets.car，签名/本地化门通过；本机会话状态项未出现在可截图菜单栏区域（旧 SF Symbol 同样未出现），真实菜单位置待可见性恢复后复核。
+
+- [x] T109 [US3] 区分自动挂载总开关与服务器参与：服务器开关改名并说明依赖；总开关关闭时在详情顶部显示启用卡（主按钮+稍后），移除底部唯一入口；开启总开关必须真实注册后台 owner。
+  - 2026-10-20 完成：总开关/服务器层级文案与启用卡落地；`saveAutomation(true)` 保存后调用 `activateAppBackground`，并为全新安装缺 `backend-state.plist` 初始化 stopped；添加提示按总开关状态区分。实测开启后 `automation_enabled=true`、backend owner=app phase=active、系统服务已注册，界面显示“自动挂载：运行中”。

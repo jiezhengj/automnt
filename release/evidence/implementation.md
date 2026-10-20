@@ -436,3 +436,10 @@ tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建�
 - 从 `design/app-icon.svg` 的 infinity 连续环路派生菜单栏图标：去掉蓝色背景与文件夹（18pt 下不可读），保留加粗环路并放入圆角方形 template 底；18/36/54 px，`template-rendering-intent = template`，18pt 画布内居中。
 - 生成脚本 `scripts/generate-menubar-icon.swift` 可复现；`MenuBarExtra` 改为 `Label("Automnt", image: "MenuBarIcon").labelStyle(.iconOnly)`。
 - 已确认 `MenuBarIcon` 编译进 `Assets.car`，App 验签/本地化门通过。测试会话中菜单栏状态项未出现在可截图区域；用旧 SF Symbol 也不出现，判断为菜单栏可见性/会话限制，真实菜单栏位置待可见项复核。
+
+# 2026-10-20 自动挂载层级、启用卡与真实激活
+
+- 现象：服务器开关（host.enabled）默认勾选，但全局总开关（automation_enabled）为 false；两者都叫“自动挂载”，底部状态又重复提示，用户无法判断是否会自动挂载。启用按钮还只保存偏好，不注册后台服务。
+- 修正：服务器开关改为“此服务器参与自动挂载”，总开关关闭时说明依赖；底部只留状态；详情顶部新增启用卡（标题/收益/开启/稍后），首次与后续添加可见；`saveAutomation(true)` 保存后调用 `activateAppBackground` 真正注册后台 owner；全新安装缺 `backend-state.plist` 时初始化 stopped，而不是误报损坏；添加成功提示按总开关状态区分。
+- 实测：点击/自动执行开启后 `automation_enabled=true`，backend owner=app、phase=active，launchctl 出现系统服务；界面显示“自动挂载：运行中”，两个共享可用。总开关关闭时截图显示顶部启用卡与服务器依赖说明，底部无重复 onboarding。
+- 桌面 zip 不再生成；App 安装于 `/Applications/Automnt.app`。版本仍为 3.4.0，未推送。

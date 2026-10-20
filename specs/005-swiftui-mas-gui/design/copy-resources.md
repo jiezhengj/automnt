@@ -399,3 +399,16 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 # 设置文案去防御化（2026-10-20）
 
 登录与通知文案按“用户会得到什么/何时会收到”表达：通知直接说明“共享未能自动挂载时会通知你”，不用“只对……发送、除此之外不发”的免责结构；声音开关说明“仍会收到通知，只是没有提示音”。登录项不可用时说明先退出并从“应用程序”重新打开，再给“检查一次”，不再保留含义不明的常驻“检查登录设置”。通知权限状态用“未开启/已允许/已关闭/暂时无法读取”，不再用“系统授权”这种抽象标签。
+
+
+# 自动挂载层级文案（2026-10-20）
+
+| ID | 简体中文 | English | 语境 |
+| --- | --- | --- | --- |
+| automation.includeServer | 此服务器参与自动挂载 | Include This Server in Automatic Mounting | 服务器级参与，不是总开关 |
+| automation.serverPending | 自动挂载总开关已关闭。开启总开关后，这个服务器才会自动挂载。 | The main automatic mounting switch is off. Turn it on to include this server. | 总开关关闭时的服务器说明 |
+| automation.offTitle | 自动挂载已关闭 | Automatic Mounting Is Off | 详情区启用卡标题 |
+| automation.offBody | 共享文件夹已添加。开启自动挂载后，登录或网络变化时 Automnt 会自动挂载它们。 | Shared folders are added. Turn on automatic mounting so Automnt mounts them after sign-in or network changes. | 说明收益与触发时机 |
+| automation.enable | 开启自动挂载 | Turn On Automatic Mounting | 主按钮；开启时注册后台服务 |
+| automation.turningOn | 正在开启自动挂载… | Turning on automatic mounting… | 保存后、服务激活中 |
+| automation.activationFailed | 无法更改自动挂载。请检查后台服务状态后重试。 | Background mounting could not be changed. Check the service state and try again. | 激活失败，不谎报已开启 |

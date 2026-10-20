@@ -775,7 +775,11 @@ final class ApplicationModel {
             let deadline = ContinuousClock.now.advanced(by: .seconds(30))
             var state: BackendState
             do { state = try store.read() }
-            catch {
+            catch let error as NSError where error.domain == NSPOSIXErrorDomain && error.code == ENOENT {
+                // First activation on a fresh install has no backend-state file yet.
+                // Initialize a stopped owner instead of treating absence as damage.
+                state = try store.initialize(revision: base.revision)
+            } catch {
                 guard repair else { throw error }
                 state = try await coordinator.recoverAppInterruptedTransition(adapter: adapter, deadline: deadline)
             }
@@ -797,11 +801,20 @@ final class ApplicationModel {
                     revision: base.revision, adapter: adapter, deadline: deadline)
             }
             snapshot = try FileConfigRepository(authorizedDirectory: authorization.url).read()
-            issue = result.phase == .awaitingApproval
-                ? String(localized: "Allow Automnt in Login Items in System Settings, then check again.")
-                : result.phase == .stopped
-                    ? String(localized: "App background mounting is off. Mounted shared folders remain available.")
-                    : String(localized: "App background mounting is enabled. Shared folders will mount when the server and credentials are available.")
+            switch result.phase {
+            case .awaitingApproval:
+                issue = String(localized: "Allow Automnt in Login Items in System Settings, then check again.")
+                notice = nil
+            case .stopped:
+                issue = nil
+                notice = String(localized: "App background mounting is off. Mounted shared folders remain available.")
+            case .active:
+                issue = nil
+                notice = String(localized: "App background mounting is enabled. Shared folders will mount when the server and credentials are available.")
+            default:
+                issue = String(localized: "Background mounting could not be changed. Check the service state and try again.")
+                notice = nil
+            }
         } catch { show(error) }
     }
 
@@ -916,17 +929,16 @@ final class ApplicationModel {
     func saveAutomation(_ enabled: Bool, base: ConfigSnapshot) {
         guard save(base, { $0.automationEnabled = enabled }) else { return }
         notice = enabled
-            ? String(localized: "Automatic mounting is on. Check background mounting before continuing.")
+            ? String(localized: "Turning on automatic mounting…")
             : String(localized: "Automatic mounting is off. Mounted shared folders remain available.")
-        if !enabled {
-            // Persist the freeze first so new evaluations cannot mount, then drain the
-            // service through the same bounded coordinator used for repair.
-            let frozenRevision = snapshot?.revision
-            Task {
-                guard snapshot?.revision == frozenRevision,
-                      snapshot?.configuration.isAutomationEnabled == false else { return }
-                await activateAppBackground(repair: true)
-            }
+        // Turning the master switch on is not just a preference: it must register the
+        // background owner. Persist intent first, then run the same activation path as
+        // Settings uses. Turning it off drains the service through the same coordinator.
+        let savedRevision = snapshot?.revision
+        Task {
+            guard snapshot?.revision == savedRevision,
+                  snapshot?.configuration.isAutomationEnabled == enabled else { return }
+            await activateAppBackground(repair: true)
         }
     }
 
@@ -996,7 +1008,9 @@ final class ApplicationModel {
             if let saved = outcome.snapshot {
                 snapshot = saved
                 issue = nil
-                notice = String(localized: "The shared folder was added. Automatic mounting mounts it when the server is available.")
+                notice = saved.configuration.isAutomationEnabled
+                    ? String(localized: "The shared folder was added. Automatic mounting mounts it when the server is available.")
+                    : String(localized: "The shared folder was added. Turn on automatic mounting to mount your shared folders in the background.")
                 refreshActionReadiness()
                 refreshStatus()
                 return nil
