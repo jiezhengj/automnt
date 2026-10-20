@@ -836,6 +836,9 @@ final class ApplicationModel {
     /// reports its real result; it does not simulate one.
     func tryFullRound() async {
         guard configurationChangesAllowed, let authorization, let base = snapshot else { return }
+        // A previous round may have left a launch intent whose child exited. Clear it
+        // only when the evaluation lock proves no worker is still alive.
+        try? WorkerOperationStore(authorizedDirectory: authorization.url).abandonPendingForRepair()
         guard let operation = begin(.fullEvaluation, target: nil) else { return }
         busy = true
         defer { busy = false; end(operation); refreshActionReadiness(); refreshStatus() }
@@ -851,6 +854,8 @@ final class ApplicationModel {
                 applicationURL: Bundle.main.bundleURL, directory: authorization)
             try await adapter.requestEvaluation(state: state, deadline: ContinuousClock.now.advanced(by: .seconds(30)))
             notice = String(localized: "The round finished. Each shared folder shows its own result and the time it was checked.")
+        } catch let error as AutomntIssue where error == .signalUnavailable || error == .timeout {
+            issue = String(localized: "A previous mount attempt didn’t finish. Repair background mounting, then try the round again.")
         } catch { show(error) }
     }
 

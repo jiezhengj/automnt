@@ -457,3 +457,10 @@ tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建�
 - 进一步定位：backend failed 的直接阻塞是 `worker-operation.plist` 残留 `pending=true`（19:11 的旧记录），`WorkerOperationStore.verifyIdle()` 因此抛 `signalUnavailable`；仅重试服务注册不会前进。
 - 修正：`WorkerOperationStore.abandonPendingForRepair()` 以 `evaluation.lock` 为存活栅栏，只有能取得锁（无 worker 存活）时才清除 intent；worker 仍持锁时抛出，不覆盖在途操作。`activateAppBackground(repair:)` 在 failed 状态和 `load()` 启动加载时调用。
 - 实测：一次修复后 backend `phase=active`、`owner=app`、`last_verified=enabled`、worker `pending=false`；主界面无状态卡、无底部状态条，两个共享可用。当前 `automation_enabled=true`。
+
+# 2026-10-20 工具栏收敛与轮次残留 worker
+
+- 用户反馈五个工具栏图标中第 2/3 都像刷新、第 4/5 都像设置。实际第 2 个是“立即尝试自动挂载”（完整评估），第 3 个是刷新，第 5 个是服务器设置。
+- 工具栏改为 4 个：+、闪电（立即尝试自动挂载）、齿轮（应用设置）、更多菜单（刷新状态、服务器设置…）；服务器设置不再用滑杆图标与齿轮并列。
+- 第 2 个图标的报错来自 `worker-operation.plist` 残留 pending=true；`tryFullRound` 现在在取得 evaluation lock 后清理残留 intent，失败改提示“上一次挂载操作没有完成…”，不再显示“无法确认该操作”。
+- 安装后状态 active、owner=app、服务 enabled、worker pending=false；UI 四图标正常。未验证真实完整轮次的最终挂载结果（受 UI 自动化焦点限制），但错误路径已消除。

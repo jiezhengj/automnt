@@ -351,19 +351,18 @@ struct MainWindowView: View {
         ToolbarItem {
             Button("Add Shared Folder…", systemImage: "plus") { showingAddShare = true }
                 .disabled(!model.configurationChangesAllowed)
+                .help("Add Shared Folder…")
         }
         ToolbarItem {
-            Button("Try Automatic Mounting Now", systemImage: "arrow.triangle.2.circlepath") {
+            Button("Try Automatic Mounting Now", systemImage: "bolt") {
                 Task { await model.tryFullRound() }
             }
             .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-        }
-        ToolbarItem {
-            Button("Refresh Status", systemImage: "arrow.clockwise") { model.reload() }
-                .disabled(model.busy)
+            .help("Try Automatic Mounting Now")
         }
         ToolbarItem {
             SettingsLink { Label("Settings", systemImage: "gearshape") }
+                .help("Settings")
         }
     }
 }
@@ -627,8 +626,16 @@ private struct ServerSharesView: View {
         .navigationSubtitle(server.host)
         .toolbar {
             ToolbarItem {
-                Button("Server Settings…", systemImage: "slider.horizontal.3") { showingServerSettings = true }
-                    .disabled(host == nil)
+                Menu {
+                    Button("Refresh Status") { model.reload() }
+                        .disabled(model.busy)
+                    Divider()
+                    Button("Server Settings…") { showingServerSettings = true }
+                        .disabled(host == nil)
+                } label: {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
+                .help("More")
             }
         }
         .sheet(isPresented: $showingServerSettings) {

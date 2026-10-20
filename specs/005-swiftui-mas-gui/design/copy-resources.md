@@ -426,3 +426,10 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 | background.approvalTitle | 自动挂载正在等待系统允许 | Automatic Mounting Is Waiting for System Approval | 登录项待批准 |
 | background.repair | 修复后台挂载 | Repair Background Mounting | 主按钮，真实恢复 |
 | background.cliTitle | 自动挂载由命令行版本管理 | Automatic Mounting Is Managed by the Command-Line Service | 命令行接管 |
+
+
+# 工具栏与轮次文案（2026-10-20）
+
+- “Try Automatic Mounting Now”使用闪电图标，tooltip 同名；不是刷新。
+- “Refresh Status”和“Server Settings…”收进“更多”菜单。
+- 轮次启动被残留 worker intent 阻塞时，提示“上一次挂载操作没有完成。请先修复后台挂载，再重试本轮检查。”，不再使用“无法确认该操作”。
