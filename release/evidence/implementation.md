@@ -464,3 +464,9 @@ tasks.md 现为 112 勾选 / 0 未勾选。最终门禁：签名 Release 构建�
 - 工具栏改为 4 个：+、闪电（立即尝试自动挂载）、齿轮（应用设置）、更多菜单（刷新状态、服务器设置…）；服务器设置不再用滑杆图标与齿轮并列。
 - 第 2 个图标的报错来自 `worker-operation.plist` 残留 pending=true；`tryFullRound` 现在在取得 evaluation lock 后清理残留 intent，失败改提示“上一次挂载操作没有完成…”，不再显示“无法确认该操作”。
 - 安装后状态 active、owner=app、服务 enabled、worker pending=false；UI 四图标正常。未验证真实完整轮次的最终挂载结果（受 UI 自动化焦点限制），但错误路径已消除。
+
+# 2026-10-21 T112–T118 实现与安装
+
+- 共享位置状态、共享行唯一入口、排序可发现性、工具栏层级、配置冲突恢复、挂载范围 `mount_policy` 已实现；详细实现位置、门禁与未验证项见 [t112-t118-2026-10-21](t112-t118-2026-10-21.md)。
+- `swift test` 313 项、CLI `--self-test` 302 项、本地化/Swift 6/签名门禁全部通过；Release GUI 已签名并安装 `/Applications/Automnt.app`（3.4.0）。
+- 真实窗口点击、位置冲突场景、九语/窄窗/键盘/VoiceOver 验收因屏幕锁定未执行，已在证据文件逐项标注。
