@@ -120,10 +120,9 @@ struct MainWindowView: View {
                     }
                     .onMove { source, destination in move(source, to: destination) }
                     .moveDisabled(isFiltering || !model.configurationChangesAllowed)
+                    orderFootnoteRow
                 } header: {
                     Text("Managed")
-                } footer: {
-                    orderFootnote
                 }
                 if model.configurationAccess.allowsChanges {
                     Section("Available to Add") {
@@ -215,10 +214,9 @@ struct MainWindowView: View {
                 }
                 .onMove { source, destination in move(source, to: destination) }
                 .moveDisabled(isFiltering || !model.configurationChangesAllowed)
+                orderFootnoteRow
             } header: {
                 Text("Managed")
-            } footer: {
-                orderFootnote
             }
             if model.configurationAccess.allowsChanges {
                 Section("Available to Add") {
@@ -245,14 +243,17 @@ struct MainWindowView: View {
             Button("Add Shared Folder…", systemImage: "plus") { showingAddShare = true }
                 .disabled(!model.configurationChangesAllowed)
                 .help("Add Shared Folder…")
+                .accessibilityLabel(Text("Add Shared Folder…"))
             Button("Try Automatic Mounting Now", systemImage: "bolt") {
                 Task { await model.tryFullRound() }
             }
             .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
             .help("Try Automatic Mounting Now")
+            .accessibilityLabel(Text("Try Automatic Mounting Now"))
             Spacer(minLength: 0)
             SettingsLink { Label("Settings", systemImage: "gearshape") }
                 .help("Settings")
+                .accessibilityLabel(Text("Settings"))
         }
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)
@@ -260,6 +261,15 @@ struct MainWindowView: View {
         .padding(.vertical, 8)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
+    }
+
+    /// Sidebar lists on macOS do not render `Section` footers, so the explanation is a
+    /// real caption row inside the managed section; both layouts use the same row.
+    private var orderFootnoteRow: some View {
+        orderFootnote
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 0, leading: 6, bottom: 8, trailing: 6))
+            .selectionDisabled()
     }
 
     /// The order footnote follows the mount policy instantly, so the two strategies are
