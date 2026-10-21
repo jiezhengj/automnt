@@ -115,6 +115,9 @@ final class ApplicationModel {
     /// A configuration exists but could not be read: not a first-run empty state.
     var configurationReadFailed = false
     var configurationAccess: ConfigurationAccessState = .awaitingAuthorization
+    /// The user chose "Later" on the access panel. The window stays usable read-only and
+    /// keeps one persistent way back instead of trapping them on the same panel.
+    var accessDeferred = false
     var configurationChangesAllowed: Bool { configurationAccess.allowsChanges && !busy }
     var configurationAccessTitle: String {
         switch configurationAccess {
@@ -551,6 +554,7 @@ final class ApplicationModel {
             if let snapshot { adoptBackendRevisionIfPossible(to: snapshot.revision) }
             configurationReadFailed = false
             configurationAccess = .ready
+            accessDeferred = false
             issue = nil
         } catch let error as NSError where error.domain == NSPOSIXErrorDomain && error.code == ENOENT {
             // ENOENT may refer to the directory or its lock, rather than the plist.
@@ -1584,6 +1588,12 @@ struct AutomntApp: App {
     @State private var settingsDiagnostics = false
     @AppStorage("menuBarEnabled") private var menuBarEnabled = false
     @State private var addShareRequest = AddShareRequest()
+    @Environment(\.openWindow) private var openWindow
+
+    private func openMainWindow() {
+        openWindow(id: "main")
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     var body: some Scene {
         Window("Automnt", id: "main") {
@@ -1604,7 +1614,10 @@ struct AutomntApp: App {
                     .keyboardShortcut("q", modifiers: .command)
             }
             CommandGroup(after: .newItem) {
-                Button("Add Shared Folder…") { addShareRequest.present() }
+                Button("Add Shared Folder…") {
+                    openMainWindow()
+                    addShareRequest.present()
+                }
                     .disabled(!model.configurationChangesAllowed)
                     .keyboardShortcut("n", modifiers: .command)
             }
@@ -1617,15 +1630,15 @@ struct AutomntApp: App {
                     .keyboardShortcut(.downArrow, modifiers: [.option])
                     .disabled(!model.canMoveSelectedServer(earlier: false))
             }
-            CommandGroup(replacing: .help) {
-                Button("User Guide") { helpDestination = .guide }
-                Button("Support and Privacy") { helpDestination = .privacy }
-                Button("Open Source Licenses") { helpDestination = .licenses }
-                Button("Diagnostics") { showingDiagnostics = true }
+            CommandGroup(after: .help) {
+                Button("User Guide") { openMainWindow(); helpDestination = .guide }
+                Button("Support and Privacy") { openMainWindow(); helpDestination = .privacy }
+                Button("Open Source Licenses") { openMainWindow(); helpDestination = .licenses }
+                Button("Diagnostics") { openMainWindow(); showingDiagnostics = true }
             }
         }
         MenuBarExtra(isInserted: $menuBarEnabled) {
-            AutomntMenuView(model: model, menuBarEnabled: $menuBarEnabled)
+            AutomntMenuView(model: model, menuBarEnabled: $menuBarEnabled, addShareRequest: addShareRequest)
         } label: {
             Label("Automnt", image: "MenuBarIcon")
                 .labelStyle(.iconOnly)

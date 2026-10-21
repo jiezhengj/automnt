@@ -340,8 +340,13 @@ struct ShareDetailSheet: View {
         } message: {
             // The consequence is chosen by the shared policy; the wording is localized here
             // because only the app module ships the nine-language catalog.
-            Text(Self.removalConsequenceText(DetailActionPolicy.removalConsequence(
-                shareMounted: managed.map { model.availability(of: $0.share) == .usable } ?? false)))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(Self.removalConsequenceText(DetailActionPolicy.removalConsequence(
+                    shareMounted: managed.map { model.availability(of: $0.share) == .usable } ?? false)))
+                if managed?.host.shares.count == 1 {
+                    Text("This is the last shared folder on this server. Removing it also removes the server from Automnt’s list.")
+                }
+            }
         }
     }
 
@@ -494,13 +499,20 @@ struct ShareDetailSheet: View {
 
     private func toggleShare(host: HostConfig, share: SMBShareConfig, enabled: Bool) {
         guard let base = model.snapshot, let identity = smbResourceIdentity(share.smbURL) else { return }
-        model.save(base) { configuration in
+        let saved = model.save(base) { configuration in
             for index in configuration.hosts.indices {
                 guard let shareIndex = configuration.hosts[index].shares.firstIndex(where: {
                     smbResourceIdentity($0.smbURL) == identity
                 }) else { continue }
                 configuration.hosts[index].shares[shareIndex].enabled = enabled
             }
+        }
+        // A failed save leaves `issue` for the sheet's result line; a saved change gets a
+        // confirmation so the switch never looks like it did nothing.
+        if saved {
+            model.notice = enabled
+                ? String(localized: "This shared folder will be mounted automatically again.")
+                : String(localized: "This shared folder will no longer be mounted automatically. It stays available if it is mounted.")
         }
     }
 
@@ -802,6 +814,8 @@ struct ServerSettingsView: View {
     /// Revision captured when this page opened. Each successful inline save refreshes
     /// it; a save never adopts a newer snapshot just because the model changed.
     @State private var base: ConfigSnapshot?
+    /// Inline confirmation after a save; a switch or field never looks like it did nothing.
+    @State private var savedFeedback: String?
 
     init(model: ApplicationModel, host: HostConfig) {
         self.model = model
@@ -819,20 +833,30 @@ struct ServerSettingsView: View {
 
     private var isDirty: Bool { hasNameChange || hasConnectionChanges }
 
+    private var savedAlias: String { current?.alias ?? host.alias ?? "" }
+    private var savedHost: String { current?.host ?? host.host }
+    private var savedPort: Int { current?.port ?? host.port }
+    private var savedTimeout: Int { current?.timeoutMs ?? host.timeoutMs }
+
     private var hasNameChange: Bool {
-        name.trimmingCharacters(in: .whitespacesAndNewlines) != (host.alias ?? "")
+        name.trimmingCharacters(in: .whitespacesAndNewlines) != savedAlias
     }
 
     private var hasConnectionChanges: Bool {
-        smbHost.trimmingCharacters(in: .whitespacesAndNewlines) != host.host
-            || port != host.port
-            || timeoutMs != host.timeoutMs
+        smbHost.trimmingCharacters(in: .whitespacesAndNewlines) != savedHost
+            || port != savedPort
+            || timeoutMs != savedTimeout
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 ConfigurationConflictCard(model: model)
+                if let savedFeedback {
+                    Label(savedFeedback, systemImage: "checkmark.circle")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
                 Section("Name") {
                     TextField("Name", text: $name, prompt: Text(verbatim: host.host))
                         .focused($focused, equals: .name)
@@ -862,7 +886,7 @@ struct ServerSettingsView: View {
                     if let timeoutError {
                         fieldError(timeoutError)
                     }
-                    Text("These parameters are saved together for this server. Its shared folders keep their own addresses and locations.")
+                    Text("Saving these parameters also updates the SMB address of every shared folder on this server. Their mount locations stay the same.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -893,7 +917,7 @@ struct ServerSettingsView: View {
             .navigationTitle(host.alias ?? host.host)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
+                    Button("Done") { finish() }.keyboardShortcut(.cancelAction)
                 }
             }
         }
@@ -901,6 +925,10 @@ struct ServerSettingsView: View {
         .background(WindowAccessor { model.installWindowCloseGuard($0) })
         .onAppear { draftID = model.registerDraft(isDirty: isDirty) { saveDraft() } }
         .onDisappear { if let draftID { model.removeDraft(draftID) } }
+        .onChange(of: name) { savedFeedback = nil }
+        .onChange(of: smbHost) { savedFeedback = nil }
+        .onChange(of: port) { savedFeedback = nil }
+        .onChange(of: timeoutMs) { savedFeedback = nil }
         .onChange(of: isDirty) { _, dirty in
             if let draftID { model.updateDraft(draftID, isDirty: dirty) }
         }
@@ -916,6 +944,13 @@ struct ServerSettingsView: View {
 
     private var conflictMessage: String {
         String(localized: "These settings were updated elsewhere. Close this window and open it again.")
+    }
+
+    /// Closing the page must not discard typed values: name and connection fields save
+    /// first, and validation errors keep the page open.
+    private func finish() {
+        if isDirty, !saveDraft() { return }
+        dismiss()
     }
 
     /// Used by the quit confirmation: a dirty page saves its connection fields, its name
@@ -943,6 +978,7 @@ struct ServerSettingsView: View {
         }
         if saved {
             self.base = model.snapshot
+            savedFeedback = String(localized: "Name saved.")
         } else {
             nameError = model.issue
         }
@@ -1041,7 +1077,14 @@ struct ServerSettingsView: View {
             guard let index = configuration.hosts.firstIndex(where: { managedServerIdentity($0) == identity }) else { return }
             configuration.hosts[index].preventSpotlightIndex = enabled
         }
-        if saved { self.base = model.snapshot }
+        if saved {
+            self.base = model.snapshot
+            savedFeedback = enabled
+                ? String(localized: "Automnt will ask the system not to index this server’s shared folders.")
+                : String(localized: "Automnt will no longer ask the system to skip indexing this server’s shared folders.")
+        } else {
+            savedFeedback = nil
+        }
     }
 }
 
@@ -1332,12 +1375,13 @@ private extension NotificationAuthorizationState {
 struct AutomntMenuView: View {
     let model: ApplicationModel
     @Binding var menuBarEnabled: Bool
+    var addShareRequest: AddShareRequest?
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Group {
             if !model.configurationAccess.allowsChanges {
-                Button("Open Automnt") { openWindow(id: "main") }
+                Text("Automnt needs access to its settings before it can manage shared folders.")
             } else if let snapshot = model.snapshot, !snapshot.configuration.hosts.isEmpty {
                 ForEach(Array(snapshot.configuration.hosts.enumerated()), id: \.offset) { _, host in
                     Menu(displayName(host)) {
@@ -1363,9 +1407,13 @@ struct AutomntMenuView: View {
                     }
                 }
             } else {
-                Button("Add a Shared Folder…") { openWindow(id: "main") }
+                Button("Add a Shared Folder…") {
+                    openWindow(id: "main")
+                    addShareRequest?.present()
+                }
             }
             Divider()
+            if let notice = model.notice { Text(notice) }
             Button("Open Automnt") { openWindow(id: "main") }
             SettingsLink()
             Button("Hide Menu Bar Icon") {

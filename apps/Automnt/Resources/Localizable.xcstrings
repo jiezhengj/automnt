@@ -23522,7 +23522,7 @@
       }
     },
     "More": {
-      "comment": "2026-10-20 toolbar/round recovery.",
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -25557,6 +25557,906 @@
           "stringUnit": {
             "state": "translated",
             "value": "A versão de linha de comando está gerenciando a montagem automática agora. Para usar o app, pare primeiro o serviço de linha de comando."
+          }
+        }
+      }
+    },
+    "This shared folder will be mounted automatically again.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This shared folder will be mounted automatically again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个共享文件夹会重新自动挂载。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這個共享檔案夾會重新自動掛載。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この共有フォルダは再び自動でマウントされます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 공유 폴더는 다시 자동으로 마운트됩니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser freigegebene Ordner wird wieder automatisch eingebunden."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce dossier partagé sera de nouveau monté automatiquement."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta carpeta compartida se montará de nuevo automáticamente."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta pasta compartilhada será montada automaticamente novamente."
+          }
+        }
+      }
+    },
+    "This shared folder will no longer be mounted automatically. It stays available if it is mounted.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This shared folder will no longer be mounted automatically. It stays available if it is mounted."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个共享文件夹不再自动挂载。如果它已经挂载，仍可继续使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這個共享檔案夾不再自動掛載。如果它已經掛載，仍可繼續使用。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この共有フォルダは自動でマウントされなくなります。マウント済みの場合は引き続き利用できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 공유 폴더는 더 이상 자동으로 마운트되지 않습니다. 이미 마운트되어 있으면 계속 사용할 수 있습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser freigegebene Ordner wird nicht mehr automatisch eingebunden. Ist er bereits eingebunden, bleibt er verfügbar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce dossier partagé ne sera plus monté automatiquement. S’il est déjà monté, il reste disponible."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta carpeta compartida ya no se montará automáticamente. Si ya está montada, sigue disponible."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta pasta compartilhada não será mais montada automaticamente. Se já estiver montada, continua disponível."
+          }
+        }
+      }
+    },
+    "This is the last shared folder on this server. Removing it also removes the server from Automnt’s list.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the last shared folder on this server. Removing it also removes the server from Automnt’s list."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这是这台服务器上的最后一个共享文件夹。移除后，服务器也会从 Automnt 的列表中消失。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這是這台伺服器上的最後一個共享檔案夾。移除後，伺服器也會從 Automnt 的列表中消失。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これはこのサーバーの最後の共有フォルダです。削除すると、サーバーも Automnt のリストから削除されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 서버의 마지막 공유 폴더입니다. 제거하면 서버도 Automnt 목록에서 사라집니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dies ist der letzte freigegebene Ordner auf diesem Server. Beim Entfernen wird auch der Server aus der Automnt-Liste entfernt."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C’est le dernier dossier partagé de ce serveur. Le retirer supprime aussi le serveur de la liste d’Automnt."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es la última carpeta compartida de este servidor. Si la quitas, el servidor también desaparecerá de la lista de Automnt."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta é a última pasta compartilhada deste servidor. Ao removê-la, o servidor também sai da lista do Automnt."
+          }
+        }
+      }
+    },
+    "Saving these parameters also updates the SMB address of every shared folder on this server. Their mount locations stay the same.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving these parameters also updates the SMB address of every shared folder on this server. Their mount locations stay the same."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存这些参数会同时更新这台服务器上所有共享文件夹的 SMB 地址；它们的挂载位置不变。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "儲存這些參數會同時更新這台伺服器上所有共享檔案夾的 SMB 位址；它們的掛載位置不變。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらのパラメータを保存すると、このサーバー上のすべての共有フォルダの SMB アドレスも更新されます。マウント位置は変わりません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 매개변수를 저장하면 이 서버의 모든 공유 폴더 SMB 주소도 함께 업데이트됩니다. 마운트 위치는 그대로입니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Speichern dieser Parameter wird auch die SMB-Adresse aller freigegebenen Ordner dieses Servers aktualisiert. Die Einbindungsorte bleiben gleich."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer ces paramètres met aussi à jour l’adresse SMB de tous les dossiers partagés de ce serveur. Leurs emplacements de montage restent inchangés."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al guardar estos parámetros también se actualiza la dirección SMB de todas las carpetas compartidas de este servidor. Sus ubicaciones de montaje no cambian."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar estes parâmetros também atualiza o endereço SMB de todas as pastas compartilhadas deste servidor. Os locais de montagem não mudam."
+          }
+        }
+      }
+    },
+    "Name saved.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name saved."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称已保存。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名稱已儲存。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前を保存しました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이름을 저장했습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name gespeichert."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom enregistré."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre guardado."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome salvo."
+          }
+        }
+      }
+    },
+    "Automnt will ask the system not to index this server’s shared folders.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt will ask the system not to index this server’s shared folders."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 会请求系统不要为这台服务器的共享文件夹建立索引。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 會請求系統不要為這台伺服器的共享檔案夾建立索引。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt はこのサーバーの共有フォルダを索引しないようシステムに要求します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt가 이 서버의 공유 폴더를 인덱싱하지 않도록 시스템에 요청합니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt bittet das System, die freigegebenen Ordner dieses Servers nicht zu indizieren."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt demandera au système de ne pas indexer les dossiers partagés de ce serveur."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt pedirá al sistema que no indexe las carpetas compartidas de este servidor."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Automnt pedirá ao sistema que não indexe as pastas compartilhadas deste servidor."
+          }
+        }
+      }
+    },
+    "Automnt will no longer ask the system to skip indexing this server’s shared folders.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt will no longer ask the system to skip indexing this server’s shared folders."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 不再请求系统跳过这台服务器共享文件夹的索引。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 不再請求系統跳過這台伺服器共享檔案夾的索引。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt はこのサーバーの共有フォルダの索引をスキップするようシステムに要求しなくなります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt가 더 이상 이 서버의 공유 폴더 인덱싱을 건너뛰도록 시스템에 요청하지 않습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt bittet das System nicht mehr, die Indizierung der freigegebenen Ordner dieses Servers zu überspringen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt ne demandera plus au système d’ignorer l’indexation des dossiers partagés de ce serveur."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt dejará de pedir al sistema que omita la indexación de las carpetas compartidas de este servidor."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Automnt não pedirá mais ao sistema para ignorar a indexação das pastas compartilhadas deste servidor."
+          }
+        }
+      }
+    },
+    "You can look at the servers on the left, but adding, changing and mounting stay unavailable until access is restored.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can look at the servers on the left, but adding, changing and mounting stay unavailable until access is restored."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以查看左侧的服务器，但在恢复访问之前，添加、修改和挂载都不可用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以查看左側的伺服器，但在恢復存取之前，新增、修改和掛載都無法使用。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左側のサーバーは確認できますが、アクセスが回復するまで追加・変更・マウントは利用できません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽의 서버를 볼 수는 있지만, 접근이 복구될 때까지 추가·변경·마운트는 사용할 수 없습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sie können die Server links ansehen, aber Hinzufügen, Ändern und Einbinden bleiben nicht verfügbar, bis der Zugriff wiederhergestellt ist."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez consulter les serveurs à gauche, mais l’ajout, la modification et le montage restent indisponibles jusqu’au rétablissement de l’accès."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes ver los servidores de la izquierda, pero añadir, cambiar y montar no estarán disponibles hasta que se restablezca el acceso."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você pode ver os servidores à esquerda, mas adicionar, alterar e montar continuam indisponíveis até o acesso ser restabelecido."
+          }
+        }
+      }
+    },
+    "No Matching Servers": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Matching Servers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配的服务器"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有符合的伺服器"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致するサーバーがありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치하는 서버 없음"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine passenden Server"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun serveur correspondant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún servidor coincide"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum servidor correspondente"
+          }
+        }
+      }
+    },
+    "Clear Search": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Search"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除搜索"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除搜尋"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索をクリア"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색 지우기"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche löschen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer la recherche"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar búsqueda"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar busca"
+          }
+        }
+      }
+    },
+    "No managed or available server matches “%@”.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No managed or available server matches “%@”."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有已管理或可添加的服务器匹配“%@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有已管理或可加入的伺服器符合「%@」。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」に一致する管理済みまたは追加可能なサーバーはありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”와 일치하는 관리 중이거나 추가 가능한 서버가 없습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein verwalteter oder verfügbarer Server entspricht „%@“."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun serveur géré ou disponible ne correspond à « %@ »."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ningún servidor gestionado o disponible coincide con «%@»."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum servidor gerenciado ou disponível corresponde a “%@”."
+          }
+        }
+      }
+    },
+    "Settings…": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustes…"
+          }
+        }
+      }
+    },
+    "Automnt needs access to its settings before it can manage shared folders.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt needs access to its settings before it can manage shared folders."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 需要读取自己的设置，才能管理共享文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt 需要讀取自己的設定，才能管理共享檔案夾。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共有フォルダを管理するには、Automnt が設定にアクセスする必要があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "공유 폴더를 관리하려면 Automnt가 설정에 접근해야 합니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt benötigt Zugriff auf seine Einstellungen, bevor es freigegebene Ordner verwalten kann."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt doit pouvoir accéder à ses réglages pour gérer des dossiers partagés."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automnt necesita acceso a sus ajustes para poder gestionar carpetas compartidas."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Automnt precisa de acesso às próprias configurações para gerenciar pastas compartilhadas."
+          }
+        }
+      }
+    },
+    "No Matching Shared Folders": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Matching Shared Folders"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有匹配的共享文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有符合的共享檔案夾"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致する共有フォルダがありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일치하는 공유 폴더 없음"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine passenden freigegebenen Ordner"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun dossier partagé correspondant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna carpeta compartida coincide"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma pasta compartilhada correspondente"
+          }
+        }
+      }
+    },
+    "No shared folder matches “%@”.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No shared folder matches “%@”."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有共享文件夹匹配“%@”。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有共享檔案夾符合「%@」。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」に一致する共有フォルダはありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”와 일치하는 공유 폴더가 없습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein freigegebener Ordner entspricht „%@“."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun dossier partagé ne correspond à « %@ »."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna carpeta compartida coincide con «%@»."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma pasta compartilhada corresponde a “%@”."
           }
         }
       }

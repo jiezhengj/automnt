@@ -143,7 +143,13 @@ struct MainWindowView: View {
             .listStyle(.inset)
             .navigationTitle("Servers")
             .searchable(text: $searchText, prompt: Text("Search servers"))
-            .overlay { emptyState }
+            .overlay {
+            if isFiltering {
+                sidebarSearchEmptyState
+            } else {
+                emptyState
+            }
+        }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
             .safeAreaInset(edge: .top, spacing: 0) { resultBanner }
             .safeAreaInset(edge: .bottom, spacing: 0) { globalActionsBar }
@@ -162,6 +168,20 @@ struct MainWindowView: View {
                     compactPath.append(.share(share.identity))
                 }
                 .onAppear { selectedServer = identity }
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Button("Add Shared Folder…") { showingAddShare = true }
+                                .disabled(!model.configurationChangesAllowed)
+                            Button("Check Now") { Task { await model.tryFullRound() } }
+                                .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+                            Divider()
+                            SettingsLink { Text("Settings…") }
+                        } label: {
+                            Label("More", systemImage: "ellipsis.circle")
+                        }
+                    }
+                }
             } else {
                 ContentUnavailableView("Choose a Server", systemImage: "server.rack",
                     description: Text("Choose a server on the left to see its shared folders."))
@@ -345,6 +365,19 @@ struct MainWindowView: View {
         }
     }
 
+    @ViewBuilder
+    private var sidebarSearchEmptyState: some View {
+        if filtered(inventory.managed).isEmpty && filtered(inventory.addable).isEmpty {
+            ContentUnavailableView {
+                Label("No Matching Servers", systemImage: "magnifyingglass")
+            } description: {
+                Text(String(format: String(localized: "No managed or available server matches “%@”."), query))
+            } actions: {
+                Button("Clear Search") { searchText = "" }
+            }
+        }
+    }
+
     private func filtered(_ servers: [ServerInventory.Server]) -> [ServerInventory.Server] {
         guard isFiltering else { return servers }
         return servers.filter { server in
@@ -377,8 +410,12 @@ struct MainWindowView: View {
     private var detail: some View {
         Group {
             if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
-                ScrollView {
-                    configurationAccessView
+                if model.accessDeferred {
+                    deferredAccessView
+                } else {
+                    ScrollView {
+                        configurationAccessView
+                    }
                 }
             } else if let identity = selectedServer, let server = inventory.server(identity: identity) {
                 // The detail is a native sheet: address, locations, indexing, editing and
@@ -450,9 +487,37 @@ struct MainWindowView: View {
         Button(model.configurationAccessButton) { Task { await model.authorizeConfiguration() } }
             .keyboardShortcut(.defaultAction)
             .fixedSize(horizontal: true, vertical: false)
-        Button("Later") { model.configurationAccess = .cancelled }
+        Button("Later") { model.accessDeferred = true }
             .keyboardShortcut(.cancelAction)
             .fixedSize(horizontal: true, vertical: false)
+    }
+
+    /// "Later" leaves this panel instead of re-rendering it under another title: the
+    /// window stays readable, and one persistent card keeps the way back visible.
+    private var deferredAccessView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.circle")
+                .font(.largeTitle)
+                .foregroundStyle(.secondary)
+            Text(model.configurationAccessTitle)
+                .font(.title3.weight(.semibold))
+            Text(model.configurationAccessMessage)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("You can look at the servers on the left, but adding, changing and mounting stay unavailable until access is restored.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(model.configurationAccessButton) {
+                model.accessDeferred = false
+                Task { await model.authorizeConfiguration() }
+            }
+            .keyboardShortcut(.defaultAction)
+            .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// A "View details" request from the menu bar can arrive while a sheet is open;
@@ -691,6 +756,9 @@ private struct ServerSharesView: View {
         query.isEmpty || share.name.localizedCaseInsensitiveContains(query)
     }
 
+    /// One definition of "can be added", shared by the list and its filtered-empty state.
+    private var addableShares: [ServerInventory.Share] { server.addableShares }
+
     private struct AttentionShare: Identifiable {
         let share: ServerInventory.Share
         let reason: String
@@ -762,7 +830,7 @@ private struct ServerSharesView: View {
             }
 
             Section("Available to Add") {
-                let addable = server.addableShares.filter(matches)
+                let addable = addableShares.filter(matches)
                 if addable.isEmpty && server.addableShares.isEmpty {
                     Text("No additional shared folders were found on this Mac.").foregroundStyle(.secondary)
                 }
@@ -786,6 +854,19 @@ private struct ServerSharesView: View {
             }
         }
         .searchable(text: $shareSearch, prompt: Text("Search shared folders"))
+        .overlay {
+            if !query.isEmpty,
+               server.managedShares.filter(matches).isEmpty,
+               addableShares.filter(matches).isEmpty {
+                ContentUnavailableView {
+                    Label("No Matching Shared Folders", systemImage: "magnifyingglass")
+                } description: {
+                    Text(String(format: String(localized: "No shared folder matches “%@”."), query))
+                } actions: {
+                    Button("Clear Search") { shareSearch = "" }
+                }
+            }
+        }
         .navigationTitle(server.displayName)
         .navigationSubtitle(server.host)
         .toolbar {
@@ -941,6 +1022,10 @@ struct ShareRowView: View {
                 Spacer(minLength: 12)
                 Button("Add") { model.addShare(smbURL: share.smbURL) }
                     .disabled(model.busy)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
             }
             .padding(.vertical, 2)
             .contentShape(Rectangle())
