@@ -37,6 +37,26 @@ enum ShareFormFields {
 }
 
 /// Manual add. A complete, credential-free SMB address is the primary input; the
+/// Result line for a sheet: the action that just ran was started here, so its result has
+/// to be visible here instead of in the window behind the sheet.
+private struct SheetMessageCard: View {
+    let text: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: systemImage).foregroundStyle(tint)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .font(.callout)
+        .padding(12)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+}
+
 /// A revision conflict is recoverable: the draft stays exactly as typed and one
 /// explicit button re-reads the latest settings. Reloading never mounts, ejects or
 /// overwrites the input, so it is safe to press while editing.
@@ -46,13 +66,13 @@ struct ConfigurationConflictCard: View {
     var body: some View {
         if model.configurationConflictDetected {
             VStack(alignment: .leading, spacing: 6) {
-                Label("The configuration changed in another window or from the command line. Reload the latest settings; your input is kept.",
+                Label("Your settings were updated elsewhere. Use the latest settings to refresh this window; what you typed is kept.",
                       systemImage: "exclamationmark.arrow.triangle.2.circlepath")
                     .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Reload Settings") { model.reloadAfterConfigurationConflict() }
+                Button("Use Latest Settings") { model.reloadAfterConfigurationConflict() }
                     .disabled(model.busy)
-                Text("Reloading does not mount, eject or overwrite what you typed.")
+                Text("Refreshing mounts or ejects nothing and does not overwrite what you typed.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -274,14 +294,21 @@ struct ShareDetailSheet: View {
     }
 
     var body: some View {
-        Group {
-            if let managed {
-                managedDetail(host: managed.host, share: managed.share)
-            } else if let discovered {
-                addableDetail(discovered)
-            } else {
-                ContentUnavailableView("Shared Folder Unavailable", systemImage: "questionmark.folder",
-                    description: Text("This shared folder is no longer in the list. Close this window and check the current list."))
+        VStack(spacing: 0) {
+            if let issue = model.issue {
+                SheetMessageCard(text: issue, systemImage: "exclamationmark.triangle.fill", tint: .orange)
+            } else if let notice = model.notice {
+                SheetMessageCard(text: notice, systemImage: "info.circle", tint: .secondary)
+            }
+            Group {
+                if let managed {
+                    managedDetail(host: managed.host, share: managed.share)
+                } else if let discovered {
+                    addableDetail(discovered)
+                } else {
+                    ContentUnavailableView("Shared Folder Unavailable", systemImage: "questionmark.folder",
+                        description: Text("This shared folder is no longer in the list. Close this window and check the current list."))
+                }
             }
         }
         .toolbar {
@@ -685,7 +712,7 @@ struct EditShareView: View {
             return false
         }
         guard let base = editBase else {
-            error = String(localized: "The configuration changed. Reload it before continuing.")
+            error = String(localized: "These settings were updated elsewhere. Close this window and open it again.")
             return false
         }
         guard let identity = smbResourceIdentity(share.smbURL),
@@ -697,7 +724,7 @@ struct EditShareView: View {
               }) else {
             // The target disappeared while the form was open: report a conflict and keep
             // the input instead of silently saving nothing.
-            error = String(localized: "The configuration changed. Reload it before continuing.")
+            error = String(localized: "These settings were updated elsewhere. Close this window and open it again.")
             return false
         }
         var candidate = base.configuration
@@ -888,7 +915,7 @@ struct ServerSettingsView: View {
     }
 
     private var conflictMessage: String {
-        String(localized: "The configuration changed. Reload it before continuing.")
+        String(localized: "These settings were updated elsewhere. Close this window and open it again.")
     }
 
     /// Used by the quit confirmation: a dirty page saves its connection fields, its name
@@ -1049,6 +1076,8 @@ struct SettingsView: View {
             supportSection
             if let issue = model.issue {
                 Section { Text(issue).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+            } else if let notice = model.notice {
+                Section { Text(notice).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             }
         }
         .formStyle(.grouped)
@@ -1079,6 +1108,11 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if model.backend == .governedByCLI {
+                    Text("The command-line version is managing automatic mounting right now. To use the app instead, stop the command-line service first.")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if model.backend.needsUserAction {
                     Button("Set Up or Repair Background Mounting") {
                         Task { await model.activateAppBackground(repair: true) }

@@ -152,6 +152,35 @@ public struct BackendStateStore: Sendable {
         }
     }
 
+    /// Advances the persisted backend state to the configuration revision the app just
+    /// saved. Without this, an evaluation started later still sees the old revision and is
+    /// rejected as if another writer had changed the configuration behind the app's back.
+    /// Only the revision metadata changes: owner, phase, generation, transition id and the
+    /// journal's previous state stay untouched. Refuses any backend that is not active and
+    /// app-owned, and any state whose recorded revision is not the one being replaced.
+    public func adoptConfigurationRevision(expected: ConfigRevision,
+                                           new: ConfigRevision) throws -> BackendState {
+        if expected == new { return try read() }
+        let lock = try operationLock()
+        return try withExtendedLifetime(lock) {
+            var state = try read()
+            guard state.owner == .app, state.phase == .active,
+                  state.revision == expected else { throw AutomntIssue.configurationConflict }
+            let current = try FileConfigRepository(authorizedDirectory: directory).read().revision
+            guard current == new else { throw AutomntIssue.configurationConflict }
+            var journal = try self.journal()
+            guard state == journal.pending else { throw AutomntIssue.serviceTransitionFailed }
+            state.revision = new
+            journal.pending.revision = new
+            // The journal keeps the state from just before the latest commit; it must carry
+            // the same revision as the pending state or the journal stops validating.
+            journal.priorPending?.revision = new
+            try write(journal, to: journalURL)
+            try write(state, to: stateURL)
+            return state
+        }
+    }
+
     /// Crash repair only converges to stopped after the adapter proved all relevant
     /// services and in-flight workers stopped. It never promotes journal intent to active.
     public func reconcileInterruptedTransition(verifiedStatus: BackendState.ServiceStatus,

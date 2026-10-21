@@ -145,6 +145,7 @@ struct MainWindowView: View {
             .searchable(text: $searchText, prompt: Text("Search servers"))
             .overlay { emptyState }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
+            .safeAreaInset(edge: .top, spacing: 0) { resultBanner }
             .safeAreaInset(edge: .bottom, spacing: 0) { globalActionsBar }
             .navigationDestination(for: CompactRoute.self) { route in
                 compactDestination(route)
@@ -242,23 +243,25 @@ struct MainWindowView: View {
     /// Global actions belong to the whole window; they sit at the sidebar bottom rather
     /// than sharing a toolbar with the selected server's own actions.
     private var globalActionsBar: some View {
-        HStack(spacing: 12) {
-            Button("Add Shared Folder…", systemImage: "plus") { showingAddShare = true }
-                .disabled(!model.configurationChangesAllowed)
-                .help("Add Shared Folder…")
-                .accessibilityLabel(Text("Add Shared Folder…"))
-            Button("Try Automatic Mounting Now", systemImage: "bolt") {
-                Task { await model.tryFullRound() }
+        // Every action here states what it does in words. The app settings live in the
+        // standard Settings menu item (⌘,), so a gear here would read as the selection's
+        // own settings and duplicate the server connection entry in the toolbar.
+        HStack(spacing: 8) {
+            Button { showingAddShare = true } label: {
+                Label("Add Shared Folder…", systemImage: "plus")
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .disabled(!model.configurationChangesAllowed)
+            .help("Add Shared Folder…")
+            Button { Task { await model.tryFullRound() } } label: {
+                Label("Check Now", systemImage: "bolt")
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-            .help("Try Automatic Mounting Now")
-            .accessibilityLabel(Text("Try Automatic Mounting Now"))
+            .help("Check every shared folder now and mount what is missing.")
             Spacer(minLength: 0)
-            SettingsLink { Label("Settings", systemImage: "gearshape") }
-                .help("Settings")
-                .accessibilityLabel(Text("Settings"))
         }
-        .labelStyle(.iconOnly)
+        .labelStyle(.titleAndIcon)
         .buttonStyle(.borderless)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -372,21 +375,40 @@ struct MainWindowView: View {
 
     @ViewBuilder
     private var detail: some View {
-        if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
-            ScrollView {
-                configurationAccessView
+        Group {
+            if model.configurationAccess != .ready && model.configurationAccess != .authorizedUnconfigured {
+                ScrollView {
+                    configurationAccessView
+                }
+            } else if let identity = selectedServer, let server = inventory.server(identity: identity) {
+                // The detail is a native sheet: address, locations, indexing, editing and
+                // removal stay out of the row so the row keeps exactly one primary action.
+                ServerSharesView(model: model, server: server, shareSearch: $shareSearch) { share in
+                    navigating = ShareNavigation(id: share.identity)
+                }
+            } else if model.isFirstRun {
+                firstRunView
+            } else {
+                ContentUnavailableView("Choose a Server", systemImage: "server.rack",
+                    description: Text("Choose a server on the left to see its shared folders."))
             }
-        } else if let identity = selectedServer, let server = inventory.server(identity: identity) {
-            // The detail is a native sheet: address, locations, indexing, editing and
-            // removal stay out of the row so the row keeps exactly one primary action.
-            ServerSharesView(model: model, server: server, shareSearch: $shareSearch) { share in
-                navigating = ShareNavigation(id: share.identity)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            // A server detail draws its own result line above its content; the other
+            // states would otherwise swallow a check's result.
+            if selectedServer.flatMap({ inventory.server(identity: $0) }) == nil {
+                resultBanner
             }
-        } else if model.isFirstRun {
-            firstRunView
-        } else {
-            ContentUnavailableView("Choose a Server", systemImage: "server.rack",
-                description: Text("Choose a server on the left to see its shared folders."))
+        }
+    }
+
+    /// Result of the most recent action, shown at the surface that started it.
+    @ViewBuilder
+    private var resultBanner: some View {
+        if let issue = model.issue {
+            DetailMessageCard(text: issue, systemImage: "exclamationmark.triangle.fill", tint: .orange)
+        } else if let notice = model.notice {
+            DetailMessageCard(text: notice, systemImage: "info.circle", tint: .secondary)
         }
     }
 
@@ -756,9 +778,9 @@ private struct ServerSharesView: View {
                 } else if showsAutomationPrompt {
                     automationPrompt
                 }
-                if automationAttention == nil, let issue = model.issue {
+                if let issue = model.issue {
                     DetailMessageCard(text: issue, systemImage: "exclamationmark.triangle.fill", tint: .orange)
-                } else if automationAttention == nil, let notice = model.notice {
+                } else if let notice = model.notice {
                     DetailMessageCard(text: notice, systemImage: "info.circle", tint: .secondary)
                 }
             }
@@ -775,11 +797,14 @@ private struct ServerSharesView: View {
                     .help("Refresh Status")
             }
             ToolbarItem {
-                Button("Server Settings…", systemImage: "slider.horizontal.3") {
+                Button {
                     showingServerSettings = true
+                } label: {
+                    Label("Server Connection…", systemImage: "slider.horizontal.3")
                 }
+                .labelStyle(.titleAndIcon)
                 .disabled(host == nil)
-                .help("Server Settings…")
+                .help("Server Connection…")
             }
         }
         .sheet(isPresented: $showingServerSettings) {

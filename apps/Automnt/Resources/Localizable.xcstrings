@@ -8,55 +8,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt could not confirm that no CLI configuration exists. Your input is preserved. Resolve the CLI configuration before saving in the app."
+            "value": "Automnt can’t read your settings right now. Quit and reopen Automnt, then try again."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法确认是否已有 CLI 配置。你的输入已保留。请先处理 CLI 配置，再在应用中存储。"
+            "value": "暂时无法读取设置。请关闭 Automnt 后重新打开，再试一次。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "無法確認是否已有 CLI 設定。你的輸入已保留。請先處理 CLI 設定，再於 App 中儲存。"
+            "value": "暫時無法讀取設定。請關閉 Automnt 後重新開啟，再試一次。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "CLI の設定が存在しないことを確認できませんでした。入力内容は保持されています。アプリで保存する前に CLI の設定を確認してください。"
+            "value": "現在、設定を読み取れません。Automnt を終了して開き直してから、もう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "CLI 구성이 없는지 확인할 수 없습니다. 입력 내용은 유지됩니다. 앱에서 저장하기 전에 CLI 구성을 확인하세요."
+            "value": "지금은 설정을 읽을 수 없습니다. Automnt를 종료했다가 다시 열고 시도하십시오."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt konnte nicht bestätigen, dass keine CLI-Konfiguration vorhanden ist. Deine Eingaben bleiben erhalten. Kläre die CLI-Konfiguration, bevor du in der App speicherst."
+            "value": "Automnt kann Ihre Einstellungen gerade nicht lesen. Beenden Sie Automnt, öffnen Sie es erneut und versuchen Sie es noch einmal."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt n’a pas pu confirmer l’absence de configuration CLI. Votre saisie est conservée. Vérifiez la configuration CLI avant d’enregistrer dans l’app."
+            "value": "Automnt ne parvient pas à lire vos réglages pour le moment. Quittez puis rouvrez Automnt, puis réessayez."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automnt no pudo confirmar que no exista una configuración de CLI. Se conservan tus datos. Revisa la configuración de CLI antes de guardar en la app."
+            "value": "Automnt no puede leer tus ajustes ahora mismo. Sal de Automnt, vuelve a abrirlo y prueba de nuevo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "O Automnt não conseguiu confirmar a ausência de configuração da CLI. Seus dados foram preservados. Verifique a configuração da CLI antes de salvar no app."
+            "value": "O Automnt não consegue ler suas configurações agora. Saia e abra o Automnt novamente, depois tente outra vez."
           }
         }
       }
@@ -848,55 +848,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "App background mounting is off. Mounted shared folders remain available."
+            "value": "Automatic mounting is off. Folders that are already mounted stay available."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用后台挂载已关闭。已挂载的共享文件夹仍可使用。"
+            "value": "自动挂载已关闭。已挂载的共享文件夹仍可使用。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "App 背景掛載已關閉。已掛載的共享檔案夾仍可使用。"
+            "value": "自動掛載已關閉。已掛載的共享檔案夾仍可使用。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Appのバックグラウンドマウントはオフです。マウント済みの共有フォルダは引き続き使用できます。"
+            "value": "自動マウントはオフです。マウント済みの共有フォルダは引き続き利用できます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱 백그라운드 마운트가 꺼져 있습니다. 이미 마운트된 공유 폴더는 계속 사용할 수 있습니다."
+            "value": "자동 마운트가 꺼져 있습니다. 이미 마운트된 공유 폴더는 계속 사용할 수 있습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Hintergrund-Verbinden der App ist aus. Verbundene freigegebene Ordner bleiben verfügbar."
+            "value": "Die automatische Einbindung ist aus. Bereits eingebundene Ordner bleiben verfügbar."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le montage en arrière-plan de l’app est désactivé. Les dossiers partagés déjà montés restent disponibles."
+            "value": "Le montage automatique est désactivé. Les dossiers déjà montés restent disponibles."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El montaje en segundo plano de la app está desactivado. Las carpetas compartidas ya montadas siguen disponibles."
+            "value": "El montaje automático está desactivado. Las carpetas ya montadas siguen disponibles."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A montagem em segundo plano do app está desativada. As pastas compartilhadas já montadas continuam disponíveis."
+            "value": "A montagem automática está desligada. As pastas já montadas continuam disponíveis."
           }
         }
       }
@@ -908,55 +908,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "App background mounting is enabled. Shared folders will mount when the server and credentials are available."
+            "value": "Automatic mounting is on. Shared folders mount when the server and sign-in details are available."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用后台挂载已启用。服务器和登录信息可用时，共享文件夹会自动挂载。"
+            "value": "自动挂载已开启。服务器和登录信息可用时会自动挂载。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "App 背景掛載已啟用。伺服器與登入資訊可用時，共享檔案夾會自動掛載。"
+            "value": "自動掛載已開啟。伺服器和登入資訊可用時會自動掛載。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Appのバックグラウンドマウントが有効になりました。サーバとログイン情報を利用できるときに共有フォルダがマウントされます。"
+            "value": "自動マウントはオンです。サーバーとサインイン情報が利用できるときに共有フォルダをマウントします。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "앱 백그라운드 마운트가 활성화되었습니다. 서버와 로그인 정보를 사용할 수 있으면 공유 폴더가 마운트됩니다."
+            "value": "자동 마운트가 켜져 있습니다. 서버와 로그인 정보를 사용할 수 있을 때 공유 폴더를 마운트합니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Hintergrund-Verbinden der App ist aktiviert. Freigegebene Ordner werden verbunden, sobald Server und Anmeldedaten verfügbar sind."
+            "value": "Die automatische Einbindung ist an. Freigegebene Ordner werden eingebunden, sobald Server und Anmeldedaten verfügbar sind."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le montage en arrière-plan de l’app est activé. Les dossiers partagés seront montés dès que le serveur et les identifiants seront disponibles."
+            "value": "Le montage automatique est activé. Les dossiers partagés sont montés lorsque le serveur et les identifiants sont disponibles."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El montaje en segundo plano de la app está activado. Las carpetas compartidas se montarán cuando el servidor y las credenciales estén disponibles."
+            "value": "El montaje automático está activado. Las carpetas compartidas se montan cuando el servidor y los datos de inicio de sesión están disponibles."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A montagem em segundo plano do app está ativada. As pastas compartilhadas serão montadas quando o servidor e as credenciais estiverem disponíveis."
+            "value": "A montagem automática está ligada. As pastas compartilhadas são montadas quando o servidor e os dados de acesso estão disponíveis."
           }
         }
       }
@@ -1268,55 +1268,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "An older command-line service is installed. Update or release it before enabling app background mounting."
+            "value": "An older command-line service is installed. Update or remove it before turning on automatic mounting."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已安装旧版命令行服务。请先更新或释放它，再启用应用后台挂载。"
+            "value": "已安装旧版命令行服务。请先更新或卸载它，再开启自动挂载。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已安裝舊版命令列服務。請先更新或釋放它，再啟用 App 背景掛載。"
+            "value": "已安裝舊版命令列服務。請先更新或移除它，再開啟自動掛載。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "古いコマンドラインサービスがインストールされています。Appのバックグラウンドマウントを有効にする前に、更新するか解放してください。"
+            "value": "古いコマンドラインサービスがインストールされています。更新または削除してから自動マウントをオンにしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이전 버전의 명령줄 서비스가 설치되어 있습니다. 앱 백그라운드 마운트를 활성화하기 전에 업데이트하거나 해제하세요."
+            "value": "이전 명령줄 서비스가 설치되어 있습니다. 업데이트하거나 제거한 후 자동 마운트를 켜십시오."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein älterer Befehlszeilendienst ist installiert. Aktualisiere ihn oder gib ihn frei, bevor du das Hintergrund-Verbinden der App aktivierst."
+            "value": "Ein älterer Befehlszeilendienst ist installiert. Aktualisieren oder entfernen Sie ihn, bevor Sie die automatische Einbindung einschalten."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un service en ligne de commande plus ancien est installé. Mettez-le à jour ou libérez-le avant d’activer le montage en arrière-plan de l’app."
+            "value": "Un ancien service en ligne de commande est installé. Mettez-le à jour ou supprimez-le avant d’activer le montage automatique."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hay instalado un servicio de línea de comandos anterior. Actualízalo o libéralo antes de activar el montaje en segundo plano de la app."
+            "value": "Hay instalado un servicio de línea de comandos antiguo. Actualízalo o elimínalo antes de activar el montaje automático."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Há um serviço de linha de comando mais antigo instalado. Atualize-o ou libere-o antes de ativar a montagem em segundo plano do app."
+            "value": "Há um serviço de linha de comando antigo instalado. Atualize-o ou remova-o antes de ligar a montagem automática."
           }
         }
       }
@@ -1748,55 +1748,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automatic mounting is on. Check background mounting before continuing."
+            "value": "Automatic mounting is on, but it is not in effect yet. Try again in a moment."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自动挂载已开启。请先检查后台挂载，再继续。"
+            "value": "自动挂载已开启，但还没有生效。请稍后再试。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動掛載已開啟。請先檢查背景掛載，再繼續。"
+            "value": "自動掛載已開啟，但還沒有生效。請稍後再試。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動マウントはオンです。続行する前にバックグラウンドマウントを確認してください。"
+            "value": "自動マウントはオンですが、まだ有効になっていません。しばらくしてからもう一度お試しください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "자동 마운트가 켜져 있습니다. 계속하기 전에 백그라운드 마운트를 확인하세요."
+            "value": "자동 마운트가 켜져 있지만 아직 적용되지 않았습니다. 잠시 후 다시 시도하십시오."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Automatisches Verbinden ist an. Prüfe das Hintergrund-Verbinden, bevor du fortfährst."
+            "value": "Die automatische Einbindung ist an, wirkt aber noch nicht. Versuchen Sie es gleich noch einmal."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le montage automatique est activé. Vérifiez le montage en arrière-plan avant de continuer."
+            "value": "Le montage automatique est activé, mais pas encore effectif. Réessayez dans un instant."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El montaje automático está activado. Comprueba el montaje en segundo plano antes de continuar."
+            "value": "El montaje automático está activado, pero aún no está en vigor. Inténtalo de nuevo en un momento."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A montagem automática está ativada. Verifique a montagem em segundo plano antes de continuar."
+            "value": "A montagem automática está ligada, mas ainda não está em vigor. Tente novamente em instantes."
           }
         }
       }
@@ -3128,55 +3128,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Background mounting"
+            "value": "Automatic mounting status"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载"
+            "value": "自动挂载状态"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載"
+            "value": "自動掛載狀態"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バックグラウンドマウント"
+            "value": "自動マウントの状態"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "백그라운드 마운트"
+            "value": "자동 마운트 상태"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hintergrund-Verbinden"
+            "value": "Status der automatischen Einbindung"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montage en arrière-plan"
+            "value": "État du montage automatique"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montaje en segundo plano"
+            "value": "Estado del montaje automático"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montagem em segundo plano"
+            "value": "Status da montagem automática"
           }
         }
       }
@@ -8174,13 +8174,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "一轮会按顺序检查服务器，并在第一个可达的服务器处停止，因此没有检查到这台服务器。这不是错误。"
+            "value": "一次检查会按顺序进行，连上第一台可用的服务器就停止，所以这次没有检查到这台服务器。这不是错误。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "一輪會依序檢查伺服器，並在第一個可連線的伺服器停止，因此沒有檢查到這台伺服器。這不是錯誤。"
+            "value": "一次檢查會按順序進行，連上第一台可用的伺服器就停止，所以這次沒有檢查到這台伺服器。這不是錯誤。"
           }
         },
         "ja": {
@@ -9068,55 +9068,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Attempts per Round"
+            "value": "Attempts per Check"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每轮尝试次数"
+            "value": "每次最多尝试次数"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "每輪嘗試次數"
+            "value": "每次最多嘗試次數"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "1 回の試行回数"
+            "value": "1回の確認あたりの試行回数"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "회차당 시도 횟수"
+            "value": "확인당 시도 횟수"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Versuche pro Runde"
+            "value": "Versuche pro Prüfung"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tentatives par cycle"
+            "value": "Tentatives par vérification"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Intentos por ronda"
+            "value": "Intentos por comprobación"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tentativas por rodada"
+            "value": "Tentativas por verificação"
           }
         }
       }
@@ -9254,13 +9254,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自动挂载与自动恢复正在运行。"
+            "value": "自动挂载和自动恢复正在运行。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動掛載與自動恢復正在執行。"
+            "value": "自動掛載和自動恢復正在執行。"
           }
         },
         "ja": {
@@ -9434,13 +9434,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自动挂载正在运行。意外断开的自动恢复已关闭。"
+            "value": "自动挂载正在运行。意外断开后的自动恢复已关闭。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "自動掛載正在執行。意外中斷的自動恢復已關閉。"
+            "value": "自動掛載正在執行。意外中斷後的自動恢復已關閉。"
           }
         },
         "ja": {
@@ -10214,13 +10214,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "后台挂载"
+            "value": "自动挂载状态"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景掛載"
+            "value": "自動掛載狀態"
           }
         },
         "ja": {
@@ -11588,13 +11588,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Configuration Could Not Be Read"
+            "value": "Settings Could Not Be Read"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法读取配置"
+            "value": "无法读取设置"
           }
         },
         "zh-Hant": {
@@ -11606,37 +11606,37 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定を読み取れませんでした"
+            "value": "設定を読み取れません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "구성을 읽을 수 없습니다"
+            "value": "설정을 읽을 수 없음"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konfiguration konnte nicht gelesen werden"
+            "value": "Einstellungen konnten nicht gelesen werden"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de lire la configuration"
+            "value": "Impossible de lire les réglages"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo leer la configuración"
+            "value": "No se pudieron leer los ajustes"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não foi possível ler a configuração"
+            "value": "Não foi possível ler as configurações"
           }
         }
       }
@@ -12248,55 +12248,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ejected for this session"
+            "value": "Ejected"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本次会话已弹出"
+            "value": "已手动弹出"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "本次工作階段已退出"
+            "value": "已手動退出"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このセッションでは取り出し済み"
+            "value": "手動で取り出し済み"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이번 세션에서 추출됨"
+            "value": "수동으로 추출됨"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Für diese Sitzung ausgeworfen"
+            "value": "Ausgeworfen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Éjecté pour cette session"
+            "value": "Éjecté"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Expulsado en esta sesión"
+            "value": "Expulsado"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ejetado nesta sessão"
+            "value": "Ejetado"
           }
         }
       }
@@ -12308,55 +12308,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ejecting here needs app background mounting. Set it up in Settings first; you can still eject the folder in Finder."
+            "value": "Ejecting here needs automatic mounting to be on. Turn it on in Settings first; you can still eject the folder in Finder."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在这里弹出需要应用后台挂载。请先在设置中完成配置；你仍然可以在 Finder 中弹出该文件夹。"
+            "value": "在此弹出需要先开启自动挂载。请先在设置中开启；你也可以在 Finder 中弹出。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "在這裡退出需要應用程式背景掛載。請先在設定中完成設定；你仍然可以在 Finder 中退出該檔案夾。"
+            "value": "在此退出需要先開啟自動掛載。請先在設定中開啟；你也可以在 Finder 中退出。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ここで取り出すにはアプリのバックグラウンドマウントが必要です。先に設定で構成してください。Finder からは引き続き取り出せます。"
+            "value": "ここで取り出すには自動マウントをオンにする必要があります。先に設定でオンにしてください。Finder から取り出すこともできます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "여기에서 추출하려면 앱 백그라운드 마운트가 필요합니다. 먼저 설정에서 구성하세요. Finder에서는 계속 추출할 수 있습니다."
+            "value": "여기서 추출하려면 자동 마운트가 켜져 있어야 합니다. 먼저 설정에서 켜십시오. Finder에서도 추출할 수 있습니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Auswerfen hier erfordert das Hintergrund-Verbinden der App. Richte es zuerst in den Einstellungen ein; im Finder kannst du den Ordner weiterhin auswerfen."
+            "value": "Zum Auswerfen hier muss die automatische Einbindung an sein. Schalten Sie sie zuerst in den Einstellungen ein; Sie können den Ordner auch im Finder auswerfen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "L’éjection ici nécessite le montage en arrière-plan de l’app. Configurez-le d’abord dans les réglages ; vous pouvez toujours éjecter le dossier dans le Finder."
+            "value": "L’éjection ici nécessite le montage automatique. Activez-le d’abord dans les réglages ; vous pouvez aussi éjecter le dossier dans le Finder."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Expulsar aquí necesita el montaje en segundo plano de la app. Configúralo primero en Ajustes; aún puedes expulsar la carpeta en el Finder."
+            "value": "Expulsar aquí requiere el montaje automático. Actívalo primero en Ajustes; también puedes expulsar la carpeta en el Finder."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ejetar aqui exige a montagem em segundo plano do app. Configure-a primeiro nos Ajustes; você ainda pode ejetar a pasta no Finder."
+            "value": "Ejetar aqui exige a montagem automática ligada. Ligue-a primeiro nos Ajustes; você também pode ejetar a pasta no Finder."
           }
         }
       }
@@ -13748,55 +13748,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mounting one shared folder needs app background mounting. Set it up in Settings first."
+            "value": "Mounting one shared folder needs automatic mounting to be on. Turn it on in Settings first."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "单独挂载一个共享文件夹需要应用后台挂载。请先在设置中完成配置。"
+            "value": "单独挂载一个共享文件夹需要先开启自动挂载。请先在设置中开启。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "單獨掛載一個共享檔案夾需要應用程式背景掛載。請先在設定中完成設定。"
+            "value": "單獨掛載一個共享檔案夾需要先開啟自動掛載。請先在設定中開啟。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "共有フォルダを 1 つマウントするには、アプリのバックグラウンドマウントが必要です。先に設定で構成してください。"
+            "value": "1つの共有フォルダをマウントするには自動マウントをオンにする必要があります。先に設定でオンにしてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "공유 폴더 하나를 마운트하려면 앱 백그라운드 마운트가 필요합니다. 먼저 설정에서 구성하세요."
+            "value": "공유 폴더 하나를 마운트하려면 자동 마운트가 켜져 있어야 합니다. 먼저 설정에서 켜십시오."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Einbinden eines einzelnen freigegebenen Ordners erfordert das Hintergrund-Verbinden der App. Richte es zuerst in den Einstellungen ein."
+            "value": "Das Einbinden eines freigegebenen Ordners erfordert die automatische Einbindung. Schalten Sie sie zuerst in den Einstellungen ein."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Monter un seul dossier partagé nécessite le montage en arrière-plan de l’app. Configurez-le d’abord dans les réglages."
+            "value": "Monter un dossier partagé nécessite le montage automatique. Activez-le d’abord dans les réglages."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montar una sola carpeta compartida necesita el montaje en segundo plano de la app. Configúralo primero en Ajustes."
+            "value": "Montar una carpeta compartida requiere el montaje automático. Actívalo primero en Ajustes."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montar uma única pasta compartilhada exige a montagem em segundo plano do app. Configure-a primeiro nos Ajustes."
+            "value": "Montar uma pasta compartilhada exige a montagem automática ligada. Ligue-a primeiro nos Ajustes."
           }
         }
       }
@@ -14288,55 +14288,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Not checked in the last round"
+            "value": "Not checked last time"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "上轮未检查"
+            "value": "上次未检查"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "上一輪未檢查"
+            "value": "上次未檢查"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "前回の確認対象外"
+            "value": "前回は未確認"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지난 회차에서 확인되지 않음"
+            "value": "지난번에 확인하지 않음"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "In der letzten Runde nicht geprüft"
+            "value": "Zuletzt nicht geprüft"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Non vérifié lors du dernier cycle"
+            "value": "Non vérifié la dernière fois"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No comprobado en la última ronda"
+            "value": "No comprobado la última vez"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Não verificado na última rodada"
+            "value": "Não verificado da última vez"
           }
         }
       }
@@ -16214,13 +16214,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置或修复后台挂载"
+            "value": "设置或修复自动挂载"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定或修復背景掛載"
+            "value": "設定或修復自動掛載"
           }
         },
         "ja": {
@@ -16748,19 +16748,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Show the Menu Bar at Login"
+            "value": "Show Automnt in the Menu Bar at Login"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "登录时显示菜单栏"
+            "value": "登录时在菜单栏显示 Automnt"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "登入時顯示選單列"
+            "value": "登入時在選單列顯示 Automnt"
           }
         },
         "ja": {
@@ -17414,13 +17414,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "顺序已存储。它改变下一轮先检查哪台服务器。"
+            "value": "顺序已保存。它会改变下次检查先检查哪台服务器。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "順序已儲存。它改變下一輪先檢查哪台伺服器。"
+            "value": "順序已儲存。它會改變下次檢查先檢查哪台伺服器。"
           }
         },
         "ja": {
@@ -17468,55 +17468,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The round finished. Each shared folder shows its own result and the time it was checked."
+            "value": "The check finished. Each shared folder shows its own result and the time it was checked."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本轮已完成。每个共享文件夹显示各自的结果和检查时间。"
+            "value": "检查完成。每个共享文件夹都显示了结果和检查时间。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "本輪已完成。每個共享檔案夾顯示各自的結果和檢查時間。"
+            "value": "檢查完成。每個共享檔案夾都顯示了結果和檢查時間。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "確認が完了しました。共有フォルダごとに結果と確認時刻が表示されます。"
+            "value": "確認が完了しました。各共有フォルダに結果と確認時刻が表示されます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "회차가 완료되었습니다. 각 공유 폴더에 결과와 확인 시각이 표시됩니다."
+            "value": "확인이 끝났습니다. 각 공유 폴더에 결과와 확인 시각이 표시됩니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Runde ist beendet. Jeder freigegebene Ordner zeigt sein eigenes Ergebnis und den Zeitpunkt der Prüfung."
+            "value": "Die Prüfung ist abgeschlossen. Jeder freigegebene Ordner zeigt sein Ergebnis und den Zeitpunkt der Prüfung."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le cycle est terminé. Chaque dossier partagé affiche son propre résultat et l’heure de vérification."
+            "value": "La vérification est terminée. Chaque dossier partagé affiche son résultat et l’heure de la vérification."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La ronda ha terminado. Cada carpeta compartida muestra su propio resultado y la hora de comprobación."
+            "value": "La comprobación terminó. Cada carpeta compartida muestra su resultado y la hora en que se comprobó."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "A rodada terminou. Cada pasta compartilhada mostra seu próprio resultado e o horário da verificação."
+            "value": "A verificação terminou. Cada pasta compartilhada mostra o próprio resultado e o horário da verificação."
           }
         }
       }
@@ -19508,55 +19508,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Read Configuration Again"
+            "value": "Try Reading Settings Again"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "重新读取配置"
+            "value": "重试读取设置"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "重新讀取設定"
+            "value": "重試讀取設定"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定を再読み込み"
+            "value": "設定の読み取りを再試行"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "구성 다시 읽기"
+            "value": "설정 다시 읽기"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Konfiguration erneut lesen"
+            "value": "Einstellungen erneut lesen"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Relire la configuration"
+            "value": "Réessayer de lire les réglages"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volver a leer la configuración"
+            "value": "Volver a leer los ajustes"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ler a configuração novamente"
+            "value": "Tentar ler as configurações novamente"
           }
         }
       }
@@ -23648,55 +23648,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All Reachable Servers"
+            "value": "All Available Servers"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "所有可达服务器"
+            "value": "连接所有可用的服务器"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "所有可達伺服器"
+            "value": "連線所有可用的伺服器"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "到達可能なすべてのサーバ"
+            "value": "利用可能なすべてのサーバー"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "연결 가능한 모든 서버"
+            "value": "사용 가능한 모든 서버"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle erreichbaren Server"
+            "value": "Alle verfügbaren Server"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tous les serveurs accessibles"
+            "value": "Tous les serveurs disponibles"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos los servidores accesibles"
+            "value": "Todos los servidores disponibles"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Todos os servidores acessíveis"
+            "value": "Todos os servidores disponíveis"
           }
         }
       }
@@ -23828,55 +23828,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait."
+            "value": "Drag a row by its handle to change the order. Automnt stops at the first available server; later servers wait."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拖动行的把手可以调整顺序。一次检查按此顺序进行，找到第一个可达服务器后停止，后面的服务器会等待。"
+            "value": "拖动行的把手可调整顺序。自动挂载按此顺序检查，连上第一台可用的服务器就停止，后面的服务器会等待。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "拖曳列的把手即可調整順序。一輪檢查會依此順序進行，找到第一個可達伺服器後停止，後面的伺服器會等待。"
+            "value": "拖動列的把手可調整順序。自動掛載按此順序檢查，連上第一台可用的伺服器就停止，後面的伺服器會等待。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "行のハンドルをドラッグすると順序を変更できます。チェックはこの順序で進み、最初に到達できたサーバで停止し、後続のサーバは待機します。"
+            "value": "行のハンドルをドラッグして順序を変更します。自動マウントはこの順に確認し、最初に利用可能なサーバーで停止します。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "행의 핸들을 드래그하여 순서를 변경할 수 있습니다. 한 차례 검사는 이 순서로 진행되며 처음 도달한 서버에서 멈추고 이후 서버는 대기합니다."
+            "value": "행의 핸들을 드래그하여 순서를 변경합니다. 자동 마운트는 이 순서로 확인하고 처음 사용 가능한 서버에서 멈춥니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ziehen Sie eine Zeile am Griff, um die Reihenfolge zu ändern. Ein Durchlauf endet beim ersten erreichbaren Server; spätere Server warten."
+            "value": "Ziehen Sie eine Zeile am Griff, um die Reihenfolge zu ändern. Automnt prüft in dieser Reihenfolge und hält beim ersten verfügbaren Server an."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Faites glisser une ligne par sa poignée pour modifier l’ordre. Une passe s’arrête au premier serveur accessible ; les serveurs suivants attendent."
+            "value": "Faites glisser une ligne par sa poignée pour changer l’ordre. Automnt vérifie dans cet ordre et s’arrête au premier serveur disponible."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrastra una fila por su tirador para cambiar el orden. Una pasada se detiene en el primer servidor accesible; los servidores posteriores esperan."
+            "value": "Arrastra una fila por su tirador para cambiar el orden. Automnt comprueba en este orden y se detiene en el primer servidor disponible."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arraste uma linha pela alça para alterar a ordem. Uma passagem para no primeiro servidor acessível; os servidores seguintes aguardam."
+            "value": "Arraste uma linha pela alça para alterar a ordem. O Automnt verifica nessa ordem e para no primeiro servidor disponível."
           }
         }
       }
@@ -23888,55 +23888,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted."
+            "value": "Drag a row by its handle to change the order. Every available server is checked in this order and its shared folders are mounted."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拖动行的把手可以调整顺序。按此顺序检查所有可达服务器，并挂载它们的共享文件夹。"
+            "value": "拖动行的把手可调整顺序。所有可用的服务器都会按此顺序检查并挂载。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "拖曳列的把手即可調整順序。會依此順序檢查所有可達伺服器，並掛載其共享資料夾。"
+            "value": "拖動列的把手可調整順序。所有可用的伺服器都會按此順序檢查並掛載。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "行のハンドルをドラッグすると順序を変更できます。到達可能なすべてのサーバをこの順序で確認し、その共有フォルダをマウントします。"
+            "value": "行のハンドルをドラッグして順序を変更します。利用可能なすべてのサーバーがこの順に確認され、マウントされます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "행의 핸들을 드래그하여 순서를 변경할 수 있습니다. 연결 가능한 모든 서버를 이 순서로 확인하고 해당 공유 폴더를 마운트합니다."
+            "value": "행의 핸들을 드래그하여 순서를 변경합니다. 사용 가능한 모든 서버가 이 순서로 확인되고 마운트됩니다."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ziehen Sie eine Zeile am Griff, um die Reihenfolge zu ändern. Alle erreichbaren Server werden in dieser Reihenfolge geprüft und ihre freigegebenen Ordner eingebunden."
+            "value": "Ziehen Sie eine Zeile am Griff, um die Reihenfolge zu ändern. Alle verfügbaren Server werden in dieser Reihenfolge geprüft und eingebunden."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Faites glisser une ligne par sa poignée pour modifier l’ordre. Tous les serveurs accessibles sont vérifiés dans cet ordre et leurs dossiers partagés sont montés."
+            "value": "Faites glisser une ligne par sa poignée pour changer l’ordre. Tous les serveurs disponibles sont vérifiés dans cet ordre et montés."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrastra una fila por su tirador para cambiar el orden. Se comprueban todos los servidores accesibles en este orden y se montan sus carpetas compartidas."
+            "value": "Arrastra una fila por su tirador para cambiar el orden. Todos los servidores disponibles se comprueban en este orden y se montan."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arraste uma linha pela alça para alterar a ordem. Todos os servidores acessíveis são verificados nesta ordem e suas pastas compartilhadas são montadas."
+            "value": "Arraste uma linha pela alça para alterar a ordem. Todos os servidores disponíveis são verificados nessa ordem e montados."
           }
         }
       }
@@ -24014,13 +24014,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "所有启用的服务器都会按保存的顺序检查，所以上一轮没有访问到这台服务器。这不是错误。"
+            "value": "所有已启用的服务器都会按保存的顺序检查，所以上次没有检查到这台服务器。这不是错误。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "所有啟用的伺服器都會依儲存的順序檢查，因此上一輪沒有存取到這台伺服器。這不是錯誤。"
+            "value": "所有已啟用的伺服器都會按儲存的順序檢查，所以上次沒有檢查到這台伺服器。這不是錯誤。"
           }
         },
         "ja": {
@@ -24068,55 +24068,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "First Reachable Server"
+            "value": "Only the First Available Server"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "首个可达服务器"
+            "value": "只连第一台可用的服务器"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "首個可達伺服器"
+            "value": "只連第一台可用的伺服器"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最初に到達可能なサーバ"
+            "value": "最初に利用可能なサーバーのみ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "처음 도달 가능한 서버"
+            "value": "처음 사용 가능한 서버만"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erster erreichbarer Server"
+            "value": "Nur der erste verfügbare Server"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Premier serveur accessible"
+            "value": "Uniquement le premier serveur disponible"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Primer servidor accesible"
+            "value": "Solo el primer servidor disponible"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Primeiro servidor acessível"
+            "value": "Somente o primeiro servidor disponível"
           }
         }
       }
@@ -24314,13 +24314,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "挂载范围已保存。下一轮检查会按这个范围执行。"
+            "value": "挂载范围已保存。下次检查会按这个范围执行。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "掛載範圍已儲存。下一輪檢查會依此範圍執行。"
+            "value": "掛載範圍已儲存。下次檢查會按這個範圍執行。"
           }
         },
         "ja": {
@@ -24668,19 +24668,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Servers are checked in the order shown in the sidebar. The first option stops at the first reachable server; the second also mounts the shared folders of every other reachable server."
+            "value": "Servers are checked in the order shown in the sidebar. The first option stops at the first available server; the second also mounts the shared folders of every other available server."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "服务器按侧栏显示的顺序检查。选择第一项时，找到第一个可达服务器后停止；选择第二项时，还会挂载其余所有可达服务器的共享文件夹。"
+            "value": "服务器按侧栏显示的顺序检查。选第一项时，连上第一台可用的服务器就停止；选第二项时，还会挂载其余所有可用服务器的共享文件夹。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "伺服器依側欄顯示的順序檢查。選擇第一項時，找到第一個可達伺服器後停止；選擇第二項時，還會掛載其餘所有可達伺服器的共享資料夾。"
+            "value": "伺服器按側欄顯示的順序檢查。選第一項時，連上第一台可用的伺服器就停止；選第二項時，還會掛載其餘所有可用伺服器的共享檔案夾。"
           }
         },
         "ja": {
@@ -25077,6 +25077,486 @@
           "stringUnit": {
             "state": "translated",
             "value": "O local de montagem atual está em uso. As próximas montagens usarão o novo local."
+          }
+        }
+      }
+    },
+    "Check Now": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check Now"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即检查"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即檢查"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今すぐ確認"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 확인"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt prüfen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifier maintenant"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobar ahora"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificar agora"
+          }
+        }
+      }
+    },
+    "Check every shared folder now and mount what is missing.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checks every shared folder now and mounts the ones that are missing."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即检查所有共享文件夹，把缺少的挂载起来。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即檢查所有共享檔案夾，把缺少的掛載起來。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべての共有フォルダを今すぐ確認し、不足しているものをマウントします。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "모든 공유 폴더를 지금 확인하고 없는 항목을 마운트합니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüft jetzt alle freigegebenen Ordner und bindet fehlende ein."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifie maintenant tous les dossiers partagés et monte ceux qui manquent."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprueba ahora todas las carpetas compartidas y monta las que falten."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifica agora todas as pastas compartilhadas e monta as que faltam."
+          }
+        }
+      }
+    },
+    "Server Connection…": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server Connection…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "服务器连接…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "伺服器連線…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サーバー接続…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서버 연결…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serververbindung…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion au serveur…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexión del servidor…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conexão do servidor…"
+          }
+        }
+      }
+    },
+    "Your settings were updated elsewhere. Use the latest settings to refresh this window; what you typed is kept.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your settings were updated elsewhere. Use the latest settings to refresh this window; what you typed is kept."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置已在别处更新。使用最新设置会刷新此窗口，你输入的内容会保留。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定已在別處更新。使用最新設定會重新整理此視窗，你輸入的內容會保留。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定は別の場所で更新されました。最新の設定を使用するとこのウインドウが更新され、入力内容は保持されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정이 다른 곳에서 업데이트되었습니다. 최신 설정을 사용하면 이 윈도우가 새로 고쳐지고 입력한 내용은 유지됩니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Einstellungen wurden an anderer Stelle aktualisiert. Mit den neuesten Einstellungen wird dieses Fenster aktualisiert; Ihre Eingaben bleiben erhalten."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réglages ont été mis à jour ailleurs. Utiliser les réglages les plus récents actualise cette fenêtre ; votre saisie est conservée."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los ajustes se actualizaron en otro lugar. Al usar los ajustes más recientes se actualiza esta ventana y se conserva lo que escribiste."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As configurações foram atualizadas em outro lugar. Usar as configurações mais recentes atualiza esta janela e mantém o que você digitou."
+          }
+        }
+      }
+    },
+    "Refreshing mounts or ejects nothing and does not overwrite what you typed.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refreshing mounts or ejects nothing and does not overwrite what you typed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新不会挂载或弹出任何内容，也不会覆盖你输入的内容。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新整理不會掛載或退出任何內容，也不會覆蓋你輸入的內容。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新してもマウントや取り出しは行われず、入力内容も上書きされません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새로 고쳐도 마운트하거나 추출하지 않으며 입력한 내용도 덮어쓰지 않습니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren bindet nichts ein, wirft nichts aus und überschreibt Ihre Eingaben nicht."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualiser ne monte rien, n’éjecte rien et ne remplace pas votre saisie."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizar no monta ni expulsa nada y no sobrescribe lo que escribiste."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atualizar não monta nem ejeta nada e não substitui o que você digitou."
+          }
+        }
+      }
+    },
+    "Use Latest Settings": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use Latest Settings"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用最新设置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用最新設定"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最新の設定を使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최신 설정 사용"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neueste Einstellungen verwenden"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser les réglages les plus récents"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar los ajustes más recientes"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar as configurações mais recentes"
+          }
+        }
+      }
+    },
+    "These settings were updated elsewhere. Close this window and open it again.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These settings were updated elsewhere. Close this window and open it again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些设置已在别处更新。请关闭此窗口后重新打开。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這些設定已在別處更新。請關閉此視窗後重新開啟。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この設定は別の場所で更新されました。このウインドウを閉じて、もう一度開いてください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 설정이 다른 곳에서 업데이트되었습니다. 이 윈도우를 닫았다가 다시 여십시오."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Einstellungen wurden an anderer Stelle aktualisiert. Schließen Sie dieses Fenster und öffnen Sie es erneut."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces réglages ont été mis à jour ailleurs. Fermez cette fenêtre, puis rouvrez-la."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estos ajustes se actualizaron en otro lugar. Cierra esta ventana y vuelve a abrirla."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estas configurações foram atualizadas em outro lugar. Feche esta janela e abra-a novamente."
+          }
+        }
+      }
+    },
+    "The command-line version is managing automatic mounting right now. To use the app instead, stop the command-line service first.": {
+      "comment": "GUI interaction and copy rework (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The command-line version is managing automatic mounting right now. To use the app instead, stop the command-line service first."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前由命令行版本管理自动挂载。要改用应用，请先在命令行中停止服务。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前由命令列版本管理自動掛載。要改用應用程式，請先在命令列中停止服務。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在はコマンドライン版が自動マウントを管理しています。アプリに切り替えるには、先にコマンドラインのサービスを停止してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 명령줄 버전이 자동 마운트를 관리하고 있습니다. 앱으로 전환하려면 먼저 명령줄 서비스를 중지하십시오."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Derzeit verwaltet die Befehlszeilenversion die automatische Einbindung. Um die App zu verwenden, beenden Sie zuerst den Befehlszeilendienst."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La version en ligne de commande gère actuellement le montage automatique. Pour utiliser l’app, arrêtez d’abord le service en ligne de commande."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La versión de línea de comandos gestiona ahora el montaje automático. Para usar la app, detén primero el servicio de línea de comandos."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A versão de linha de comando está gerenciando a montagem automática agora. Para usar o app, pare primeiro o serviço de linha de comando."
           }
         }
       }

@@ -494,3 +494,28 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 | Reloading does not mount, eject or overwrite what you typed. | 重新读取不会挂载、弹出或覆盖你输入的内容。 | 冲突卡辅助说明，说明安全边界 |
 | Every enabled server is checked in the saved order, so this server was not reached in the last round. It is not an error. | 所有启用的服务器都会按保存的顺序检查，所以上一轮没有访问到这台服务器。这不是错误。 | 「上轮未检查」在 all_reachable 下的解释 |
 | That folder is no longer available. Refresh the list and check the current location. | 该文件夹已不可用。请刷新列表并检查当前位置。 | 打开已消失的实际/占用路径 |
+
+# 2026-10-21 交互与文案复核后的资源修订
+
+## 冲突与恢复资源
+
+冲突不再描述“另一个窗口或命令行”，也不再要求用户做界面上不存在的动作。可恢复冲突的文案固定为三句：状态（设置已在别处更新）、唯一动作（使用最新设置）、后果（刷新不挂载、不弹出、不覆盖输入）。表单内已过期时不再让用户“重新载入”，而是关闭后重新打开。
+
+新增资源：`Your settings were updated elsewhere. Use the latest settings to refresh this window; what you typed is kept.`、`Use Latest Settings`、`Refreshing mounts or ejects nothing and does not overwrite what you typed.`、`These settings were updated elsewhere. Close this window and open it again.`、`Automnt can’t read your settings right now. Quit and reopen Automnt, then try again.`。
+
+## 全局动作与对象动作的命名
+
+底栏两个全局动作使用带文字标签：`Add Shared Folder…` 与 `Check Now`；悬停说明补足“检查所有共享文件夹并挂载缺少的”。应用设置只保留应用菜单的“设置…”（⌘,）。详情工具栏的服务器级入口改名为 `Server Connection…`，避免与全局设置共用“设置”语义。
+
+## 术语收敛
+
+- 可达 → 可用：`All Available Servers`、`Only the First Available Server` 及两段排序说明。
+- 轮次 → 检查：`Attempts per Check`、`Not checked last time`、`The check finished. Each shared folder shows its own result and the time it was checked.`。
+- 会话 → 用户动作：`Ejected` 替代 `Ejected for this session`。
+- 后台挂载 → 自动挂载状态（设置行），保留“后台服务”只在解释为何未生效时出现一次。
+- `Show the Menu Bar at Login` 改为 `Show Automnt in the Menu Bar at Login`，与“在菜单栏中显示 Automnt”区分“现在显示/登录时显示”。
+- 命令行接管时明确说明“目前由命令行版本管理自动挂载……请先在命令行中停止服务”，不再提供必然报错的修复按钮。
+
+## 仍待修订
+
+共享详情内的开关失败提示、服务器设置“完成”的保存模型、菜单栏动作结果、移除最后一个共享的后果说明仍沿用旧资源，待下一轮交互修订一并处理；九语翻译仍为草案，需母语审校。

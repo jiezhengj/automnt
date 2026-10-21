@@ -495,6 +495,7 @@ final class ApplicationModel {
             // already exited. The evaluation lock is the liveness fence: clear only
             // when no worker holds it.
             try? WorkerOperationStore(authorizedDirectory: directory.url).abandonPendingForRepair()
+            if let snapshot { adoptBackendRevisionIfPossible(to: snapshot.revision) }
             configurationReadFailed = false
             configurationAccess = .ready
             issue = nil
@@ -878,15 +879,30 @@ final class ApplicationModel {
         defer { busy = false; end(operation); refreshActionReadiness(); refreshStatus() }
         do {
             let store = BackendStateStore(authorizedDirectory: authorization.url)
-            let state = try store.read()
+            var state = try store.read()
             guard state.owner == .app, state.phase == .active else {
                 notice = String(localized: "A full round needs app background mounting to be active. Turn on automatic mounting in Settings, or mount one shared folder from its row.")
                 return
             }
+            if state.revision != base.revision {
+                // The app saved while this backend stayed active; its state must catch up
+                // instead of turning into a conflict the user cannot act on.
+                _ = try? store.adoptConfigurationRevision(expected: state.revision, new: base.revision)
+                state = try store.read()
+            }
             let controls = AppServiceHandoffAdapter(authorizedDirectory: authorization.url, revision: base.revision)
             let adapter = EvaluatingHandoffAdapter(controls: controls,
                 applicationURL: Bundle.main.bundleURL, directory: authorization)
-            try await adapter.requestEvaluation(state: state, deadline: ContinuousClock.now.advanced(by: .seconds(30)))
+            do {
+                try await adapter.requestEvaluation(state: state, deadline: ContinuousClock.now.advanced(by: .seconds(30)))
+            } catch let error as AutomntIssue where error == .configurationConflict {
+                state = try store.read()
+                if state.owner == .app, state.phase == .active {
+                    _ = try? store.adoptConfigurationRevision(expected: state.revision, new: base.revision)
+                    state = try store.read()
+                }
+                try await adapter.requestEvaluation(state: state, deadline: ContinuousClock.now.advanced(by: .seconds(30)))
+            }
             notice = String(localized: "The round finished. Each shared folder shows its own result and the time it was checked.")
         } catch let error as AutomntIssue where error == .signalUnavailable || error == .timeout {
             issue = String(localized: "A previous mount attempt didn’t finish. Repair background mounting, then try the round again.")
@@ -1002,8 +1018,10 @@ final class ApplicationModel {
         do {
             var configuration = base.configuration
             change(&configuration)
-            snapshot = try FileConfigRepository(authorizedDirectory: authorization.url).save(
+            let saved = try FileConfigRepository(authorizedDirectory: authorization.url).save(
                 configuration, baseRevision: base.revision)
+            snapshot = saved
+            adoptBackendRevision(from: base.revision, to: saved.revision)
             issue = nil
             refreshActionReadiness()
             refreshStatus()
@@ -1047,6 +1065,30 @@ final class ApplicationModel {
             show(error)
             return nil
         }
+    }
+
+    /// The durable backend state carries the configuration revision it was activated for.
+    /// After a save it must advance with the configuration, otherwise the next evaluation is
+    /// rejected as a stale conflict and the app tells the user about a change that never
+    /// happened. Best effort: a backend owned by the CLI, still transitioning, or stopped is
+    /// left to the regular repair path.
+    private func adoptBackendRevision(from previous: ConfigRevision?, to revision: ConfigRevision) {
+        guard let authorization else { return }
+        let expected = previous ?? revision
+        do {
+            try BackendStateStore(authorizedDirectory: authorization.url)
+                .adoptConfigurationRevision(expected: expected, new: revision)
+        } catch {
+            // Not an active app-owned backend; nothing to advance.
+        }
+    }
+
+    private func adoptBackendRevisionIfPossible(to revision: ConfigRevision) {
+        guard let authorization else { return }
+        let store = BackendStateStore(authorizedDirectory: authorization.url)
+        guard let state = try? store.read(), state.owner == .app, state.phase == .active,
+              state.revision != revision else { return }
+        _ = try? store.adoptConfigurationRevision(expected: state.revision, new: revision)
     }
 
     func saveAutomation(_ enabled: Bool, base: ConfigSnapshot) {
@@ -1147,6 +1189,7 @@ final class ApplicationModel {
                 .add(candidate, baseRevision: base.revision)
             if let saved = outcome.snapshot {
                 snapshot = saved
+                adoptBackendRevision(from: base.revision, to: saved.revision)
                 issue = nil
                 notice = saved.configuration.isAutomationEnabled
                     ? String(localized: "The shared folder was added. Automatic mounting mounts it when the server is available.")
@@ -1168,6 +1211,7 @@ final class ApplicationModel {
                 smbURL: candidate.smbURL, mountPoint: candidate.mountPoint)])]
         do {
             snapshot = try FileConfigRepository(authorizedDirectory: authorization.url).create(configuration)
+            if let created = snapshot { adoptBackendRevision(from: nil, to: created.revision) }
             configurationAccess = .ready
             configurationReadFailed = false
             issue = nil
@@ -1198,6 +1242,7 @@ final class ApplicationModel {
             .remove(smbURL: share.smbURL, baseRevision: base.revision)
         if let saved = outcome.snapshot {
             snapshot = saved
+            adoptBackendRevision(from: base.revision, to: saved.revision)
             issue = nil
             notice = String(localized: "The shared folder was removed from Automnt. Its mounted folder and saved sign-in details were left untouched.")
             refreshActionReadiness()
@@ -1233,7 +1278,9 @@ final class ApplicationModel {
 
     private func applyOrder(_ outcome: ServerOrderOutcome) -> String? {
         if let saved = outcome.snapshot {
+            let previous = snapshot?.revision
             snapshot = saved
+            adoptBackendRevision(from: previous, to: saved.revision)
             orderUndo = outcome.undo
             issue = nil
             notice = String(localized: "The order was saved. It changes which server the next round checks first.")

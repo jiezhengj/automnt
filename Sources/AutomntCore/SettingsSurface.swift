@@ -37,11 +37,13 @@ public enum SettingsSurface {
         /// Only a confirmed running service may be presented as active.
         public var isConfirmedRunning: Bool { self == .running }
 
-        /// The interface must offer a concrete repair entry for these.
+        /// The interface must offer a concrete repair entry for these. A backend owned by
+        /// the command-line version is not repairable from the app: taking it over from here
+        /// would fail, so the app explains the situation instead of offering that button.
         public var needsUserAction: Bool {
             switch self {
-            case .awaitingApproval, .unavailable, .governedByCLI: return true
-            case .running, .stopped, .transitioning: return false
+            case .awaitingApproval, .unavailable: return true
+            case .running, .stopped, .transitioning, .governedByCLI: return false
             }
         }
     }
