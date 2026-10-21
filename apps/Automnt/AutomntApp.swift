@@ -248,6 +248,9 @@ final class ApplicationModel {
 
     weak var mainWindow: NSWindow?
     private static var framedWindows: Set<ObjectIdentifier> = []
+    private static let settingsWindowSizeKey = "AutomntSettingsWindowContentSize"
+    private var settingsWindowObservers: [ObjectIdentifier: [NSObjectProtocol]] = [:]
+    private var centeredSettingsWindows: Set<ObjectIdentifier> = []
 
     /// Restores the user's last main-window frame, or saves the approved default on
     /// first launch. AppKit keeps saving moves/resizes through the autosave name.
@@ -258,10 +261,60 @@ final class ApplicationModel {
                            relativeTo: nil)
     }
 
+    /// The settings window belongs to the window the user is working in, so its position
+    /// is derived from the main window every time it opens. Only its size is remembered:
+    /// restoring a stale origin is what used to leave it far away from the main window.
     func installSettingsWindowFramePersistence(_ window: NSWindow) {
-        installWindowFrame(window, name: "AutomntSettingsWindowFrameV2",
-                           preferredContentSize: NSSize(width: 680, height: 620),
-                           relativeTo: mainWindow)
+        UserDefaults.standard.removeObject(forKey: "NSWindow Frame AutomntSettingsWindowFrameV2")
+        let key = ObjectIdentifier(window)
+        guard settingsWindowObservers[key] == nil else { return }
+        Self.framedWindows.insert(key)
+        if let raw = UserDefaults.standard.string(forKey: Self.settingsWindowSizeKey) {
+            let size = NSSizeFromString(raw)
+            if size.width >= 560, size.height >= 520 {
+                window.setContentSize(size)
+            }
+        } else {
+            window.setContentSize(NSSize(width: 680, height: 620))
+        }
+        let show = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) {
+                [weak self, weak window] _ in
+                guard let self, let window, !self.centeredSettingsWindows.contains(key) else { return }
+                self.centeredSettingsWindows.insert(key)
+                self.centerSettingsWindow(window)
+            }
+        let close = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: window, queue: .main) {
+                [weak self, weak window] _ in
+                guard let self, let window else { return }
+                UserDefaults.standard.set(NSStringFromSize(window.contentView?.frame.size ?? window.frame.size),
+                                          forKey: Self.settingsWindowSizeKey)
+                self.centeredSettingsWindows.remove(key)
+                self.settingsWindowObservers.removeValue(forKey: key)?.forEach(NotificationCenter.default.removeObserver)
+                Self.framedWindows.remove(key)
+            }
+        settingsWindowObservers[key] = [show, close]
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window else { return }
+            if self.centerSettingsWindow(window) { self.centeredSettingsWindows.insert(key) }
+        }
+    }
+
+    /// Returns whether the window was placed relative to a visible main window.
+    @discardableResult
+    private func centerSettingsWindow(_ window: NSWindow) -> Bool {
+        if let parent = mainWindow, parent.isVisible, parent != window {
+            center(window, over: parent)
+            return true
+        }
+        if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
+            var frame = window.frame
+            frame.origin = NSPoint(x: visible.midX - frame.width / 2,
+                                   y: visible.midY - frame.height / 2)
+            window.setFrame(frame, display: true)
+        }
+        return false
     }
 
     private func installWindowFrame(_ window: NSWindow, name: String,
