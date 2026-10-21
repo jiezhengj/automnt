@@ -21,11 +21,11 @@ python3 scripts/verify-swift6-concurrency.py
 # 发布步骤（需授权）
 
 1. 判定 SemVer 晋级类型（MAJOR/MINOR/PATCH）并修改唯一版本源。
-2. 重新构建预编译二进制与签名 GUI，确认源码与二进制版本一致。
-3. 本地离线包用 `scripts/archive.sh` 生成并记录 SHA-256。
+2. 重新构建预编译 CLI 并签名，确认源码与二进制版本一致；GUI 只在本地构建验证，不进入 Release。
+3. 生成 CLI 的 SHA-256 校验值；不生成或上传 GUI 离线包。
 4. 经维护者授权后提交并推送 `main`，按项目规则创建 `gh release` 与 Release Notes。
 5. 不把免费 Apple Development 签名当作其他设备分发或商店验收；商店路径见 T100。
 
 # 当前状态
 
-版本 3.5.0；维护者已授权推送并创建 GitHub Release。自 3.5.0 起 Release 只发布 CLI（`automnt` 与校验值），GUI 不随 Release 分发，保留给后续 App Store 版本。
+版本 3.5.0；维护者已授权推送并创建 GitHub Release。自 3.5.0 起 Release 只发布 CLI（`automnt` 与校验值）。GUI 源码按 MIT 开源、可自行编译，但不提供预构建 App；详见 `release/RELEASE_POLICY.md`。

@@ -12,7 +12,7 @@
 - `automnt`：预编译 CLI（macOS 27 / Apple silicon）；单独下载后先运行 `chmod +x automnt`。
 - `automnt-3.5.0.sha256`：CLI 的 SHA-256 校验值。
 
-自 3.5.0 起，GitHub Release 只分发 CLI；签名的 GUI App 不在 GitHub 发布，保留给后续 App Store 版本。当前 CLI 使用免费 Apple Development 签名，未公证；仅支持 macOS 27.0+ / Apple silicon。
+自 3.5.0 起，GitHub Release 只分发 CLI；GUI 源码按 MIT 开源、可自行编译，但不提供预构建 App，保留给后续 App Store 版本。详见 [发布政策](./release/RELEASE_POLICY.md)。当前 CLI 使用免费 Apple Development 签名，未公证；仅支持 macOS 27.0+ / Apple silicon。
 
 # 简介 / Overview
 

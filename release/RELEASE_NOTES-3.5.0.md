@@ -14,7 +14,7 @@ Automnt 3.5.0：CLI 与后台挂载修正。本次为兼容新增与修复的 MI
 - `automnt`：预编译 CLI（macOS 27 / Apple silicon）。单独下载后先运行 `chmod +x automnt`。
 - `automnt-3.5.0.sha256`：CLI 的 SHA-256 校验值。
 
-不提供 `Automnt-*.zip` 或 GUI App；这些产物不在 GitHub 分发范围。
+不提供 `Automnt-*.zip` 或构建好的 GUI App；GUI 源码按 MIT 开源，可自行编译，详见 `release/RELEASE_POLICY.md`。
 
 # 升级
 

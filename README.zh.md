@@ -44,7 +44,7 @@ CLI 与图形界面共用同一配置与自动挂载规则；CLI 仍然是免费
 - 首次启动由程序准备固定配置目录，不要求用户选择内部文件夹；已有 CLI 配置会自动显示。
 - 服务器按已管理/可添加分组，共享支持单行添加、编辑、移除与普通弹出；移除只改配置，不弹出、不删除文件和系统凭据。
 - 后台自动挂载需要系统允许后台项目；未获允许时界面显示真实状态，不伪装成功。
-- GUI 源码保留在仓库并继续开发，未来面向 Mac App Store；自 3.5.0 起的 GitHub Release 只提供 CLI 与校验值，不再附带 GUI 或离线 GUI 包。
+- GUI 源码按 MIT 开源保留在仓库并继续开发，任何人都可自行编译；未来面向 Mac App Store。自 3.5.0 起的 GitHub Release 只提供 CLI 与校验值，不提供构建好的 GUI App，也不附带离线 GUI 包。
 - 本机 GUI 构建使用免费 Apple Development 签名，仅用于开发与本机验证，不是公众分发渠道，也未提交 App Store。
 - 历史离线包与安装说明见 `release/offline/`，已知限制见 `release/offline/known-limitations.zh.md`。
 
