@@ -36,3 +36,5 @@
 | 30-share-detail-icons.png | 共享详情去掉 ⋯ 菜单：编辑=铅笔、移除=垃圾桶，均为图标按钮；主按钮与弹出保留 |
 | 31-compact-list-no-undo.png | 窄窗服务器列表：无“撤销顺序调整”，序号与“已管理 · 按顺序 ⓘ”保持 |
 | 32-compact-server-settings-row.png | 窄窗服务器页：同一“服务器设置 ›”行，工具栏无文字按钮 |
+| 33-sidebar-order-caption.png | 侧栏顺序改为一行可见说明“从上到下尝试，首个可用即停。”，不再有点了没反应的 ⓘ |
+| 34-compact-order-caption.png | 窄窗同样一行说明，作为“已管理”分组的脚注显示；列表无空白带 |

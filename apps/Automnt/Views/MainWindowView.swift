@@ -148,6 +148,13 @@ struct MainWindowView: View {
                     .moveDisabled(isFiltering || !model.configurationChangesAllowed)
                 } header: {
                     managedSectionHeader
+                } footer: {
+                    if !isFiltering {
+                        Text(orderCaption)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 if model.configurationAccess.allowsChanges {
                     Section("Available to Add") {
@@ -245,6 +252,7 @@ struct MainWindowView: View {
                 }
                 .onMove { source, destination in move(source, to: destination) }
                 .moveDisabled(isFiltering || !model.configurationChangesAllowed)
+                orderCaptionRow
             } header: {
                 managedSectionHeader
             }
@@ -265,25 +273,28 @@ struct MainWindowView: View {
     /// The order is shown, not explained: numbered badges plus a one-line header carry
     /// the meaning, and the long rationale lives in a tooltip for whoever wants it.
     private var managedSectionHeader: some View {
-        HStack(spacing: 4) {
-            Text("Managed · In Order")
-            Image(systemName: "info.circle")
+        Text("Managed · In Order")
+    }
+
+    /// One short line under the servers explains the order. A caption cannot pretend to
+    /// be a button, and the numbers above carry the sequence at a glance.
+    @ViewBuilder
+    private var orderCaptionRow: some View {
+        if !isFiltering {
+            Text(orderCaption)
+                .font(.caption)
                 .foregroundStyle(.tertiary)
-                .help(orderHelpText)
-                .accessibilityLabel(orderHelpText)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(orderCaption)
         }
     }
 
-    /// The long explanation lives in the header's tooltip; the numbered rows carry the
-    /// meaning at a glance.
-    private var orderHelpText: String {
-        if isFiltering {
-            return String(localized: "Clear the search to change the order.")
-        }
+    private var orderCaption: String {
         if model.snapshot?.configuration.isMountAllEnabled == true {
-            return String(localized: "Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted.")
+            return String(localized: "Connects every reachable server, in order.")
         }
-        return String(localized: "Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait.")
+        return String(localized: "From top to bottom; stops at the first server that works.")
     }
 
     private func managedIndex(of server: ServerInventory.Server) -> Int {

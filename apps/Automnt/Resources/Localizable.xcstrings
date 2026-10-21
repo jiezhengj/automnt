@@ -26940,6 +26940,126 @@
           }
         }
       }
+    },
+    "Connects every reachable server, in order.": {
+      "comment": "Sidebar order caption (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connects every reachable server, in order."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按顺序连接所有可达服务器。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "依序連線所有可達的伺服器。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到達可能なサーバーを順番に接続します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결 가능한 모든 서버를 순서대로 연결합니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindet alle erreichbaren Server der Reihe nach."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecte tous les serveurs accessibles, dans l’ordre."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conecta todos los servidores accesibles, en orden."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conecta todos os servidores acessíveis, em ordem."
+          }
+        }
+      }
+    },
+    "From top to bottom; stops at the first server that works.": {
+      "comment": "Sidebar order caption (2026-10-21). Draft translations need native review.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From top to bottom; stops at the first server that works."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从上到下尝试，首个可用即停。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "由上而下嘗試，首個可用即停。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上から順に試し、最初につながったサーバーで停止します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위에서 아래로 시도하고, 처음 연결된 서버에서 멈춥니다."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von oben nach unten; stoppt beim ersten erreichbaren Server."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De haut en bas ; s’arrête au premier serveur accessible."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De arriba abajo; se detiene en el primer servidor disponible."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De cima para baixo; para no primeiro servidor disponível."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
