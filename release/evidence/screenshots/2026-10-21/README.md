@@ -38,3 +38,7 @@
 | 32-compact-server-settings-row.png | 窄窗服务器页：同一“服务器设置 ›”行，工具栏无文字按钮 |
 | 33-sidebar-order-caption.png | 侧栏顺序改为一行可见说明“从上到下尝试，首个可用即停。”，不再有点了没反应的 ⓘ |
 | 34-compact-order-caption.png | 窄窗同样一行说明，作为“已管理”分组的脚注显示；列表无空白带 |
+| 35-sidebar-owns-actions.png | 侧栏承担全局动作：底部 ＋ 与 ⚙；窗口工具栏只剩标题与搜索；右侧服务器行有独立的“服务器设置”按钮 |
+| 36-inline-share-wide.png | 共享在主界面原位展开：打开/弹出、自动挂载开关、挂载位置、编辑与移除图标，不再先开弹窗 |
+| 37-compact-actions.png | 窄窗根视图同样的底部 ＋/⚙，列表无空白带 |
+| 38-inline-share-compact.png | 窄窗内共享原位展开，编辑仍是唯一一层 sheet |
