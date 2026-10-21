@@ -38,14 +38,15 @@ CLI 与图形界面共用同一配置与自动挂载规则；CLI 仍然是免费
 **边界说明**：CLI 提供 `--mount`/`--eject`，图形界面在共享详情中提供普通弹出；两者都不把强制卸载作为例行操作，繁忙卷会如实失败。程序仍可在恢复前清理检测到的死卷；健康“弹出”包括使用者在系统（如 Finder）或产品入口中发起的动作。
 
 
-# 图形界面与离线分发（当前范围）
+# 图形界面（本地构建，未随 GitHub Release 发布）
 
 - 图形界面与 CLI 共用 `~/Library/Application Support/automnt/automnt.plist` 与同一挂载/恢复规则；GUI 退出后后台是否继续由真实后台状态决定。
 - 首次启动由程序准备固定配置目录，不要求用户选择内部文件夹；已有 CLI 配置会自动显示。
 - 服务器按已管理/可添加分组，共享支持单行添加、编辑、移除与普通弹出；移除只改配置，不弹出、不删除文件和系统凭据。
 - 后台自动挂载需要系统允许后台项目；未获允许时界面显示真实状态，不伪装成功。
-- 当前构建使用免费 Apple Development 签名，面向本机/同团队离线验证，不是面向公众的分发渠道，也未提交 App Store。预编译 CLI 与源码编译两条路径并存，源码编译是可选路径。
-- 离线包、校验和与安装说明见 `release/offline/`，已知限制见 `release/offline/known-limitations.zh.md`。
+- GUI 源码保留在仓库并继续开发，未来面向 Mac App Store；自 3.5.0 起的 GitHub Release 只提供 CLI 与校验值，不再附带 GUI 或离线 GUI 包。
+- 本机 GUI 构建使用免费 Apple Development 签名，仅用于开发与本机验证，不是公众分发渠道，也未提交 App Store。
+- 历史离线包与安装说明见 `release/offline/`，已知限制见 `release/offline/known-limitations.zh.md`。
 
 # 快速上手
 

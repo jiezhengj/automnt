@@ -9,10 +9,10 @@
 
 从 [GitHub Releases](https://github.com/jiezhengj/automnt/releases) 下载：
 
-- `Automnt-3.4.0-offline.zip`：签名 GUI + CLI + 安装与限制说明。
-- `automnt`：预编译 CLI；单独下载后先运行 `chmod +x automnt`。
+- `automnt`：预编译 CLI（macOS 27 / Apple silicon）；单独下载后先运行 `chmod +x automnt`。
+- `automnt-3.5.0.sha256`：CLI 的 SHA-256 校验值。
 
-当前构建使用免费 Apple Development 签名，未公证，也未提交 App Store；仅支持 macOS 27.0+ / Apple silicon。完整限制见 [已知限制](./release/offline/known-limitations.zh.md)。
+自 3.5.0 起，GitHub Release 只分发 CLI；签名的 GUI App 不在 GitHub 发布，保留给后续 App Store 版本。当前 CLI 使用免费 Apple Development 签名，未公证；仅支持 macOS 27.0+ / Apple silicon。
 
 # 简介 / Overview
 

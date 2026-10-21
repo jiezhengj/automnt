@@ -28,4 +28,4 @@ python3 scripts/verify-swift6-concurrency.py
 
 # 当前状态
 
-版本仍为 3.4.0；本轮未推送、未创建 Release、未递增版本。
+版本 3.5.0；维护者已授权推送并创建 GitHub Release。自 3.5.0 起 Release 只发布 CLI（`automnt` 与校验值），GUI 不随 Release 分发，保留给后续 App Store 版本。
