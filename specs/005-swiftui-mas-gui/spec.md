@@ -12,7 +12,7 @@
 
 **Created**：2026-10-07
 
-**Status**：2026-10-13 最新裁定为先修文档；固定 NSOpenPanel 目录选择例外已撤回。正常首次、设置、CLI 共用和恢复均无内部配置目录选择；合法免目录选择访问架构待当前 Apple 资料验证及影响裁定。真实用户唯一活动配置与单后台 owner 保持。此前 290 项测试、构建、签名及中文首次窗口只保留历史证明范围，不代表新要求通过；系统认证、独立 helper、真实登录/重启及九语原生验收仍待实测。本轮不启动 Implement，无对外发布授权。
+**Status**：2026-10-22 已完成（Feature 完成；GUI 工程与本地构建完成，GitHub CLI 3.5.0 已发布；App Store 渠道未启动）。最终交付以从零重写的交互架构为准：侧栏头部全局动作、服务器页总/共享开关、共享原位展开、服务器设置 sheet、反馈按 window/sidebar/settings/menuBar 归属；宽窗 1100×700 与窄窗 620×700 的启动、实时缩放、推送/返回、sheet 与设置窗口已在 macOS 27 真实窗口验证（截图 39–44）。tasks.md 全部 137 条勾选项闭合（T001–T128 及子任务）；`swift test` 321 项、CLI `--self-test` 302 项、本地化/签名/Swift 6 门通过。GUI 不随 GitHub Release 分发，源码按 MIT 开源、任何人可自行编译（见 [release/RELEASE_POLICY.md](../../release/RELEASE_POLICY.md)）。**未验证/不在完成范围**：浅色外观、较大文字、VoiceOver 实际朗读、九语母语审校、真实后台跨登录/重启矩阵、App Store 沙盒/helper 与商店提交；这些不阻塞 Feature 工程完成，但不得表述为已通过。
 
 **Input**：维护者要求售价仅 US$1.99；同项目免费开源 CLI 与开源 GUI 高度复用、共同演进。商店文案在政策允许时介绍开源、无溢价，并推荐有编译能力的用户自行编译、喜欢 CLI 的用户下载免费 CLI。低价不降低品质：交互、视觉必须优雅精美，100% 原生 SwiftUI；开发默认 macOS 27 和最新 API/SDK，临发布才依据实际 API 与实测倒推最低系统。整个 Feature 目标为达到可发布标准，付费开发者账号为临发布外部前置；系统沙盒/helper 持久访问等核心门槛未验证，必须如实报告，不预设仅账号阻塞；Task 必须合理排序、可以在现实环境完成，并覆盖视觉与交互。来源：[Assessment 决策](../../.specify/assessments/cli-gui-commercialization/decision.md)、本轮直接指令；后者覆盖 Assessment 的价格测试及有限原型范围建议。
 

@@ -2,6 +2,8 @@
 
 **Feature**：005-swiftui-mas-gui | **修订**：2026-10-13 | **规格**：[spec.md](spec.md)
 
+**完成说明（2026-10-22）**：Feature 已完成。下方早期布局描述中“Finder/修复作为共享行主动作、URL/路径/索引/编辑/移除进入 sheet”已被 2026-10-21 的从零交互架构取代；最终布局以 [interaction-architecture.md](design/interaction-architecture.md)、[spec.md](spec.md) 的 Status 与真实窗口为准。
+
 **当前范围**：维护者已授权继续 Implement，执行 T083–T094 及可执行的历史未完成任务，允许本地源码、图标、构建、签名与真实运行验证；不递增版本，不执行提交、推送、发布或商店提交。已有真实 CLI SMB 结果仍不证明 GUI/helper 授权、认证或后台恢复通过。
 
 **访问验证候选**：依据 [当前 T083 研究](research.md#t083-精确目录例外候选与当前核查)，GUI 与独立 sandbox helper 各自声明精确 `com.apple.security.temporary-exception.files.home-relative-path.read-write` 数组 `/Library/Application Support/automnt/`；真实 home 仍由账户解析，CLI 的配置、签名和访问协议不变。工作器仅继承已验证调用方的 sandbox，不叠加该例外。声明不是许可弹窗，必须验证实际签名和各身份的文件操作；当前官方仍提供例外申报流程，不代表本用途已获商店审核接受。
