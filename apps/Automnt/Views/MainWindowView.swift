@@ -120,9 +120,12 @@ struct MainWindowView: View {
                     }
                     .onMove { source, destination in move(source, to: destination) }
                     .moveDisabled(isFiltering || !model.configurationChangesAllowed)
-                    orderFootnoteRow
                 } header: {
                     Text("Managed")
+                } footer: {
+                    // A real inset list renders section footers; only the sidebar list drops
+                    // them, which is why the wide layout uses a row instead.
+                    orderFootnote
                 }
                 if model.configurationAccess.allowsChanges {
                     Section("Available to Add") {
@@ -266,10 +269,17 @@ struct MainWindowView: View {
     /// Sidebar lists on macOS do not render `Section` footers, so the explanation is a
     /// real caption row inside the managed section; both layouts use the same row.
     private var orderFootnoteRow: some View {
-        orderFootnote
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 0, leading: 6, bottom: 8, trailing: 6))
-            .selectionDisabled()
+        // A container (not the bare Text) makes the row grow to the wrapped height;
+        // sidebar rows otherwise stay single-line and cut the explanation off.
+        VStack(alignment: .leading, spacing: 0) {
+            orderFootnote
+                .lineLimit(nil)
+                .multilineTextAlignment(.leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 2, leading: 6, bottom: 8, trailing: 6))
+        .selectionDisabled()
     }
 
     /// The order footnote follows the mount policy instantly, so the two strategies are
