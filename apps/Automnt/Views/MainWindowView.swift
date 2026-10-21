@@ -59,7 +59,7 @@ struct MainWindowView: View {
             NavigationStack {
                 ShareDetailSheet(model: model, shareIdentity: route.id)
             }
-            .frame(minWidth: 460, idealWidth: 620, minHeight: 480, idealHeight: 680)
+            .frame(minWidth: 460, idealWidth: 620, minHeight: 420, idealHeight: 560)
         }
         .onAppear { model.selectedServerIdentity = selectedServer }
         .onChange(of: model.requestedDetail, initial: true) { _, request in openRequestedDetail(request) }
@@ -113,10 +113,7 @@ struct MainWindowView: View {
             .disabled(!model.configurationChangesAllowed)
             .help("Add Shared Folder…")
         }
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button("Check Now") { Task { await model.tryFullRound() } }
-                .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-                .help("Check every shared folder now and mount what is missing.")
+        ToolbarItem(placement: .primaryAction) {
             SettingsLink {
                 Label("Settings", systemImage: "gearshape")
             }
@@ -137,6 +134,7 @@ struct MainWindowView: View {
                     ForEach(filtered(inventory.managed)) { server in
                         NavigationLink(value: CompactRoute.server(server.identity)) {
                             ServerRow(model: model, server: server,
+                                orderNumber: managedIndex(of: server) + 1,
                                 showsDragHandle: !isFiltering && model.configurationChangesAllowed)
                         }
                         .accessibilityAction(named: Text("Move Earlier")) {
@@ -149,11 +147,7 @@ struct MainWindowView: View {
                     .onMove { source, destination in move(source, to: destination) }
                     .moveDisabled(isFiltering || !model.configurationChangesAllowed)
                 } header: {
-                    Text("Managed")
-                } footer: {
-                    // A real inset list renders section footers; only the sidebar list drops
-                    // them, which is why the wide layout uses a row instead.
-                    orderFootnote
+                    managedSectionHeader
                 }
                 if model.configurationAccess.allowsChanges {
                     Section("Available to Add") {
@@ -168,7 +162,7 @@ struct MainWindowView: View {
                     Button("Undo Order Change") { model.undoServerOrder() }
                 }
             }
-            .listStyle(.inset)
+            .listStyle(.plain)
             .navigationTitle("Servers")
             .searchable(text: $searchText, prompt: Text("Search servers"))
             .toolbar { windowToolbar }
@@ -242,6 +236,7 @@ struct MainWindowView: View {
             Section {
                 ForEach(filtered(inventory.managed)) { server in
                     ServerRow(model: model, server: server,
+                        orderNumber: managedIndex(of: server) + 1,
                         showsDragHandle: !isFiltering && model.configurationChangesAllowed)
                         .tag(server.identity)
                         .accessibilityAction(named: Text("Move Earlier")) {
@@ -253,9 +248,8 @@ struct MainWindowView: View {
                 }
                 .onMove { source, destination in move(source, to: destination) }
                 .moveDisabled(isFiltering || !model.configurationChangesAllowed)
-                orderFootnoteRow
             } header: {
-                Text("Managed")
+                managedSectionHeader
             }
             if model.configurationAccess.allowsChanges {
                 Section("Available to Add") {
@@ -274,42 +268,28 @@ struct MainWindowView: View {
         .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
     }
 
-    /// Sidebar lists on macOS do not render `Section` footers, so the explanation is a
-    /// real caption row inside the managed section; both layouts use the same row.
-    private var orderFootnoteRow: some View {
-        // A container (not the bare Text) makes the row grow to the wrapped height;
-        // sidebar rows otherwise stay single-line and cut the explanation off.
-        VStack(alignment: .leading, spacing: 0) {
-            orderFootnote
-                .lineLimit(nil)
-                .multilineTextAlignment(.leading)
+    /// The order is shown, not explained: numbered badges plus a one-line header carry
+    /// the meaning, and the long rationale lives in a tooltip for whoever wants it.
+    private var managedSectionHeader: some View {
+        HStack(spacing: 4) {
+            Text("Managed · In Order")
+            Image(systemName: "info.circle")
+                .foregroundStyle(.tertiary)
+                .help(orderHelpText)
+                .accessibilityLabel(orderHelpText)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 2, leading: 6, bottom: 8, trailing: 6))
-        .selectionDisabled()
     }
 
-    /// The order footnote follows the mount policy instantly, so the two strategies are
-    /// never blended into one sentence.
-    @ViewBuilder
-    private var orderFootnote: some View {
+    /// The long explanation lives in the header's tooltip; the numbered rows carry the
+    /// meaning at a glance.
+    private var orderHelpText: String {
         if isFiltering {
-            Text("Clear the search to change the order.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        } else if model.snapshot?.configuration.isMountAllEnabled == true {
-            Text("Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        } else {
-            Text("Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            return String(localized: "Clear the search to change the order.")
         }
+        if model.snapshot?.configuration.isMountAllEnabled == true {
+            return String(localized: "Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted.")
+        }
+        return String(localized: "Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait.")
     }
 
     private func managedIndex(of server: ServerInventory.Server) -> Int {
@@ -653,12 +633,23 @@ private struct DetailMessageCard: View {
 private struct ServerRow: View {
     let model: ApplicationModel
     let server: ServerInventory.Server
+    /// Managed rows carry their try-order as a number, so the sequence is visible
+    /// without a paragraph of explanation. Addable rows have no number.
+    var orderNumber: Int?
     /// Managed rows show the system drag handle so reordering is discoverable; the
     /// whole row stays draggable. Addable rows have no order and no handle.
     var showsDragHandle = false
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
+        if let orderNumber {
+            Text(String(orderNumber))
+                .font(.caption2.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(.quaternary))
+                .accessibilityHidden(true)
+        }
         VStack(alignment: .leading, spacing: 2) {
             Label(server.displayName, systemImage: "server.rack")
                 .lineLimit(1)
@@ -828,12 +819,6 @@ private struct ServerSharesView: View {
                 }
             }
 
-            Section("Server") {
-                Button("Server Connection…") { showingServerSettings = true }
-                    .disabled(host == nil)
-                Button("Refresh Status") { model.reload() }
-                    .disabled(model.busy)
-            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
@@ -878,9 +863,6 @@ private struct ServerSharesView: View {
                     .help("Add Shared Folder…")
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Check Now") { Task { await model.tryFullRound() } }
-                        .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-                        .help("Check every shared folder now and mount what is missing.")
                     SettingsLink {
                         Label("Settings", systemImage: "gearshape")
                     }
@@ -888,7 +870,12 @@ private struct ServerSharesView: View {
                     .help("Settings")
                 }
             }
-
+            // The server's own settings say "server" in their name, so they cannot be
+            // mistaken for the app settings at the toolbar's other end.
+            ToolbarItem(placement: .primaryAction) {
+                Button("Server Settings…") { showingServerSettings = true }
+                    .disabled(host == nil)
+            }
         }
         .sheet(isPresented: $showingServerSettings) {
             if let host {
@@ -997,11 +984,31 @@ struct ShareRowView: View {
         return host?.shares.first { smbResourceIdentity($0.smbURL) == share.identity }
     }
 
+    static func statusSymbol(_ availability: TargetAvailability) -> String {
+        switch availability {
+        case .usable: "checkmark.circle.fill"
+        case .locationMismatch: "checkmark.circle.fill"
+        case .locationOccupied: "exclamationmark.circle.fill"
+        case .notMounted, .suppressedForThisSession, .notEvaluatedThisRound: "circle.dashed"
+        case .unreachable, .authenticationRequired, .failed: "exclamationmark.triangle.fill"
+        }
+    }
+
+    static func statusTint(_ availability: TargetAvailability) -> Color {
+        switch availability {
+        case .usable: .green
+        case .locationMismatch: .green
+        case .locationOccupied: .orange
+        case .notMounted, .suppressedForThisSession, .notEvaluatedThisRound: .secondary
+        case .unreachable, .authenticationRequired, .failed: .orange
+        }
+    }
+
     static func statusLabel(_ availability: TargetAvailability) -> String {
         switch availability {
         case .usable: String(localized: "Available")
         case .notMounted: String(localized: "Not mounted")
-        case .locationMismatch: String(localized: "Mounted at a different location")
+        case .locationMismatch: String(localized: "Available")
         case .locationOccupied: String(localized: "Location occupied")
         case .suppressedForThisSession: String(localized: "Ejected for this session")
         case .notEvaluatedThisRound: String(localized: "Not checked in the last round")
@@ -1039,6 +1046,12 @@ struct ShareRowView: View {
 
     private var managedLabel: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
+            if let config = configuredShare {
+                Image(systemName: Self.statusSymbol(model.availability(of: config)))
+                    .font(.callout)
+                    .foregroundStyle(Self.statusTint(model.availability(of: config)))
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(share.name).lineLimit(1).help(share.name)
                 Text(statusText)

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ServiceManagement
 import AutomntCore
@@ -355,112 +356,154 @@ struct ShareDetailSheet: View {
         let detail = model.detail(of: share)
         let actions = DetailActionPolicy.available(detail, busy: model.busy)
         Form {
-            Section("Status") {
-                Label(statusTitle(detail.status), systemImage: statusSymbol(detail.status))
-                Text(nextStepText(detail.nextStep))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let observed = detail.observedAt {
-                    LabeledContent("Last Checked") { Text(observed, format: .dateTime) }
+            Section {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: statusSymbol(detail.status))
+                        .font(.title2)
+                        .foregroundStyle(statusTint(detail.status))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(statusTitle(detail.status))
+                            .font(.headline)
+                        if let hint = shortHint(detail) {
+                            Text(hint)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    Menu {
+                        if detail.showsExpectedAndActualLocations {
+                            Button("Use This Location") {
+                                if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
+                            }
+                            Divider()
+                        }
+                        Button("Edit Address and Location…") { editing = true }
+                        Button("View Diagnostics…") { showingDiagnostics = true }
+                        Divider()
+                        Button("Remove from Automnt…", role: .destructive) { confirmingRemoval = true }
+                            .disabled(model.busy)
+                    } label: {
+                        Label("More", systemImage: "ellipsis.circle")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("More")
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
-            }
-
-            Section("Location") {
-                LabeledContent("Configured Location") {
-                    Text(verbatim: detail.expectedMountPoint)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if detail.showsExpectedAndActualLocations {
-                    LabeledContent("Actual Location") {
-                        Text(verbatim: detail.actualMountPoint ?? String(localized: "Not mounted"))
-                            .textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
+                if detail.status == .mounting || detail.status == .recovering {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Mounting")
+                            .foregroundStyle(.secondary)
+                    }
+                } else if let primary = primaryAction(host: host, share: share, detail: detail, actions: actions) {
+                    HStack(spacing: 12) {
+                        Button(primary.title) { primary.run() }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(model.busy)
+                        if actions.contains(.eject) {
+                            Button("Eject") {
+                                Task { await model.eject(host: host, share: share) }
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(model.busy)
+                        }
                     }
                 }
-                LabeledContent("SMB Address") {
-                    Text(verbatim: detail.smbURL)
-                        .textSelection(.enabled)
+                if let removalError {
+                    Text(removalError).foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            Section("Automatic Mounting") {
-                LabeledContent("Schedule", value: planText(detail.automaticPlan))
+            Section {
                 Toggle("Mount This Shared Folder Automatically", isOn: Binding(
                     get: { share.enabled },
                     set: { enabled in toggleShare(host: host, share: share, enabled: enabled) }))
                     .disabled(model.busy || !(model.snapshot?.configuration.isAutomationEnabled ?? false))
-                Text("When this is off, this shared folder is no longer mounted automatically. It stays available if it is already mounted. The server and global automatic mounting must also be on.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Section {
-                if actions.contains(.openInFinder) {
-                    Button("Open in Finder", systemImage: "folder") { model.openInFinder(share) }
-                }
-                if actions.contains(.openActualLocation), let actual = detail.actualMountPoint {
-                    Button("Open the Actual Location in Finder", systemImage: "folder.badge.questionmark") {
-                        model.openPathInFinder(actual)
-                    }
-                }
-                if actions.contains(.useActualLocation) {
-                    Button("Use This Location", systemImage: "arrow.triangle.turn.up.right.diamond") {
-                        if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
-                    }.disabled(model.busy)
-                }
-                if actions.contains(.openOccupyingLocation) {
-                    // The occupying volume is not this share; inspection and an explicit
-                    // location edit are the only safe actions here.
-                    Button("Show the Occupying Folder in Finder", systemImage: "externaldrive.badge.exclamationmark") {
-                        model.openPathInFinder(share.mountPoint)
-                    }
-                }
-                if actions.contains(.mount) {
-                    Button("Mount This Shared Folder", systemImage: "externaldrive.badge.plus") {
-                        Task { await model.mount(host: host, share: share) }
-                    }.disabled(model.busy)
-                }
-                if actions.contains(.eject) {
-                    // Ordinary eject runs directly: no routine confirmation and never
-                    // a forced eject. A busy folder is reported as a failure.
-                    Button("Eject", systemImage: "eject") {
-                        Task { await model.eject(host: host, share: share) }
-                    }.disabled(model.busy)
-                }
-                if actions.contains(.editTarget) {
-                    Button("Edit Address and Location…", systemImage: "pencil") { editing = true }
-                }
-                if actions.contains(.removeFromManagement) {
-                    Button("Remove from Automnt…", systemImage: "minus.circle", role: .destructive) {
-                        confirmingRemoval = true
-                    }.disabled(model.busy)
-                }
-                if let removalError {
-                    Text(removalError).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
-                }
             } footer: {
-                Text("Removing a shared folder changes only what Automnt mounts. It does not eject anything and does not delete files or saved sign-in details.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                Text("Turn this off to stop mounting this shared folder automatically. It stays available while it is connected.")
             }
 
-            Section("Spotlight Indexing") {
-                Text(host.preventSpotlightIndex
-                    ? String(localized: "Automnt asks the system not to index this server’s shared folders after mounting. This can reduce disk and network activity but may limit Spotlight results. Existing indexes are not deleted, and the system may not honour the request.")
-                    : String(localized: "Automnt does not ask the system to stop indexing this server’s shared folders."))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+            Section("Mount Location") {
+                Text(verbatim: detail.actualMountPoint ?? detail.expectedMountPoint)
+                    .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("View Diagnostics…") { showingDiagnostics = true }
+                if detail.showsExpectedAndActualLocations, let actual = detail.actualMountPoint {
+                    Text(String(format: String(localized: "Automnt’s saved location is %@."), detail.expectedMountPoint))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .formStyle(.grouped)
         .navigationTitle(share.name)
         .navigationSubtitle(host.alias ?? host.host)
+    }
+
+    /// One primary action per state. "Open" always opens the folder that is really
+    /// mounted, so the user never has to compare a saved path with an actual one.
+    private struct PrimaryAction {
+        let title: String
+        let run: () -> Void
+    }
+
+    private func primaryAction(host: HostConfig, share: SMBShareConfig,
+                               detail: ShareDetail, actions: Set<DetailAction>) -> PrimaryAction? {
+        if actions.contains(.openOccupyingLocation) {
+            return PrimaryAction(title: String(localized: "Show the Occupying Folder in Finder")) {
+                model.openPathInFinder(share.mountPoint)
+            }
+        }
+        if actions.contains(.openInFinder) {
+            return PrimaryAction(title: String(localized: "Open in Finder")) {
+                if detail.showsExpectedAndActualLocations, let actual = detail.actualMountPoint {
+                    model.openPathInFinder(actual)
+                } else {
+                    model.openInFinder(share)
+                }
+            }
+        }
+        if actions.contains(.mount) {
+            return PrimaryAction(title: String(localized: "Connect and Open")) {
+                Task {
+                    await model.mount(host: host, share: share)
+                    if let actual = model.detail(of: share).actualMountPoint {
+                        model.openPathInFinder(actual)
+                    }
+                }
+            }
+        }
+        if detail.status == .authenticationRequired {
+            return PrimaryAction(title: String(localized: "Connect in Finder")) {
+                if let url = URL(string: share.smbURL) { NSWorkspace.shared.open(url) }
+            }
+        }
+        return nil
+    }
+
+    /// A healthy folder needs no instruction; a problem does.
+    private func shortHint(_ detail: ShareDetail) -> String? {
+        switch detail.status {
+        case .healthy, .automatedMountingOff, .mounting, .recovering:
+            return nil
+        case .locationMismatch:
+            return String(localized: "The shared folder is connected. You can open it.")
+        default:
+            return nextStepText(detail.nextStep)
+        }
+    }
+
+    private func statusTint(_ status: ShareDetail.Status) -> Color {
+        switch status {
+        case .healthy, .automatedMountingOff, .locationMismatch: .green
+        case .mounting, .recovering, .ejectedForThisSession, .notSelectedThisRound: .secondary
+        default: .orange
+        }
     }
 
     @ViewBuilder
@@ -525,7 +568,7 @@ struct ShareDetailSheet: View {
         case .automatedMountingOff: String(localized: "Mounted · automatic mounting off")
         case .serverUnreachable: String(localized: "Server not reachable")
         case .authenticationRequired: String(localized: "Sign-in required")
-        case .locationMismatch: String(localized: "Mounted at a different location")
+        case .locationMismatch: String(localized: "Available")
         case .locationOccupied: String(localized: "Location occupied by another volume")
         case .recovering: String(localized: "Recovering")
         case .recoveryFailed: String(localized: "Mounting failed")
@@ -540,7 +583,7 @@ struct ShareDetailSheet: View {
         case .mounting, .recovering: "arrow.triangle.2.circlepath"
         case .ejectedForThisSession: "eject.circle"
         case .automatedMountingOff: "pause.circle"
-        case .locationMismatch: "folder.badge.questionmark"
+        case .locationMismatch: "checkmark.circle"
         case .locationOccupied: "externaldrive.badge.exclamationmark"
         case .serverUnreachable, .authenticationRequired,
              .recoveryFailed, .unconfirmed, .notMounted, .notSelectedThisRound:
@@ -863,8 +906,6 @@ struct ServerSettingsView: View {
                     if let nameError {
                         fieldError(nameError)
                     }
-                    Button("Save Name") { saveName() }
-                        .disabled(model.busy)
                     Text("Leave the name empty to show the server address.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -893,8 +934,6 @@ struct ServerSettingsView: View {
                     if let connectionError {
                         Text(connectionError).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
                     }
-                    Button("Save Connection Parameters") { saveConnection() }
-                        .disabled(model.busy)
                 }
 
                 Section("Indexing") {
@@ -902,7 +941,7 @@ struct ServerSettingsView: View {
                         get: { current?.preventSpotlightIndex ?? host.preventSpotlightIndex },
                         set: { enabled in saveIndexing(enabled) }))
                         .disabled(model.busy)
-                    Text("Applies to all shared folders of this server. Automnt asks the system not to index them, which can reduce disk and network activity but may limit Spotlight results. Existing indexes are not deleted, and the system may not honour the request.")
+                    Text("Applies to every shared folder on this server. Spotlight results from these folders may be incomplete.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1414,6 +1453,8 @@ struct AutomntMenuView: View {
             }
             Divider()
             if let notice = model.notice { Text(notice) }
+            Button("Check Now") { Task { await model.tryFullRound() } }
+                .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
             Button("Open Automnt") { openWindow(id: "main") }
             SettingsLink()
             Button("Hide Menu Bar Icon") {

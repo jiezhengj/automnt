@@ -1622,6 +1622,12 @@ struct AutomntApp: App {
                     .keyboardShortcut("n", modifiers: .command)
             }
             CommandMenu("Servers") {
+                // Manual evaluation is a recovery action, not a dashboard button: it lives
+                // here and in the menu bar, with ⌘R for people who look for it.
+                Button("Check Now") { Task { await model.tryFullRound() } }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+                Divider()
                 // 不使用右键“上移/下移”，但保留可发现的菜单与 Option+方向键等价操作。
                 Button("Move Earlier") { model.moveSelectedServer(earlier: true) }
                     .keyboardShortcut(.upArrow, modifiers: [.option])
