@@ -12,3 +12,8 @@
 | 06-mount-scope-menu.png | 挂载范围菜单的两个选项 |
 | 07-mount-scope-all-reachable.png | 切换到“所有可达服务器”后的设置值（该次切换是验收副作用，需改回默认） |
 | 08-compact-empty-band-defect.png | 窄窗（660pt）缺陷：`已管理` 标题下约 52pt 空白带 |
+| 09-sidebar-note-wraps.png | 修复后宽窗侧栏说明完整换行（挂载范围为“所有可达服务器”时的文案） |
+| 10-sidebar-note-first-reachable.png | 改回“首个可达服务器”后说明文字同步变化，并出现“挂载范围已保存”提示 |
+| 11-compact-launch.png | 窄窗启动（660×700）：服务器行、拖拽把手、分组页脚、底部全局栏，无空白带 |
+| 12-compact-push-detail.png | 窄窗推送详情：返回按钮、主机名、刷新/服务器设置工具栏按钮、共享状态 |
+| 13-japanese-wide.png | 日语界面宽窗：管理対象/追加可能/利用可能，侧栏说明四行完整显示 |
