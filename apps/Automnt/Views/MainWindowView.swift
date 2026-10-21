@@ -95,6 +95,34 @@ struct MainWindowView: View {
             detail
         }
         .searchable(text: $searchText, placement: .sidebar, prompt: Text("Search servers"))
+        .toolbar { windowToolbar }
+    }
+
+    /// Global actions belong to the window. They live in the real toolbar, which is wide
+    /// enough for words; the sidebar is navigation only and has no action bar. Universal
+    /// symbols (plus, gear) keep their icons; actions without one state their name.
+    @ToolbarContentBuilder
+    private var windowToolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button {
+                showingAddShare = true
+            } label: {
+                Label("Add Shared Folder…", systemImage: "plus")
+            }
+            .labelStyle(.iconOnly)
+            .disabled(!model.configurationChangesAllowed)
+            .help("Add Shared Folder…")
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button("Check Now") { Task { await model.tryFullRound() } }
+                .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+                .help("Check every shared folder now and mount what is missing.")
+            SettingsLink {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .labelStyle(.titleAndIcon)
+            .help("Settings")
+        }
     }
 
     private enum CompactRoute: Hashable {
@@ -143,6 +171,7 @@ struct MainWindowView: View {
             .listStyle(.inset)
             .navigationTitle("Servers")
             .searchable(text: $searchText, prompt: Text("Search servers"))
+            .toolbar { windowToolbar }
             .overlay {
             if isFiltering {
                 sidebarSearchEmptyState
@@ -152,7 +181,6 @@ struct MainWindowView: View {
         }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
             .safeAreaInset(edge: .top, spacing: 0) { resultBanner }
-            .safeAreaInset(edge: .bottom, spacing: 0) { globalActionsBar }
             .navigationDestination(for: CompactRoute.self) { route in
                 compactDestination(route)
             }
@@ -164,24 +192,11 @@ struct MainWindowView: View {
         switch route {
         case .server(let identity):
             if let server = inventory.server(identity: identity) {
-                ServerSharesView(model: model, server: server, shareSearch: $shareSearch) { share in
+                ServerSharesView(model: model, server: server, shareSearch: $shareSearch,
+                    embedsWindowActions: true, onAddShare: { showingAddShare = true }) { share in
                     compactPath.append(.share(share.identity))
                 }
                 .onAppear { selectedServer = identity }
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Menu {
-                            Button("Add Shared Folder…") { showingAddShare = true }
-                                .disabled(!model.configurationChangesAllowed)
-                            Button("Check Now") { Task { await model.tryFullRound() } }
-                                .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-                            Divider()
-                            SettingsLink { Text("Settings…") }
-                        } label: {
-                            Label("More", systemImage: "ellipsis.circle")
-                        }
-                    }
-                }
             } else {
                 ContentUnavailableView("Choose a Server", systemImage: "server.rack",
                     description: Text("Choose a server on the left to see its shared folders."))
@@ -257,36 +272,6 @@ struct MainWindowView: View {
         .navigationTitle("Servers")
         .overlay { emptyState }
         .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
-        .safeAreaInset(edge: .bottom, spacing: 0) { globalActionsBar }
-    }
-
-    /// Global actions belong to the whole window; they sit at the sidebar bottom rather
-    /// than sharing a toolbar with the selected server's own actions.
-    private var globalActionsBar: some View {
-        // Every action here states what it does in words. The app settings live in the
-        // standard Settings menu item (⌘,), so a gear here would read as the selection's
-        // own settings and duplicate the server connection entry in the toolbar.
-        HStack(spacing: 8) {
-            Button { showingAddShare = true } label: {
-                Label("Add Shared Folder…", systemImage: "plus")
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            .disabled(!model.configurationChangesAllowed)
-            .help("Add Shared Folder…")
-            Button { Task { await model.tryFullRound() } } label: {
-                Label("Check Now", systemImage: "bolt")
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-            .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
-            .help("Check every shared folder now and mount what is missing.")
-            Spacer(minLength: 0)
-        }
-        .labelStyle(.titleAndIcon)
-        .buttonStyle(.borderless)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
     }
 
     /// Sidebar lists on macOS do not render `Section` footers, so the explanation is a
@@ -746,6 +731,10 @@ private struct ServerSharesView: View {
     @Bindable var model: ApplicationModel
     let server: ServerInventory.Server
     @Binding var shareSearch: String
+    /// Compact navigation stacks replace the root toolbar on push; the server page then
+    /// carries the window actions itself so they never vanish behind a back stack.
+    var embedsWindowActions = false
+    var onAddShare: (() -> Void)?
     let openDetail: (ServerInventory.Share) -> Void
     @State private var showingServerSettings = false
     @State private var automationPromptDismissed = false
@@ -838,6 +827,13 @@ private struct ServerSharesView: View {
                     ShareRowView(model: model, host: nil, share: share, openDetail: openDetail)
                 }
             }
+
+            Section("Server") {
+                Button("Server Connection…") { showingServerSettings = true }
+                    .disabled(host == nil)
+                Button("Refresh Status") { model.reload() }
+                    .disabled(model.busy)
+            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: 0) {
@@ -868,25 +864,31 @@ private struct ServerSharesView: View {
             }
         }
         .navigationTitle(server.displayName)
-        .navigationSubtitle(server.host)
+        // In the compact stack the title shares its row with the window actions; the
+        // address is already visible in the share rows and the detail sheet.
+        .navigationSubtitle(embedsWindowActions ? "" : server.host)
         .toolbar {
-            // Per-server actions live here, next to the server they act on. Global
-            // actions stay at the sidebar bottom, so a gear here never means app settings.
-            ToolbarItem {
-                Button("Refresh Status", systemImage: "arrow.clockwise") { model.reload() }
-                    .disabled(model.busy)
-                    .help("Refresh Status")
-            }
-            ToolbarItem {
-                Button {
-                    showingServerSettings = true
-                } label: {
-                    Label("Server Connection…", systemImage: "slider.horizontal.3")
+            if embedsWindowActions {
+                ToolbarItem(placement: .navigation) {
+                    Button { onAddShare?() } label: {
+                        Label("Add Shared Folder…", systemImage: "plus")
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(!model.configurationChangesAllowed)
+                    .help("Add Shared Folder…")
                 }
-                .labelStyle(.titleAndIcon)
-                .disabled(host == nil)
-                .help("Server Connection…")
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Check Now") { Task { await model.tryFullRound() } }
+                        .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+                        .help("Check every shared folder now and mount what is missing.")
+                    SettingsLink {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .help("Settings")
+                }
             }
+
         }
         .sheet(isPresented: $showingServerSettings) {
             if let host {
