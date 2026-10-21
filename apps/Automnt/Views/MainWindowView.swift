@@ -12,6 +12,7 @@ struct MainWindowView: View {
     @Bindable var model: ApplicationModel
     var addShareRequest: AddShareRequest?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openSettings) private var openSettings
     @State private var selectedServer: String?
     @State private var searchText = ""
     @State private var shareSearch = ""
@@ -42,6 +43,7 @@ struct MainWindowView: View {
                 splitLayout
             }
         }
+        .searchPresentationToolbarBehavior(.avoidHidingContent)
         .frame(minWidth: 380, minHeight: 480)
         .background(WindowAccessor { window in
             model.installWindowCloseGuard(window)
@@ -49,6 +51,11 @@ struct MainWindowView: View {
         })
         .sheet(isPresented: addSheet) {
             AddShareView(model: model)
+        }
+        .alert(String(localized: "The server order could not be saved."), isPresented: orderIssuePresented) {
+            Button("Dismiss", role: .cancel) { model.orderIssue = nil }
+        } message: {
+            if let issue = model.orderIssue { Text(issue) }
         }
         .onAppear { model.selectedServerIdentity = selectedServer }
         .onChange(of: model.requestedDetail, initial: true) { _, request in openRequestedDetail(request) }
@@ -74,6 +81,10 @@ struct MainWindowView: View {
 
     /// Below this width the window uses the native server → shared folder → detail
     /// stack. The wide window keeps the two-column layout; there is no third column.
+    private var orderIssuePresented: Binding<Bool> {
+        Binding(get: { model.orderIssue != nil }, set: { if !$0 { model.orderIssue = nil } })
+    }
+
     private static let compactWidth: CGFloat = 700
 
     private var splitLayout: some View {
@@ -86,32 +97,72 @@ struct MainWindowView: View {
         .searchable(text: $searchText, placement: .sidebar, prompt: Text("Search servers"))
     }
 
-    /// The sidebar is the server level, so the two actions that act on that level live
-    /// at its foot: add a shared folder and open the app settings. The detail toolbar
-    /// stays free for the selected server's own content.
-    private var sidebarActionBar: some View {
-        HStack(spacing: 16) {
+    /// Global actions belong to the sidebar level. They sit in the sidebar's own header,
+    /// as system glass symbol buttons next to the level's title — not in a footer, not in
+    /// the window toolbar, and not in the server content.
+    private var sidebarHeader: some View {
+        HStack(spacing: 12) {
+            Text("Servers")
+                .font(.title3.weight(.semibold))
+            Spacer(minLength: 8)
+            globalActions
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 4)
+    }
+
+    private var globalActions: some View {
+        HStack(spacing: 10) {
             Button {
                 showingAddShare = true
             } label: {
-                Label("Add Shared Folder…", systemImage: "plus")
-                    .labelStyle(.iconOnly)
+                Image(systemName: "plus")
+                    .font(.body.weight(.medium))
+                    .frame(width: 18, height: 18)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
             .disabled(!model.configurationChangesAllowed)
             .help("Add Shared Folder…")
-            SettingsLink {
-                Label("Settings", systemImage: "gearshape")
-                    .labelStyle(.iconOnly)
+            .accessibilityLabel(String(localized: "Add Shared Folder…"))
+            Button {
+                openSettings()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.body.weight(.medium))
+                    .frame(width: 18, height: 18)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .controlSize(.large)
             .help("Settings")
-            Spacer(minLength: 0)
+            .accessibilityLabel(String(localized: "Settings"))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.bar)
-        .overlay(alignment: .top) { Divider() }
+    }
+
+    @ToolbarContentBuilder
+    private var globalToolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button {
+                showingAddShare = true
+            } label: {
+                Image(systemName: "plus")
+            }
+            .disabled(!model.configurationChangesAllowed)
+            .help("Add Shared Folder…")
+            .accessibilityLabel(String(localized: "Add Shared Folder…"))
+        }
+        ToolbarItem(placement: .navigation) {
+            Button {
+                openSettings()
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .help("Settings")
+            .accessibilityLabel(String(localized: "Settings"))
+        }
     }
 
     private enum CompactRoute: Hashable {
@@ -120,8 +171,7 @@ struct MainWindowView: View {
 
     private var compactLayout: some View {
         NavigationStack(path: $compactPath) {
-            VStack(spacing: 0) {
-                List {
+            List {
                 Section {
                     ForEach(filtered(inventory.managed)) { server in
                         NavigationLink(value: CompactRoute.server(server.identity)) {
@@ -139,7 +189,7 @@ struct MainWindowView: View {
                     .onMove { source, destination in move(source, to: destination) }
                     .moveDisabled(isFiltering || !model.configurationChangesAllowed)
                 } header: {
-                    managedSectionHeader
+                    managedSectionHeader.background(ScrollInsetNormalizer())
                 } footer: {
                     if !isFiltering {
                         Text(orderCaption)
@@ -161,6 +211,7 @@ struct MainWindowView: View {
             .listStyle(.plain)
             .navigationTitle("Servers")
             .searchable(text: $searchText, prompt: Text("Search servers"))
+                .searchPresentationToolbarBehavior(.avoidHidingContent)
                 .overlay {
                     if isFiltering {
                         sidebarSearchEmptyState
@@ -168,13 +219,12 @@ struct MainWindowView: View {
                         emptyState
                     }
                 }
-                sidebarActionBar
-            }
             .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
             .safeAreaInset(edge: .top, spacing: 0) { resultBanner }
             .navigationDestination(for: CompactRoute.self) { route in
                 compactDestination(route)
             }
+            .toolbar { globalToolbar }
         }
     }
 
@@ -184,7 +234,7 @@ struct MainWindowView: View {
         case .server(let identity):
             if let server = inventory.server(identity: identity) {
                 ServerSharesView(model: model, server: server, shareSearch: $shareSearch,
-                    expandedShare: $expandedShareIdentity)
+                    expandedShare: $expandedShareIdentity, normalizeTopInset: true)
                 .onAppear { selectedServer = identity }
             } else {
                 ContentUnavailableView("Choose a Server", systemImage: "server.rack",
@@ -223,7 +273,9 @@ struct MainWindowView: View {
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        List(selection: $selectedServer) {
+        VStack(spacing: 0) {
+            sidebarHeader
+            List(selection: $selectedServer) {
             Section {
                 ForEach(filtered(inventory.managed)) { server in
                     ServerRow(model: model, server: server,
@@ -251,11 +303,10 @@ struct MainWindowView: View {
                 }
             }
         }
-        .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom, spacing: 0) { sidebarActionBar }
-        .navigationTitle("Servers")
-        .overlay { emptyState }
-        .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
+            .listStyle(.sidebar)
+            .overlay { emptyState }
+            .onKeyPress(keys: [.upArrow, .downArrow]) { press in handleOrderKey(press) }
+        }
     }
 
     /// The order is shown, not explained: numbered badges plus a one-line header carry
@@ -397,9 +448,9 @@ struct MainWindowView: View {
     /// Result of the most recent action, shown at the surface that started it.
     @ViewBuilder
     private var resultBanner: some View {
-        if let issue = model.issue {
+        if model.messageSurface == .window, let issue = model.issue {
             DetailMessageCard(text: issue, systemImage: "exclamationmark.triangle.fill", tint: .orange)
-        } else if let notice = model.notice {
+        } else if model.messageSurface == .window, let notice = model.notice {
             DetailMessageCard(text: notice, systemImage: "info.circle", tint: .secondary)
         }
     }
@@ -717,11 +768,14 @@ private struct ServerSharesView: View {
     @Binding var shareSearch: String
     /// The expanded share lives one level up so the menu bar can reveal the same row.
     @Binding var expandedShare: String?
+    /// In the compact stack the list starts below the toolbar; AppKit then adds the
+    /// toolbar height a second time, so the duplicate inset is cleared there only.
+    var normalizeTopInset = false
     @State private var showingServerSettings = false
-    @State private var automationPromptDismissed = false
     @State private var editingTarget: EditTarget?
     @State private var removingShare: SMBShareConfig?
     @State private var removalError: String?
+    @Environment(\.openSettings) private var openSettings
 
     private struct EditTarget: Identifiable {
         let host: HostConfig
@@ -738,55 +792,16 @@ private struct ServerSharesView: View {
     /// One definition of "can be added", shared by the list and its filtered-empty state.
     private var addableShares: [ServerInventory.Share] { server.addableShares }
 
-    private struct AttentionShare: Identifiable {
-        let share: ServerInventory.Share
-        let reason: String
-        var id: String { share.identity }
-    }
-
-    /// Shares that need attention, with the same status source the rows use. The server
-    /// summary is a count; this list is what the count refers to.
-    private var attentionShares: [AttentionShare] {
-        guard let host else { return [] }
-        return server.managedShares.compactMap { share in
-            guard let config = host.shares.first(where: { smbResourceIdentity($0.smbURL) == share.identity }) else {
-                return nil
-            }
-            let availability = model.availability(of: config)
-            guard model.isException(availability) else { return nil }
-            return AttentionShare(share: share, reason: ShareRowView.statusLabel(availability))
-        }
+    private var automationEnabled: Bool { model.snapshot?.configuration.isAutomationEnabled == true }
+    private var masterOff: Bool { model.snapshot?.configuration.isAutomationEnabled == false }
+    /// Automatic mounting is the product: a share switch only means something when the
+    /// master switch and this server both participate. Otherwise it is shown but disabled.
+    private var shareSwitchesAllowed: Bool {
+        automationEnabled && (host?.enabled ?? false) && model.configurationChangesAllowed
     }
 
     var body: some View {
         List {
-            if !attentionShares.isEmpty {
-                Section {
-                    ForEach(attentionShares) { entry in
-                        Button { reveal(entry.share) } label: {
-                            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                Text(entry.share.name).lineLimit(1).help(entry.share.name)
-                                Spacer(minLength: 12)
-                                Text(entry.reason)
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                                Image(systemName: "chevron.right")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                                    .accessibilityHidden(true)
-                            }
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } header: {
-                    Text(String(format: String(localized: "%lld shared folders need attention"), attentionShares.count))
-                }
-            }
-
-            // The server's identity and its settings button share one row, so the button
-            // has its own width instead of being squeezed into the toolbar.
             if host != nil {
                 Section {
                     HStack(spacing: 12) {
@@ -797,12 +812,24 @@ private struct ServerSharesView: View {
                         Text(server.host)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                        Spacer(minLength: 12)
-                        Button("Server Settings") { showingServerSettings = true }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .disabled(model.busy)
-                            .help(String(localized: "Server Settings…"))
+                        Spacer(minLength: 0)
+                    }
+                    .background { if normalizeTopInset { ScrollInsetNormalizer() } }
+                }
+            }
+
+            if let host {
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Include This Server in Automatic Mounting", isOn: Binding(
+                            get: { host.enabled },
+                            set: { toggleServer($0) }))
+                            .toggleStyle(.switch)
+                            .disabled(masterOff || !model.configurationChangesAllowed)
+                        Text(serverAutomationCaption)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -831,17 +858,18 @@ private struct ServerSharesView: View {
             VStack(spacing: 0) {
                 if let attention = automationAttention {
                     AutomationStatusCard(model: model, attention: attention)
-                } else if showsAutomationPrompt {
-                    automationPrompt
+                } else if masterOff {
+                    automaticMountingOffBanner
                 }
-                if let issue = model.issue {
+                if model.messageSurface == .window, let issue = model.issue {
                     DetailMessageCard(text: issue, systemImage: "exclamationmark.triangle.fill", tint: .orange)
-                } else if let notice = model.notice {
+                } else if model.messageSurface == .window, let notice = model.notice {
                     DetailMessageCard(text: notice, systemImage: "info.circle", tint: .secondary)
                 }
             }
         }
         .searchable(text: $shareSearch, prompt: Text("Search shared folders"))
+        .searchPresentationToolbarBehavior(.avoidHidingContent)
         .overlay {
             if !query.isEmpty,
                server.managedShares.filter(matches).isEmpty,
@@ -856,6 +884,16 @@ private struct ServerSharesView: View {
             }
         }
         .navigationTitle(server.displayName)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showingServerSettings = true } label: {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .help("Server Settings")
+                .accessibilityLabel(String(localized: "Server Settings"))
+                .disabled(host == nil || model.busy)
+            }
+        }
         .sheet(isPresented: $showingServerSettings) {
             if let host {
                 ServerSettingsView(model: model, host: host)
@@ -880,48 +918,105 @@ private struct ServerSharesView: View {
         }
     }
 
+    private var automaticMountingOffBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "pause.circle.fill")
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+            Text("Automatic Mounting Is Off")
+                .font(.callout.weight(.medium))
+            Spacer(minLength: 12)
+            Button("Turn On Automatic Mounting") {
+                if let base = model.snapshot { model.saveAutomation(true, base: base) }
+            }
+            .controlSize(.small)
+            .disabled(model.busy || model.automationChangeInFlight)
+            Button("Settings") { openSettings() }
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
     private var removalPresented: Binding<Bool> {
         Binding(get: { removingShare != nil }, set: { if !$0 { removingShare = nil } })
     }
 
-    private func reveal(_ share: ServerInventory.Share) {
-        withAnimation(.snappy) { expandedShare = share.identity }
+    private var serverAutomationCaption: String {
+        if masterOff {
+            return String(localized: "The main automatic mounting switch is off. Turn it on to include this server.")
+        }
+        return String(localized: "When this is off, this server’s shared folders are no longer mounted automatically. Shared folders that are already mounted stay available.")
     }
 
     @ViewBuilder
     private func managedRow(_ share: ServerInventory.Share, host: HostConfig?) -> some View {
         let isExpanded = expandedShare == share.identity
+        let config = host.flatMap { host in
+            host.shares.first(where: { smbResourceIdentity($0.smbURL) == share.identity })
+        }
         VStack(alignment: .leading, spacing: 10) {
-            ShareRowView(model: model, host: host, share: share, isExpanded: isExpanded) {
-                withAnimation(.snappy) { expandedShare = isExpanded ? nil : share.identity }
-            }
-            if isExpanded, let host,
-               let config = host.shares.first(where: { smbResourceIdentity($0.smbURL) == share.identity }) {
+            ShareRowView(model: model, host: host, share: share,
+                isExpanded: isExpanded,
+                onToggle: { withAnimation(.snappy) { expandedShare = isExpanded ? nil : share.identity } },
+                automatic: config?.enabled ?? true,
+                automaticAllowed: shareSwitchesAllowed,
+                onToggleAutomatic: { enabled in
+                    if let host, let config { setEnabled(enabled, host: host, share: config) }
+                })
+            if isExpanded, let host, let config {
                 inlineDetail(host: host, share: config)
-                    .padding(.leading, 28)
+                    .padding(.leading, 30)
                     .padding(.bottom, 6)
             }
         }
     }
 
-    /// Everything the old sheet held, directly under the row: one state-driven action,
-    /// the automatic switch, the effective location and the two low-frequency actions.
+    /// The expanded block only adds what the row cannot carry: where the share is, the
+    /// manual fallback actions, then the management actions — separated, never mixed.
     @ViewBuilder
     private func inlineDetail(host: HostConfig, share: SMBShareConfig) -> some View {
         let detail = model.detail(of: share)
         let actions = DetailActionPolicy.available(detail, busy: model.busy)
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
+                Text("Mount Location")
+                    .foregroundStyle(.secondary)
+                Text(verbatim: detail.actualMountPoint ?? detail.expectedMountPoint)
+                    .textSelection(.enabled)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+            }
+
+            if detail.showsExpectedAndActualLocations {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(format: String(localized: "Automnt’s saved location is %@."), detail.expectedMountPoint))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Button("Use This Location") {
+                        if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
+                    }
+                    .buttonStyle(.link)
+                    .controlSize(.small)
+                    .disabled(model.busy)
+                }
+            }
+
             if detail.status == .mounting || detail.status == .recovering {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Mounting").font(.callout).foregroundStyle(.secondary)
                 }
-            } else if let primary = primaryAction(host: host, share: share, detail: detail, actions: actions) {
+            } else {
                 HStack(spacing: 10) {
-                    Button(primary.title) { primary.run() }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                        .disabled(model.busy)
+                    if let primary = primaryAction(host: host, share: share, detail: detail, actions: actions) {
+                        Button(primary.title) { primary.run() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(model.busy)
+                    }
                     if actions.contains(.eject) {
                         Button("Eject") {
                             Task { await model.eject(host: host, share: share) }
@@ -930,47 +1025,27 @@ private struct ServerSharesView: View {
                         .controlSize(.small)
                         .disabled(model.busy)
                     }
+                    Spacer(minLength: 0)
                 }
             }
-            Toggle("Mount This Shared Folder Automatically", isOn: Binding(
-                get: { share.enabled },
-                set: { setEnabled($0, host: host, share: share) }))
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .disabled(model.busy || !(model.snapshot?.configuration.isAutomationEnabled ?? false))
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: detail.actualMountPoint ?? detail.expectedMountPoint)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .lineLimit(2)
-                    if detail.showsExpectedAndActualLocations, let actual = detail.actualMountPoint {
-                        Text(String(format: String(localized: "Automnt’s saved location is %@."), detail.expectedMountPoint))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                        Button("Use This Location") {
-                            if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
-                        }
-                        .buttonStyle(.link)
-                        .controlSize(.small)
-                        .disabled(model.busy)
-                    }
+
+            Divider()
+
+            HStack(spacing: 18) {
+                Button("Edit Shared Folder") {
+                    editingTarget = EditTarget(host: host, share: share)
                 }
-                Spacer(minLength: 8)
-                Button { editingTarget = EditTarget(host: host, share: share) } label: {
-                    Image(systemName: "pencil")
-                }
-                .buttonStyle(.borderless)
-                .help("Edit Address and Location…")
+                .buttonStyle(.link)
                 .disabled(model.busy)
-                Button(role: .destructive) { removingShare = share } label: {
-                    Image(systemName: "trash")
+                Button("Remove from Automnt…") {
+                    removingShare = share
                 }
-                .buttonStyle(.borderless)
-                .help("Remove from Automnt…")
+                .buttonStyle(.link)
+                .foregroundStyle(.red)
                 .disabled(model.busy)
+                Spacer(minLength: 0)
             }
+
             if let removalError {
                 Text(removalError)
                     .font(.callout)
@@ -985,7 +1060,7 @@ private struct ServerSharesView: View {
         let run: () -> Void
     }
 
-    /// One primary action per state; "open" always opens the mounted location.
+    /// One manual action per state; this is the fallback, not the row's identity.
     private func primaryAction(host: HostConfig, share: SMBShareConfig,
                                detail: ShareDetail, actions: Set<DetailAction>) -> InlineAction? {
         if actions.contains(.openOccupyingLocation) {
@@ -1018,6 +1093,15 @@ private struct ServerSharesView: View {
             }
         }
         return nil
+    }
+
+    private func toggleServer(_ enabled: Bool) {
+        guard let base = model.snapshot else { return }
+        let identity = server.identity
+        model.save(base) { configuration in
+            guard let index = configuration.hosts.firstIndex(where: { managedServerIdentity($0) == identity }) else { return }
+            configuration.hosts[index].enabled = enabled
+        }
     }
 
     private func setEnabled(_ enabled: Bool, host: HostConfig, share: SMBShareConfig) {
@@ -1060,43 +1144,9 @@ private struct ServerSharesView: View {
         }
     }
 
-    private var showsAutomationPrompt: Bool {
-        model.snapshot?.configuration.isAutomationEnabled == false &&
-        automationAttention == nil &&
-        !server.managedShares.isEmpty &&
-        !automationPromptDismissed
-    }
-
-    private var automationPrompt: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Automatic Mounting Is Off")
-                    .font(.headline)
-                Text("Shared folders are added. Turn on automatic mounting so Automnt mounts them after sign-in or network changes.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 12)
-            Button("Turn On Automatic Mounting") {
-                if let base = model.snapshot { model.saveAutomation(true, base: base) }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(model.busy || model.automationChangeInFlight)
-            .fixedSize(horizontal: true, vertical: false)
-            Button("Later") { automationPromptDismissed = true }
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .padding(12)
-        .background(.regularMaterial)
-        .overlay(alignment: .bottom) { Divider() }
-        .onChange(of: server.managedShares.count) { _, _ in automationPromptDismissed = false }
-    }
-
     private var host: HostConfig? {
         model.snapshot?.configuration.hosts.first { managedServerIdentity($0) == server.identity }
     }
-
 
 }
 
@@ -1108,6 +1158,9 @@ struct ShareRowView: View {
     let share: ServerInventory.Share
     var isExpanded = false
     var onToggle: (() -> Void)?
+    var automatic = true
+    var automaticAllowed = true
+    var onToggleAutomatic: ((Bool) -> Void)?
 
     private var statusText: String {
         guard let config = configuredShare else { return String(localized: "Connected in Finder") }
@@ -1155,11 +1208,29 @@ struct ShareRowView: View {
 
     var body: some View {
         if share.managed {
-            Button { onToggle?() } label: { managedLabel }
-                .buttonStyle(.plain)
-                .accessibilityLabel(accessibilityText)
-                .accessibilityHint(String(localized: "Opens this shared folder’s details."))
-                .contextMenu { managedMenu }
+            HStack(spacing: 12) {
+                Button { onToggle?() } label: { managedLabel }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(accessibilityText)
+                    .accessibilityHint(String(localized: "Opens this shared folder’s details."))
+                if let onToggleAutomatic {
+                    Toggle("Mount This Shared Folder Automatically", isOn: Binding(
+                        get: { automatic },
+                        set: { onToggleAutomatic($0) }))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .disabled(!automaticAllowed)
+                        .help("Mount This Shared Folder Automatically")
+                        .accessibilityLabel(automaticAccessibilityLabel)
+                }
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 16)
+                    .accessibilityHidden(true)
+            }
+            .contextMenu { managedMenu }
         } else {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 addableLabel
@@ -1187,10 +1258,6 @@ struct ShareRowView: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 12)
-            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())
@@ -1211,6 +1278,10 @@ struct ShareRowView: View {
         "\(share.name), \(statusText)"
     }
 
+    private var automaticAccessibilityLabel: String {
+        String(localized: "Mount This Shared Folder Automatically") + ", " + share.name
+    }
+
     @ViewBuilder
     private var managedMenu: some View {
         if let config = configuredShare, let host {
@@ -1223,6 +1294,45 @@ struct ShareRowView: View {
             default:
                 Button("Mount This Shared Folder") { Task { await model.mount(host: host, share: config) } }
             }
+        }
+    }
+}
+
+
+/// AppKit adds the toolbar height to a list's top content inset when the window crosses
+/// from the split layout into the compact one, on top of a scroll view that is already
+/// placed below the toolbar. The result is a 52 pt blank band above the first section.
+/// This normalizer clears that duplicate inset and keeps automatic adjustment off.
+struct ScrollInsetNormalizer: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { NormalizerView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private final class NormalizerView: NSView {
+    private var token: NSObjectProtocol?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window else { return }
+        normalize()
+        if let token { NotificationCenter.default.removeObserver(token) }
+        token = NotificationCenter.default.addObserver(forName: NSWindow.didResizeNotification,
+            object: window, queue: .main) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self?.normalize() }
+        }
+    }
+
+    private func normalize() {
+        var view: NSView? = self
+        while let current = view {
+            if let scroll = current as? NSScrollView {
+                if scroll.automaticallyAdjustsContentInsets || scroll.contentInsets.top != 0 {
+                    scroll.automaticallyAdjustsContentInsets = false
+                    scroll.contentInsets.top = 0
+                }
+                return
+            }
+            view = current.superview
         }
     }
 }

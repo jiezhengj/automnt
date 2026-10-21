@@ -102,6 +102,10 @@ struct WindowAccessor: NSViewRepresentable {
     }
 }
 
+enum FeedbackSurface: Equatable {
+    case window, sidebar, settings, menuBar
+}
+
 @MainActor @Observable
 final class ApplicationModel {
     var snapshot: ConfigSnapshot?
@@ -112,6 +116,10 @@ final class ApplicationModel {
     var configurationConflictDetected = false
     /// A confirmation of what actually happened (added, saved, ejected).
     var notice: String?
+    /// Which surface owns the latest issue/notice. Views only render their own surface.
+    var messageSurface: FeedbackSurface = .window
+    /// Order changes belong to the sidebar; failures surface there, never in the detail.
+    var orderIssue: String?
     /// A configuration exists but could not be read: not a first-run empty state.
     var configurationReadFailed = false
     var configurationAccess: ConfigurationAccessState = .awaitingAuthorization
@@ -544,6 +552,7 @@ final class ApplicationModel {
     }
 
     private func load(_ directory: AuthorizedDirectory) throws {
+        messageSurface = .window
         authorization = directory
         do {
             snapshot = try FileConfigRepository(authorizedDirectory: directory.url).read()
@@ -851,7 +860,8 @@ final class ApplicationModel {
         }
     }
 
-    func activateAppBackground(repair: Bool = false) async {
+    func activateAppBackground(repair: Bool = false, surface: FeedbackSurface = .window) async {
+        messageSurface = surface
         guard !busy, configurationChangesAllowed, let authorization, let base = snapshot else { return }
         busy = true
         defer { busy = false; refreshActionReadiness(); refreshStatus() }
@@ -925,7 +935,8 @@ final class ApplicationModel {
 
     /// A full round runs the same bounded evaluation the background service uses and
     /// reports its real result; it does not simulate one.
-    func tryFullRound() async {
+    func tryFullRound(surface: FeedbackSurface = .window) async {
+        messageSurface = surface
         guard configurationChangesAllowed, let authorization else { return }
         guard let base = latestSnapshotForAction() else { return }
         // A previous round may have left a launch intent whose child exited. Clear it
@@ -960,13 +971,14 @@ final class ApplicationModel {
                 }
                 try await adapter.requestEvaluation(state: state, deadline: ContinuousClock.now.advanced(by: .seconds(30)))
             }
-            notice = String(localized: "The round finished. Each shared folder shows its own result and the time it was checked.")
+            // Per-share status is the result; no success toast.
         } catch let error as AutomntIssue where error == .signalUnavailable || error == .timeout {
             issue = String(localized: "A previous mount attempt didn’t finish. Repair background mounting, then try the round again.")
         } catch { show(error) }
     }
 
-    func openInFinder(_ share: SMBShareConfig) {
+    func openInFinder(_ share: SMBShareConfig, surface: FeedbackSurface = .window) {
+        messageSurface = surface
         do { try FinderAccess.open(share: share); issue = nil }
         catch {
             switch error as? AutomntIssue {
@@ -1006,11 +1018,12 @@ final class ApplicationModel {
                 configuration.hosts[hostIndex].shares[shareIndex].mountPoint = actual
             }
         }
-        if saved { notice = String(localized: "Using the current mount location. Future mounts use the new location.") }
+        _ = saved
         return saved
     }
 
-    func mount(host: HostConfig, share: SMBShareConfig) async {
+    func mount(host: HostConfig, share: SMBShareConfig, surface: FeedbackSurface = .window) async {
+        messageSurface = surface
         guard let base = latestSnapshotForAction(),
               let identity = smbResourceIdentity(share.smbURL) else { return }
         guard !busy, let operation = begin(.singleShareMount, target: identity) else { return }
@@ -1033,13 +1046,13 @@ final class ApplicationModel {
             show(error)
         } else {
             issue = nil
-            notice = String(localized: "The shared folder is mounted. Open it in Finder to use it.")
         }
     }
 
     /// Normal eject: non-forced, with no routine confirmation. A busy volume is
     /// reported as a failure and is never escalated to a forced eject.
-    func eject(host: HostConfig, share: SMBShareConfig) async {
+    func eject(host: HostConfig, share: SMBShareConfig, surface: FeedbackSurface = .window) async {
+        messageSurface = surface
         guard let base = latestSnapshotForAction(),
               let identity = smbResourceIdentity(share.smbURL) else { return }
         guard !busy, let operation = begin(.normalEject, target: identity) else { return }
@@ -1060,8 +1073,6 @@ final class ApplicationModel {
             issue = String(localized: "The eject result could not be confirmed. Automatic recovery is paused until the operation is repaired.")
         } else if let error = response.issue {
             show(error)
-        } else {
-            notice = String(localized: "Shared folder ejected. It will stay disconnected until the network or login session changes.")
         }
     }
 
@@ -1148,7 +1159,8 @@ final class ApplicationModel {
         _ = try? store.adoptConfigurationRevision(expected: state.revision, new: revision)
     }
 
-    func saveAutomation(_ enabled: Bool, base: ConfigSnapshot) {
+    func saveAutomation(_ enabled: Bool, base: ConfigSnapshot, surface: FeedbackSurface = .window) {
+        messageSurface = surface
         guard !automationChangeInFlight else {
             notice = String(localized: "Applying automatic mounting settings. Please wait.")
             return
@@ -1175,6 +1187,7 @@ final class ApplicationModel {
     }
 
     func saveRecovery(_ enabled: Bool, base: ConfigSnapshot) {
+        messageSurface = .settings
         guard save(base, { $0.autoMountRecovery = enabled }) else { return }
         notice = String(localized: "Automatic recovery settings were saved. Check background mounting to apply the change.")
         if snapshot?.configuration.isAutomationEnabled == true {
@@ -1190,6 +1203,7 @@ final class ApplicationModel {
     /// 挂载范围（FR-027）。改变它只写配置；下一轮评估、排序说明与 CLI 共用同一字段。
     /// 默认 `first_reachable` 保持升级前行为，因此不需要在保存时触发额外副作用。
     func saveMountPolicy(_ policy: MountPolicy, base: ConfigSnapshot) {
+        messageSurface = .settings
         guard save(base, { $0.mountPolicy = policy }) else { return }
         notice = String(localized: "Mount scope saved. The next round checks servers in this scope.")
     }
@@ -1205,6 +1219,7 @@ final class ApplicationModel {
     }
 
     func saveSound(_ enabled: Bool) {
+        messageSurface = .settings
         guard configurationChangesAllowed, let authorization else { return }
         do {
             try NotificationPreferenceStore(authorizedDirectory: authorization.url).save(
@@ -1219,6 +1234,7 @@ final class ApplicationModel {
     /// creates the configuration; later shares keep the server identity and order.
     @discardableResult
     func addShare(smbURL: String, name: String? = nil, mountPoint: String? = nil) -> String? {
+        messageSurface = .window
         let value = smbURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard var candidate = shareCandidate(from: value) else {
             return fail(String(localized: "Enter a complete SMB address such as smb://host/share, without a user name or password."))
@@ -1248,9 +1264,6 @@ final class ApplicationModel {
                 snapshot = saved
                 adoptBackendRevision(from: base.revision, to: saved.revision)
                 issue = nil
-                notice = saved.configuration.isAutomationEnabled
-                    ? String(localized: "The shared folder was added. Automatic mounting mounts it when the server is available.")
-                    : String(localized: "The shared folder was added. Turn on automatic mounting to mount your shared folders in the background.")
                 refreshActionReadiness()
                 refreshStatus()
                 return nil
@@ -1272,7 +1285,6 @@ final class ApplicationModel {
             configurationAccess = .ready
             configurationReadFailed = false
             issue = nil
-            notice = String(localized: "The shared folder was added. Turn on automatic mounting to mount your shared folders in the background.")
             refreshActionReadiness()
             refreshStatus()
             return nil
@@ -1292,6 +1304,7 @@ final class ApplicationModel {
     /// Removing the last share of a server removes that server in the same save.
     @discardableResult
     func removeShare(_ share: SMBShareConfig) -> String? {
+        messageSurface = .window
         guard configurationChangesAllowed, let authorization, let base = snapshot else {
             return String(localized: "The change could not be saved. Check folder access and try again.")
         }
@@ -1301,7 +1314,6 @@ final class ApplicationModel {
             snapshot = saved
             adoptBackendRevision(from: base.revision, to: saved.revision)
             issue = nil
-            notice = String(localized: "The shared folder was removed from Automnt. Its mounted folder and saved sign-in details were left untouched.")
             refreshActionReadiness()
             refreshStatus()
             return nil
@@ -1340,14 +1352,15 @@ final class ApplicationModel {
             adoptBackendRevision(from: previous, to: saved.revision)
             orderUndo = outcome.undo
             issue = nil
-            notice = String(localized: "The order was saved. It changes which server the next round checks first.")
+            orderIssue = nil
             refreshActionReadiness()
             return nil
         }
         if let issue = outcome.issue {
             orderUndo = nil
             let message = message(for: issue)
-            self.issue = message
+            messageSurface = .sidebar
+            orderIssue = message
             reload()
             return message
         }

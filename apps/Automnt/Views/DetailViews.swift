@@ -513,15 +513,6 @@ struct ServerSettingsView: View {
 
     private var isDirty: Bool { hasNameChange || hasConnectionChanges }
 
-    private func toggleServer(_ enabled: Bool) {
-        guard let base = model.snapshot else { return }
-        let identity = managedServerIdentity(host)
-        model.save(base) { configuration in
-            guard let index = configuration.hosts.firstIndex(where: { managedServerIdentity($0) == identity }) else { return }
-            configuration.hosts[index].enabled = enabled
-        }
-    }
-
     private var savedAlias: String { current?.alias ?? host.alias ?? "" }
     private var savedHost: String { current?.host ?? host.host }
     private var savedPort: Int { current?.port ?? host.port }
@@ -541,18 +532,6 @@ struct ServerSettingsView: View {
         NavigationStack {
             Form {
                 ConfigurationConflictCard(model: model)
-                Section("Automatic Mounting") {
-                    Toggle("Include This Server in Automatic Mounting", isOn: Binding(
-                        get: { model.snapshot?.configuration.hosts.first(where: { managedServerIdentity($0) == managedServerIdentity(host) })?.enabled ?? host.enabled },
-                        set: { enabled in toggleServer(enabled) }))
-                        .disabled(model.busy)
-                    Text(model.snapshot?.configuration.isAutomationEnabled == false
-                        ? String(localized: "The main automatic mounting switch is off. Turn it on to include this server.")
-                        : String(localized: "When this is off, this server’s shared folders are no longer mounted automatically. Shared folders that are already mounted stay available."))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
                 if let savedFeedback {
                     Label(savedFeedback, systemImage: "checkmark.circle")
                         .font(.callout)
@@ -815,9 +794,9 @@ struct SettingsView: View {
             notificationSection
             advancedSection
             supportSection
-            if let issue = model.issue {
+            if model.messageSurface == .settings, let issue = model.issue {
                 Section { Text(issue).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
-            } else if let notice = model.notice {
+            } else if model.messageSurface == .settings, let notice = model.notice {
                 Section { Text(notice).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
             }
         }
@@ -840,7 +819,7 @@ struct SettingsView: View {
             } else if let configuration = model.snapshot?.configuration, let base = model.snapshot {
                 Toggle("Automatic Mounting", isOn: Binding(
                     get: { configuration.isAutomationEnabled },
-                    set: { model.saveAutomation($0, base: base) }))
+                    set: { model.saveAutomation($0, base: base, surface: .settings) }))
                     .disabled(model.busy || model.automationChangeInFlight)
                 LabeledContent("Background Mounting", value: model.backend.label)
                 Text(Self.mountingSummaryText(SettingsSurface.automaticMountingSummary(automaticMounting ?? .init(
@@ -856,7 +835,7 @@ struct SettingsView: View {
                 }
                 if model.backend.needsUserAction {
                     Button("Set Up or Repair Background Mounting") {
-                        Task { await model.activateAppBackground(repair: true) }
+                        Task { await model.activateAppBackground(repair: true, surface: .settings) }
                     }.disabled(model.busy)
                     if model.backend == .awaitingApproval {
                         Button("Open Login Items Settings") { ServiceController(mode: .baseline).openApprovalSettings() }
@@ -1091,14 +1070,14 @@ struct AutomntMenuView: View {
                                         hostIdentity: managedServerIdentity(host), shareIdentity: identity)
                                     openWindow(id: "main")
                                 }
-                                Button("Open in Finder") { model.openInFinder(share) }
+                                Button("Open in Finder") { model.openInFinder(share, surface: .menuBar) }
                                     .disabled(model.availability(of: share) != .usable)
                                 Button("Mount") {
-                                    Task { await model.mount(host: host, share: share) }
+                                    Task { await model.mount(host: host, share: share, surface: .menuBar) }
                                 }.disabled(model.busy || model.availability(of: share) == .usable)
                                 // Ordinary eject runs directly, with no routine confirmation.
                                 Button("Eject") {
-                                    Task { await model.eject(host: host, share: share) }
+                                    Task { await model.eject(host: host, share: share, surface: .menuBar) }
                                 }.disabled(model.busy || model.availability(of: share) != .usable)
                             }
                         }
@@ -1111,8 +1090,8 @@ struct AutomntMenuView: View {
                 }
             }
             Divider()
-            if let notice = model.notice { Text(notice) }
-            Button("Check Now") { Task { await model.tryFullRound() } }
+            if model.messageSurface == .menuBar, let notice = model.notice { Text(notice) }
+            Button("Check Now") { Task { await model.tryFullRound(surface: .menuBar) } }
                 .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
             Button("Open Automnt") { openWindow(id: "main") }
             SettingsLink()
@@ -1125,11 +1104,11 @@ struct AutomntMenuView: View {
                 }
             }.disabled(model.changingLogin)
             if let snapshot = model.snapshot, snapshot.configuration.isAutomationEnabled {
-                Button("Turn Off Automatic Mounting") { model.saveAutomation(false, base: snapshot) }
+                Button("Turn Off Automatic Mounting") { model.saveAutomation(false, base: snapshot, surface: .menuBar) }
                     .disabled(model.busy)
                 Text("Shared folders that are already mounted stay available.")
             }
-            if let issue = model.issue { Text(issue) }
+            if model.messageSurface == .menuBar, let issue = model.issue { Text(issue) }
             Button("Quit Automnt") { NSApplication.shared.terminate(nil) }
         }
         .task {
