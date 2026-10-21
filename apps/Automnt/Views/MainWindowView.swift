@@ -117,7 +117,7 @@ struct MainWindowView: View {
             SettingsLink {
                 Label("Settings", systemImage: "gearshape")
             }
-            .labelStyle(.titleAndIcon)
+            .labelStyle(.iconOnly)
             .help("Settings")
         }
     }
@@ -157,9 +157,6 @@ struct MainWindowView: View {
                             }
                         }
                     }
-                }
-                if model.orderUndo != nil, !isFiltering, model.configurationChangesAllowed {
-                    Button("Undo Order Change") { model.undoServerOrder() }
                 }
             }
             .listStyle(.plain)
@@ -257,9 +254,6 @@ struct MainWindowView: View {
                         ServerRow(model: model, server: server).tag(server.identity)
                     }
                 }
-            }
-            if model.orderUndo != nil, !isFiltering, model.configurationChangesAllowed {
-                Button("Undo Order Change") { model.undoServerOrder() }
             }
         }
         .listStyle(.sidebar)
@@ -786,16 +780,32 @@ private struct ServerSharesView: View {
                     Text(String(format: String(localized: "%lld shared folders need attention"), attentionShares.count))
                 }
             }
-            if let host {
+            // One identity row per server, and the only per-server settings entrance:
+            // a normal settings row with room for its words, not a cramped toolbar pill.
+            if host != nil {
                 Section {
-                    Toggle("Include This Server in Automatic Mounting", isOn: Binding(
-                        get: { model.snapshot?.configuration.hosts.first(where: { managedServerIdentity($0) == server.identity })?.enabled ?? host.enabled },
-                        set: { enabled in toggleServer(enabled) }))
-                        .disabled(model.busy)
-                    Text(automaticMountingCaption)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Button { showingServerSettings = true } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "server.rack")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
+                            Text(server.host)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 12)
+                            Text("Server Settings")
+                                .foregroundStyle(.primary)
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.busy)
+                    .help(String(localized: "Server Settings…"))
                 }
             }
 
@@ -849,9 +859,6 @@ private struct ServerSharesView: View {
             }
         }
         .navigationTitle(server.displayName)
-        // In the compact stack the title shares its row with the window actions; the
-        // address is already visible in the share rows and the detail sheet.
-        .navigationSubtitle(embedsWindowActions ? "" : server.host)
         .toolbar {
             if embedsWindowActions {
                 ToolbarItem(placement: .navigation) {
@@ -862,19 +869,13 @@ private struct ServerSharesView: View {
                     .disabled(!model.configurationChangesAllowed)
                     .help("Add Shared Folder…")
                 }
-                ToolbarItemGroup(placement: .primaryAction) {
+                ToolbarItem(placement: .primaryAction) {
                     SettingsLink {
                         Label("Settings", systemImage: "gearshape")
                     }
-                    .labelStyle(.titleAndIcon)
+                    .labelStyle(.iconOnly)
                     .help("Settings")
                 }
-            }
-            // The server's own settings say "server" in their name, so they cannot be
-            // mistaken for the app settings at the toolbar's other end.
-            ToolbarItem(placement: .primaryAction) {
-                Button("Server Settings…") { showingServerSettings = true }
-                    .disabled(host == nil)
             }
         }
         .sheet(isPresented: $showingServerSettings) {

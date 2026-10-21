@@ -31,3 +31,8 @@
 | 25-compact-list-plain.png | 窄窗服务器列表用 plain 列表消除“已管理”下方空白带；序号与顺序说明一行 |
 | 26-compact-server-page-simplified.png | 窄窗进入服务器：设置与“服务器设置…”在工具栏，页面内只有自动挂载开关与共享列表 |
 | 27-server-settings-simplified.png | 服务器设置：名称/连接/索引三段，底部只有一个“完成”（名称与连接参数随“完成”一起保存）；索引说明压到一句 |
+| 28-server-settings-row.png | 服务器页收敛：工具栏只剩 ＋、标题、⚙ 图标、搜索；服务器身份行右侧是“服务器设置 ›”；无“撤销顺序调整” |
+| 29-server-settings-sheet.png | 服务器设置标题化：标题“服务器设置”、副标题为地址；自动挂载（此服务器参与）并入设置首段 |
+| 30-share-detail-icons.png | 共享详情去掉 ⋯ 菜单：编辑=铅笔、移除=垃圾桶，均为图标按钮；主按钮与弹出保留 |
+| 31-compact-list-no-undo.png | 窄窗服务器列表：无“撤销顺序调整”，序号与“已管理 · 按顺序 ⓘ”保持 |
+| 32-compact-server-settings-row.png | 窄窗服务器页：同一“服务器设置 ›”行，工具栏无文字按钮 |

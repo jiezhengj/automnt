@@ -372,26 +372,19 @@ struct ShareDetailSheet: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    Spacer(minLength: 0)
-                    Menu {
-                        if detail.showsExpectedAndActualLocations {
-                            Button("Use This Location") {
-                                if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
-                            }
-                            Divider()
-                        }
-                        Button("Edit Address and Location…") { editing = true }
-                        Button("View Diagnostics…") { showingDiagnostics = true }
-                        Divider()
-                        Button("Remove from Automnt…", role: .destructive) { confirmingRemoval = true }
-                            .disabled(model.busy)
-                    } label: {
-                        Label("More", systemImage: "ellipsis.circle")
+                    Spacer(minLength: 12)
+                    Button { editing = true } label: {
+                        Image(systemName: "pencil")
                     }
-                    .labelStyle(.iconOnly)
-                    .help("More")
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
+                    .buttonStyle(.borderless)
+                    .help("Edit Address and Location…")
+                    .disabled(model.busy)
+                    Button(role: .destructive) { confirmingRemoval = true } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Remove from Automnt…")
+                    .disabled(model.busy)
                 }
                 if detail.status == .mounting || detail.status == .recovering {
                     HStack(spacing: 8) {
@@ -433,10 +426,17 @@ struct ShareDetailSheet: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 if detail.showsExpectedAndActualLocations, let actual = detail.actualMountPoint {
-                    Text(String(format: String(localized: "Automnt’s saved location is %@."), detail.expectedMountPoint))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        Text(String(format: String(localized: "Automnt’s saved location is %@."), detail.expectedMountPoint))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Use This Location") {
+                            if let base = model.snapshot { model.useActualMountPoint(share, base: base) }
+                        }
+                        .buttonStyle(.link)
+                        .disabled(model.busy)
+                    }
                 }
             }
         }
@@ -876,6 +876,15 @@ struct ServerSettingsView: View {
 
     private var isDirty: Bool { hasNameChange || hasConnectionChanges }
 
+    private func toggleServer(_ enabled: Bool) {
+        guard let base = model.snapshot else { return }
+        let identity = managedServerIdentity(host)
+        model.save(base) { configuration in
+            guard let index = configuration.hosts.firstIndex(where: { managedServerIdentity($0) == identity }) else { return }
+            configuration.hosts[index].enabled = enabled
+        }
+    }
+
     private var savedAlias: String { current?.alias ?? host.alias ?? "" }
     private var savedHost: String { current?.host ?? host.host }
     private var savedPort: Int { current?.port ?? host.port }
@@ -895,6 +904,18 @@ struct ServerSettingsView: View {
         NavigationStack {
             Form {
                 ConfigurationConflictCard(model: model)
+                Section("Automatic Mounting") {
+                    Toggle("Include This Server in Automatic Mounting", isOn: Binding(
+                        get: { model.snapshot?.configuration.hosts.first(where: { managedServerIdentity($0) == managedServerIdentity(host) })?.enabled ?? host.enabled },
+                        set: { enabled in toggleServer(enabled) }))
+                        .disabled(model.busy)
+                    Text(model.snapshot?.configuration.isAutomationEnabled == false
+                        ? String(localized: "The main automatic mounting switch is off. Turn it on to include this server.")
+                        : String(localized: "When this is off, this server’s shared folders are no longer mounted automatically. Shared folders that are already mounted stay available."))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let savedFeedback {
                     Label(savedFeedback, systemImage: "checkmark.circle")
                         .font(.callout)
@@ -953,7 +974,8 @@ struct ServerSettingsView: View {
                     base = latest
                 }
             }
-            .navigationTitle(host.alias ?? host.host)
+            .navigationTitle(String(localized: "Server Settings"))
+            .navigationSubtitle(host.alias ?? host.host)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { finish() }.keyboardShortcut(.cancelAction)
