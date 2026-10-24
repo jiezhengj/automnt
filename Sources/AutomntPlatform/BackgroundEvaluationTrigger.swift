@@ -4,12 +4,18 @@ import AutomntCore
 /// Shared bounded entry for launchd events and explicit post-activation evaluation.
 /// No registration, configuration writes or permission UI are performed here.
 public enum BackgroundEvaluationTrigger {
+    /// `serviceStatus` is the caller's readiness proof. The app process keeps the
+    /// `SMAppService` query (it owns the registration API); the helper injects
+    /// `HelperBackgroundReadiness` because `SMAppService` cannot resolve agent plists from
+    /// `Contents/Helpers`. Omitting the closure preserves the app behaviour.
     public static func run(applicationBundle: Bundle, directory: AuthorizedDirectory,
                            expectedState: BackendState? = nil,
-                           deadline: ContinuousClock.Instant) async throws -> BackgroundEvaluationSummary {
+                           deadline: ContinuousClock.Instant,
+                           serviceStatus: (@Sendable (AutomntConfig) async -> BackendState.ServiceStatus)? = nil) async throws -> BackgroundEvaluationSummary {
         try await run(directory: directory.url, expectedState: expectedState, deadline: deadline,
             serviceStatus: { configuration in
-                await MainActor.run {
+                if let serviceStatus { return await serviceStatus(configuration) }
+                return await MainActor.run {
                     BackgroundServiceReadiness.classify(configuration: configuration,
                         baseline: ServiceController(mode: .baseline).status,
                         recovery: ServiceController(mode: .recovery).status)

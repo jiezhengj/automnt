@@ -21,9 +21,31 @@ public enum RecoverySessionPolicy {
             (previous?.dropLast().joined(separator: "|") == "<unreadable>" &&
              previous?.last.map(String.init) == identity.loginEpoch)
         guard state.sessionBoundary != boundary else { return }
+        // 同一次启动、同一网络下，登录纪元只可能因「能否读取 console 记录」而写法不同
+        // （沙盒读不到 utmpx，CLI 读得到）。这不是新会话，不能因此清除本会话的弹出抑制，
+        // 也不改写边界：抑制记录按边界值绑定，改写会让对端抑制失配。
+        if !establishing, let previousBoundary = state.sessionBoundary {
+            let parts = previousBoundary.split(separator: "|", omittingEmptySubsequences: false)
+            let previousNetwork = parts.dropLast().joined(separator: "|")
+            if previousNetwork == identity.network, let previousEpoch = parts.last {
+                if bootComponent(String(previousEpoch)) == bootComponent(identity.loginEpoch) { return }
+            }
+        }
         if establishing {
-            for (key, var record) in state.volumes where record.state == .suppressed {
-                record.suppressionBoundary = boundary
+            for (key, var record) in state.volumes {
+                if record.state == .suppressed {
+                    record.suppressionBoundary = boundary
+                } else if record.state == .attached, !mountedKeys.contains(key) {
+                    // `.attached` only ever means this project mounted the volume; with no
+                    // eject record and nothing in the mount table it is stale state from an
+                    // earlier session (the common upgrade/restart case). Recover it instead
+                    // of reporting it as a healthy eject that suppresses automatic mounting.
+                    record.state = .pendingRecovery
+                    record.lastAttemptAt = nil
+                    record.attemptOperationID = nil
+                    record.attemptCount = 0
+                    record.notificationCount = 0
+                }
                 state.volumes[key] = record
             }
         } else {
@@ -40,6 +62,11 @@ public enum RecoverySessionPolicy {
             }
         }
         state.sessionBoundary = boundary
+    }
+
+    /// 登录纪元形如 `<boot>-<consoleStart|console-unreadable>`；重启才会改变前段。
+    private static func bootComponent(_ epoch: String) -> Substring {
+        epoch.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false).first ?? ""
     }
 }
 
@@ -99,4 +126,5 @@ public enum RecoveryHealthPolicy {
         if case .failed = health { return .deadButPresent }
         return base
     }
+
 }

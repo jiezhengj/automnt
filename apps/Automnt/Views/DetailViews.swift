@@ -577,6 +577,7 @@ struct ServerSettingsView: View {
                     Toggle("Try to Prevent Spotlight Indexing", isOn: Binding(
                         get: { current?.preventSpotlightIndex ?? host.preventSpotlightIndex },
                         set: { enabled in saveIndexing(enabled) }))
+                        .accessibilityLabel(Text("Try to Prevent Spotlight Indexing"))
                         .disabled(model.busy)
                     Text("Applies to every shared folder on this server. Spotlight results from these folders may be incomplete.")
                         .font(.callout)
@@ -775,6 +776,9 @@ struct SettingsView: View {
     @Binding var menuBarEnabled: Bool
     @Binding var helpDestination: HelpDestination?
     @Binding var showingDiagnostics: Bool
+    /// One-shot confirmation when turning off the resident app would silently end notifications.
+    @State private var confirmingResidentDisable = false
+    @State private var disablesMenuBar = false
 
     private var automaticMounting: SettingsSurface.AutomaticMounting? {
         guard let configuration = model.snapshot?.configuration else { return nil }
@@ -785,6 +789,18 @@ struct SettingsView: View {
     private var notifications: SettingsSurface.Notifications {
         SettingsSurface.Notifications(authorization: model.notificationPermission.authorizationState,
             soundEnabled: model.soundEnabled, soundNeedsRepair: model.soundNeedsRepair)
+    }
+
+    /// Background notifications are delivered by the app itself: a sandboxed helper has no
+    /// notification identity and may not spawn the app to borrow one. The app must therefore
+    /// run at login, and the menu bar item is the user-visible handle for that resident process.
+    private var backgroundDeliveryReady: Bool {
+        menuBarEnabled && model.loginStatus == .enabled
+    }
+
+    /// Registered but waiting for the user's approval in Login Items.
+    private var backgroundDeliveryPendingApproval: Bool {
+        menuBarEnabled && model.loginStatus == .requiresApproval
     }
 
     var body: some View {
@@ -820,6 +836,7 @@ struct SettingsView: View {
                 Toggle("Automatic Mounting", isOn: Binding(
                     get: { configuration.isAutomationEnabled },
                     set: { model.saveAutomation($0, base: base, surface: .settings) }))
+                    .accessibilityLabel(Text("Automatic Mounting"))
                     .disabled(model.busy || model.automationChangeInFlight)
                 LabeledContent("Background Mounting", value: model.backend.label)
                 Text(Self.mountingSummaryText(SettingsSurface.automaticMountingSummary(automaticMounting ?? .init(
@@ -848,6 +865,7 @@ struct SettingsView: View {
                 Toggle("Automatic Recovery", isOn: Binding(
                     get: { configuration.isAutoMountRecoveryEnabled },
                     set: { model.saveRecovery($0, base: base) }))
+                    .accessibilityLabel(Text("Automatic Recovery"))
                     .disabled(model.busy || !(automaticMounting?.recoveryEditable ?? false))
                 Text("Shared folders that disconnect unexpectedly get an extra attempt when the volume setup changes. Automatic mounting after sign-in or a network change still runs when this is off.")
                     .font(.callout)
@@ -881,27 +899,25 @@ struct SettingsView: View {
             Toggle("Show Automnt in the Menu Bar", isOn: Binding(
                 get: { menuBarEnabled },
                 set: { enabled in
-                    menuBarEnabled = enabled
-                    if !enabled {
-                        Task {
-                            await model.setMenuLogin(false)
-                            if model.loginStatus == .notRegistered || model.loginStatus == .notFound {
-                                menuBarEnabled = false
-                            }
-                        }
-                    }
+                    if enabled { menuBarEnabled = true } else { requestResidentDisable(includeMenuBar: true) }
                 }))
+                .accessibilityLabel(Text("Show Automnt in the Menu Bar"))
                 .disabled(model.changingLogin)
-            Toggle("Show the Menu Bar at Login", isOn: Binding(
+            Toggle("Open Automnt at Login", isOn: Binding(
                 get: { model.loginStatus == .enabled || model.loginStatus == .requiresApproval },
-                set: { enabled in Task { await model.setMenuLogin(enabled) } }))
+                set: { enabled in
+                    if enabled { Task { await model.setMenuLogin(true) } } else { requestResidentDisable(includeMenuBar: false) }
+                }))
+                .accessibilityLabel(Text("Open Automnt at Login"))
                 .disabled(!menuBarEnabled || model.changingLogin)
-            Text("This login setting opens only the menu bar item; it never opens the main window. Background automatic mounting runs separately.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if model.loginStatus == .enabled || model.loginStatus == .requiresApproval {
+                Text("At login, only the menu bar icon opens; the main window won’t.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if model.loginStatus == .requiresApproval {
-                Text("Allow Automnt in Login Items in System Settings to show the menu bar at login.")
+                Text("Allow Automnt in Login Items in System Settings.")
                     .font(.callout).foregroundStyle(.secondary)
                 Button("Open Login Items Settings") { SMAppService.openSystemSettingsLoginItems() }
             }
@@ -910,51 +926,116 @@ struct SettingsView: View {
                 Button("Check Again") { model.refreshLoginStatus() }
             }
         }
+        .alert(disableResidentAlertTitle, isPresented: $confirmingResidentDisable) {
+            Button("Turn Off", role: .destructive) { performResidentDisable() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            // Hiding the icon also removes the login item, but the already-running app keeps
+            // delivering notices until it is quit; say both facts instead of claiming an
+            // immediate stop.
+            Text("Automnt will no longer open at login. Failure notifications while the window is closed stop once you quit. Automatic mounting continues.")
+        }
+    }
+
+    private var disableResidentAlertTitle: String {
+        disablesMenuBar
+            ? String(localized: "Hide Automnt from the Menu Bar?")
+            : String(localized: "Stop Opening Automnt at Login?")
+    }
+
+    /// Turning off the resident app while notifications are allowed is a real loss of a
+    /// capability, so it asks once instead of silently going quiet.
+    private func requestResidentDisable(includeMenuBar: Bool) {
+        guard notifications.authorization == .allowed else {
+            disablesMenuBar = includeMenuBar
+            performResidentDisable()
+            return
+        }
+        disablesMenuBar = includeMenuBar
+        confirmingResidentDisable = true
+    }
+
+    private func performResidentDisable() {
+        let includeMenuBar = disablesMenuBar
+        if includeMenuBar { menuBarEnabled = false }
+        Task {
+            await model.setMenuLogin(false)
+            if includeMenuBar, model.loginStatus == .notRegistered || model.loginStatus == .notFound {
+                menuBarEnabled = false
+            }
+        }
     }
 
     @ViewBuilder
     private var notificationSection: some View {
         Section("Notifications") {
+            Text("Automnt notifies you when a shared folder can’t be mounted automatically—even with the window closed.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             LabeledContent("System Permission", value: notifications.authorization.label)
-            if notifications.shouldOfferPermissionRequest {
-                Text("Automnt uses notifications only for shared folders it could not mount automatically.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Allow Notifications…") { Task { await model.requestNotifications() } }
-                    .disabled(model.requestingNotifications)
-            } else if notifications.authorization == .denied {
-                Text("Notifications are not allowed. You can still see mounting problems in Automnt.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else if notifications.authorization == .unavailable {
-                Text("The notification setting could not be read. Check Notifications in System Settings.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if notifications.offersSettingsShortcut {
-                Button("Open Notification Settings") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }
-            }
-            if notifications.authorization == .denied || notifications.authorization == .unavailable {
-                Button("Check Again") { Task { await model.refreshNotificationPermission() } }
-                    .disabled(model.requestingNotifications)
-            }
-            if let issue = model.notificationIssue {
-                Text(issue).font(.callout).foregroundStyle(.secondary)
-            }
+            notificationPrerequisite
+            // Sound is an independent preference; it never gates whether notices arrive.
             Toggle("Notification sound", isOn: Binding(
                 get: { model.soundEnabled }, set: { model.saveSound($0) }))
+                .accessibilityLabel(Text("Notification sound"))
                 .disabled(!model.configurationChangesAllowed)
-            Text("When this is off, you still receive notifications.")
-                .font(.callout).foregroundStyle(.secondary)
             if model.soundNeedsRepair {
                 Text("Notification sound is off because its settings could not be read. Choose your preference to repair them.")
                     .font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let issue = model.notificationIssue {
+                Text(issue).font(.callout).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Exactly one unmet prerequisite is explained and acted on at a time: the system
+    /// permission first, then the resident process that is allowed to deliver the notice.
+    /// The previous card used independent `if` blocks, so it could stack two explanations
+    /// and two buttons, and it said "not running at login" while the login item was merely
+    /// waiting for approval.
+    @ViewBuilder
+    private var notificationPrerequisite: some View {
+        switch notifications.authorization {
+        case .notRequested:
+            Text("Automnt needs your permission before it can send notifications.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Allow Notifications…") { Task { await model.requestNotifications() } }
+                .disabled(model.requestingNotifications)
+        case .denied:
+            Text("Notifications are not allowed. You can still see mounting problems in Automnt.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Notification Settings") { openNotificationSettings() }
+        case .unavailable:
+            Text("The notification setting could not be read. Check Notifications in System Settings.")
+                .font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Check Again") { Task { await model.refreshNotificationPermission() } }
+                .disabled(model.requestingNotifications)
+        case .allowed:
+            if backgroundDeliveryPendingApproval {
+                Text("Automnt is waiting for you to allow it in Login Items.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if !backgroundDeliveryReady {
+                Text("Automnt needs to start at login to notify you while the window is closed.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Turn On in Login Items") {
+                    menuBarEnabled = true
+                    Task { await model.setMenuLogin(true) }
+                }
+                .disabled(model.changingLogin)
+            }
+        }
+    }
+
+    private func openNotificationSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
+            NSWorkspace.shared.open(url)
         }
     }
 
@@ -976,6 +1057,7 @@ struct SettingsView: View {
                              format: .number.grouping(.never))
                     }
                 }
+                .accessibilityLabel(Text("Attempts per Round"))
                 .disabled(model.busy)
                 Text("Shared with the command-line tool. A round makes at most this many attempts and does not keep polling while idle.")
                     .font(.callout).foregroundStyle(.secondary)
@@ -1095,20 +1177,18 @@ struct AutomntMenuView: View {
                 .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
             Button("Open Automnt") { openWindow(id: "main") }
             SettingsLink()
-            Button("Hide Menu Bar Icon") {
-                Task {
-                    await model.setMenuLogin(false)
-                    if model.loginStatus == .notRegistered || model.loginStatus == .notFound {
-                        menuBarEnabled = false
-                    }
-                }
-            }.disabled(model.changingLogin)
+            // Turning the resident app off belongs in Settings, where the consequence is
+            // confirmed. A one-click item here could silently remove the login item and
+            // disable window-closed notifications.
             if let snapshot = model.snapshot, snapshot.configuration.isAutomationEnabled {
                 Button("Turn Off Automatic Mounting") { model.saveAutomation(false, base: snapshot, surface: .menuBar) }
                     .disabled(model.busy)
                 Text("Shared folders that are already mounted stay available.")
             }
             if model.messageSurface == .menuBar, let issue = model.issue { Text(issue) }
+            if model.notificationPermission == .allowed {
+                Text("Quitting stops notifications while the window is closed. Automatic mounting continues.")
+            }
             Button("Quit Automnt") { NSApplication.shared.terminate(nil) }
         }
         .task {

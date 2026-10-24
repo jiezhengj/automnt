@@ -126,8 +126,8 @@ struct BackgroundVolumeEffects {
                       snapshot: ConfigSnapshot, backend: BackendState,
                       directory: AuthorizedDirectory,
                       deadline: ContinuousClock.Instant) throws -> BackgroundMountExecution {
-        // 顺序与改动前一致：先取凭据，再核剩余预算。
-        let credential = try KeychainCredentialProvider().read(identity: smbResourceIdentity(share.smbURL) ?? "")
+        // 凭据复用：有应用内条目则用，否则交给 NetFS 复用 macOS 已保存的 SMB 登录。
+        let credential = SMBSystemCredential.reuse(shareURL: share.smbURL)
         let remaining = ContinuousClock.now.duration(to: deadline).components
         let seconds = Double(remaining.seconds) + Double(remaining.attoseconds) / 1e18
         guard seconds > 0 else { throw AutomntIssue.timeout }

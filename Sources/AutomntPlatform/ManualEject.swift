@@ -23,7 +23,7 @@ public enum ManualEject {
                     try UserEjectCommit.verifyReadable(directory: directory.url)
                 }
             }
-            let credential = try KeychainCredentialProvider().read(identity: smbResourceIdentity(share.smbURL) ?? "")
+            let credential = SMBSystemCredential.reuse(shareURL: share.smbURL)
             let request = WorkerMountRequest(host: host, share: share,
                 expiresAtUptime: ProcessInfo.processInfo.systemUptime + 30,
                 revision: snapshot.revision, generation: backend.generation, manuallyRequested: true)

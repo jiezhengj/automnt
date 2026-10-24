@@ -15,6 +15,40 @@ final class DraftTerminationDelegate: NSObject, NSApplicationDelegate {
     static var request: (() -> Bool)?
     static var approved = false
 
+    private var windowPresenceObservers: [NSObjectProtocol] = []
+
+    /// Login-item launch must not add a Dock icon: the resident app is a menu bar app.
+    /// The Info.plist declares LSUIElement, and Dock presence is granted only while a titled
+    /// app window (main window or Settings) is on screen.
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let center = NotificationCenter.default
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didDeminiaturizeNotification,
+                     NSWindow.willCloseNotification] {
+            windowPresenceObservers.append(center.addObserver(forName: name, object: nil,
+                queue: .main) { _ in
+                Task { @MainActor in DraftTerminationDelegate.updateDockPresence() }
+            })
+        }
+        Self.updateDockPresence()
+    }
+
+    static func updateDockPresence() {
+        let hasWindow = NSApp.windows.contains { window in
+            window.isVisible && window.level == .normal && window.styleMask.contains(.titled)
+        }
+        let policy: NSApplication.ActivationPolicy = hasWindow ? .regular : .accessory
+        guard NSApp.activationPolicy() != policy else { return }
+        NSApp.setActivationPolicy(policy)
+        if policy == .regular, !NSApp.isActive { NSApp.activate(ignoringOtherApps: true) }
+    }
+
+    /// A resident menu bar app must survive closing its last window; without the icon it
+    /// would keep running with no window, no Dock icon and no menu bar entry, so it quits
+    /// the way a normal window app does.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        !UserDefaults.standard.bool(forKey: "menuBarEnabled")
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !Self.approved, let request = Self.request else { return .terminateNow }
         return request() ? .terminateNow : .terminateCancel
@@ -196,6 +230,11 @@ final class ApplicationModel {
     var requestedDetail: DetailRequest?
 
     private var authorization: AuthorizedDirectory?
+    /// The resident delivery loop for notices the background helper recorded.
+    private var notificationPump: Task<Void, Never>?
+    /// The instance that owns resident services must outlive SwiftUI's state installation;
+    /// otherwise the delivery loop's weak reference dies and notices pile up undelivered.
+    private static var residentServicesOwner: ApplicationModel?
     private let permissions = PermissionStore()
     private var ledger = OperationLedger()
 
@@ -1413,6 +1452,51 @@ final class ApplicationModel {
         }
     }
 
+    // MARK: - Resident notification delivery
+
+    /// Bootstraps the paths that must exist even when the main window never appears.
+    ///
+    /// A login-item launch shows only the menu bar, so the window's task cannot be the only
+    /// place that restores configuration access or starts delivery.
+    func bootstrapResidentServices() {
+        // SwiftUI may initialize the App struct more than once; only the first instance may
+        // own delivery, otherwise two loops could race on the same one-slot notice.
+        guard Self.residentServicesOwner == nil else { return }
+        Self.residentServicesOwner = self
+        restore()
+        startNotificationPump()
+        NSLog("automnt resident notification pump started")
+    }
+
+    /// The app is the only process with a notification identity, and the sandboxed helper may
+    /// not borrow it. The helper leaves a notice; this loop delivers it while the app runs.
+    private func startNotificationPump() {
+        guard notificationPump == nil else { return }
+        notificationPump = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.deliverPendingNotification()
+                try? await Task.sleep(for: .seconds(20))
+            }
+        }
+    }
+
+    /// Delivers one recorded notice. Foreground suppression and the sound preference are
+    /// applied by the dispatcher; an expired notice is dropped rather than shown as current.
+    private func deliverPendingNotification() async {
+        guard let directory = authorization else { return }
+        let store = PendingNotificationStore(authorizedDirectory: directory.url)
+        guard let pending = store.read() else { return }
+        store.remove()
+        guard !pending.isExpired() else { return }
+        let outcome = await AppNotificationDispatcher.dispatch(count: pending.count,
+            soundEnabled: pending.soundEnabled)
+        NSLog("automnt notification pump delivery=%@ count=%d", outcome.delivery.rawValue, pending.count)
+        try? NotificationDeliveryRecordStore(authorizedDirectory: directory.url).save(
+            NotificationDeliveryRecord(delivery: outcome.delivery, count: pending.count,
+                soundEnabled: pending.soundEnabled,
+                soundPreferenceNeedsRepair: pending.soundPreferenceNeedsRepair))
+    }
+
     // MARK: - Diagnostics
 
     func diagnosticPreview() throws -> DiagnosticExportPreview {
@@ -1492,8 +1576,9 @@ final class ApplicationModel {
 struct AutomntApp: App {
     @NSApplicationDelegateAdaptor(DraftTerminationDelegate.self) private var terminationDelegate
     /// The app main executable is the only Automnt process allowed to own notification
-    /// delivery. A helper in `Contents/Helpers` has no resolvable bundle identity and would
-    /// abort with exit 134; it delegates here as a bounded child instead.
+    /// delivery. A helper in `Contents/Helpers` has no resolvable bundle identity and, under
+    /// App Sandbox, may not spawn this executable either (`forbidden-sandbox-reinit`); it
+    /// records a pending notice and the resident app delivers it.
     init() {
         launchedAtLogin = NSAppleEventManager.shared().currentAppleEvent?
             .paramDescriptor(forKeyword: AEKeyword(keyAELaunchedAsLogInItem)) != nil
@@ -1577,12 +1662,17 @@ struct AutomntApp: App {
         // (DEF-2/DEF-5). Do not inline this policy again: it is not covered by the tests here.
         switch NotificationDeliveryEntry.disposition(for: CommandLine.arguments) {
         case .startGUI:
-            return
+            break
         case .exitWithOutcome(let outcome, let count):
             // No window, no permission prompt and no configuration write on this path.
             writeDiagnostic(outcome, count: count)
             exit(outcome.exitCode)
         }
+        // The resident process owns notification delivery: the sandboxed helper can only
+        // record a notice. A login-item launch suppresses the main window, so the window's
+        // task cannot be the only bootstrap path.
+        let residentModel = _model.wrappedValue
+        Task { @MainActor in residentModel.bootstrapResidentServices() }
     }
 
     private func writeDiagnostic(_ outcome: NotificationDispatchOutcome, count: Int) {

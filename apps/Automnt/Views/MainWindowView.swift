@@ -825,6 +825,7 @@ private struct ServerSharesView: View {
                             get: { host.enabled },
                             set: { toggleServer($0) }))
                             .toggleStyle(.switch)
+                            .accessibilityLabel(Text("Include This Server in Automatic Mounting"))
                             .disabled(masterOff || !model.configurationChangesAllowed)
                         Text(serverAutomationCaption)
                             .font(.caption)

@@ -2,7 +2,7 @@
 
 **Feature**：005-swiftui-mas-gui | **修订**：2026-10-13 | **规格**：[spec.md](spec.md)
 
-**完成说明（2026-10-22）**：Feature 已完成。下方早期布局描述中“Finder/修复作为共享行主动作、URL/路径/索引/编辑/移除进入 sheet”已被 2026-10-21 的从零交互架构取代；最终布局以 [interaction-architecture.md](design/interaction-architecture.md)、[spec.md](spec.md) 的 Status 与真实窗口为准。
+**完成说明（2026-10-24 收口，替代 2026-10-22 的“已完成”表述）**：Feature 005 的本地实现与按批准等价标准的验收已完成；后台跨登录/重启自动挂载、端到端失败通知、运行期界面、可访问名称与九语文案均已实测，边界与未验证项以 [spec.md](spec.md) 的 Status 与“完成结论”为准。下方早期布局描述中“Finder/修复作为共享行主动作、URL/路径/索引/编辑/移除进入 sheet”已被 2026-10-21 的从零交互架构取代；最终布局以 [interaction-architecture.md](design/interaction-architecture.md) 与真实窗口为准。
 
 **当前范围**：维护者已授权继续 Implement，执行 T083–T094 及可执行的历史未完成任务，允许本地源码、图标、构建、签名与真实运行验证；不递增版本，不执行提交、推送、发布或商店提交。已有真实 CLI SMB 结果仍不证明 GUI/helper 授权、认证或后台恢复通过。
 

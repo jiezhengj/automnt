@@ -1,0 +1,69 @@
+第九轮（2026-10-24 深夜）文案与文字大小裁定证据
+================================================
+
+一、维护者授权
+“需要你后续裁定的只有两件：……你和 agy 讨论后确定。”
+
+二、agy 顾问意见（完整文本另存 /tmp/agy-decide.txt，摘录）
+- 第一件：建议德语人称统一为 Sie；pt-BR Definições→Ajustes、entrar na sessão→iniciar a sessão；
+  ja アプリ→App（保留「アプリケーション」）、復元→復旧（仅网络重连）；ko 하십시오→하세요、세부 정보→세부사항；
+  zh-Hans App/应用“不改”；zh-Hant 資料夾→檔案夾、恢復→回復（仅存取）；fr « Ouverture »、es «Ítems de inicio»；
+  认知重复大小写 key 镜像译文。
+- 第二件：结论“不开任务”，理由为系统文字大小只对系统内置/Catalyst 应用开放、原生 SwiftUI 语义字号固定，
+  自建缩放无法进入系统面板且会破坏九语窄窗布局；建议以显示器“较大文字”/缩放替代，并写入 known-limitations。
+
+三、本机实测对 agy 结论的修正（Apple 系统自带本地化，macOS 27）
+1. 德语：系统设置（-AppleLanguages de）辅助功能页原文
+   “Personalisiere den Mac so, wie es für dich am besten funktioniert – mit Bedienungshilfen für Sehen, Hören,
+    Motorik, Sprechen und kognitive Bedürfnisse.”
+   登录项扩展本地化：“Login Items & Extensions” => “Anmeldeobjekte & Erweiterungen”；
+   “Allow command line tools…” => “Erlaube die Verwendung von Befehlszeilen-Werkzeugen …”。
+   → Apple 德语使用 du（非正式），agy 建议的 Sie 目标被否决；德语语气统一目标应为 du。
+2. 法语：LoginItems.appex Localizable.loctable fr：
+   “Login Items & Extensions” => “Ouverture et extensions”。
+   → 采纳 “Ouverture” 作为登录项面板名。
+3. 西班牙语：同表 es：
+   “Login Items & Extensions” => “Ítems de inicio y extensiones”；“Open at Login” => “Abrir al iniciar sesión”。
+   → 采纳 “Ítems de inicio”。
+4. 德语登录项动作：“Open at Login” => “Bei der Anmeldung öffnen”；“These items will open automatically…” =>
+   “Diese Objekte werden bei der Anmeldung automatisch geöffnet.”（与 app 现文案一致）。
+
+四、决定一：应用机械且语义安全的统一（63 处值），不做机器化语气重写
+已应用（apps/Automnt/Resources/Localizable.xcstrings）：
+- de（术语）：geteilte/geteilten/geteilter Ordner → freigegebene/freigegebenen/freigegebener Ordner（12 处）；
+  “Geteilten Ordner entfernen?” → “Freigegebenen Ordner entfernen?”；gemountet* → eingebunden*（3 处）；
+  “Mounten” → “Einbinden”；“Kommandozeilenversion” → “Befehlszeilenversion”。
+  保留 “Wird mit dem Befehlszeilenwerkzeug geteilt.”（共用设置，非共享文件夹）。
+- pt-BR：Definições do servidor… → Ajustes do servidor…；4 处登录动作 entrar na sessão → iniciar a sessão
+  （“precisa iniciar junto com a sessão” 避免重复 iniciar）；“Parar de abrir… ao iniciar a sessão?”。
+- ja：3 处独立名词 アプリ → App（保留「アプリケーション」フォルダ）；
+  2 处网络重连 復元 → 復旧（“予期しない切断の復旧”“Recovery” => “復旧中”）；
+  保留同梱リソースを復元（安装包还原资源）。
+- ko：10 处 하십시오 → 하세요；View details/Opens…details 的 세부 정보 → 세부사항。
+- zh-Hant：該資料夾 → 該檔案夾；2 处恢复存取 恢復 → 回復（Apple 繁中系统用语）。
+- fr：Open Login Items settings → Ouvrir les réglages « Ouverture »；L’élément de connexion → L’élément d’ouverture；
+  “éléments d’ouverture de session” → “éléments d’ouverture”。
+- es：Abrir ajustes de inicio de sesión → Abrir ajustes de «Ítems de inicio»；El ítem de inicio de sesión →
+  El ítem de inicio；los ítems de inicio de sesión → «Ítems de inicio»。
+- 大小写重复 key 漂移：Open Login Items settings / View details / Automatic mounting / Automatic recovery
+  镜像标题大小写 key 的译文；Check Login Setting 与 Check login setting 统一为
+  es “Comprobar ajuste de «Ítems de inicio»”、pt-BR “Verificar ajuste de início de sessão”、fr “Vérifier le réglage d’ouverture”。
+未应用（记录为遗留润色项，不新增 Feature 任务）：
+- 德语 du/Sie 语气全量统一：目标已确认为 du，但约 60 条含敬语动词与所有格结构
+  （Wählen Sie / Geben Sie / Erlauben Sie / Ihre …），需语言编辑级逐句重写，不能用字符串替换。
+- zh-Hans “App/应用”：23 处“应用”中多为动词“应用更改”与既有术语“应用控制/应用后台挂载”，不改。
+
+五、决定二：动态字体（系统“较大文字”）不单开任务
+实测：系统设置 > 无障碍 > 显示 > 文字大小（0–14，默认 4）调 6、重启 App 后文字不变；
+面板“支持的 App”不含 Automnt。未验证 Apple 是否向第三方原生 App 开放注册（未找到公开入口）。
+结论：记为平台限制与已知限制，不新增 Feature 005 任务。替代路径：显示器“较大文字”缩放（1024×666 实测可读，
+已还原 1470×956）与系统缩放；不采用“应用内自建字体缩放”，因为它无法让系统面板生效、且增加九语窄窗布局风险。
+
+六、门禁与实机抽查（最终安装构建）
+- verify-localization.py exit 0（267 条源字符串 × 9 语言）。
+- Release 构建成功、安装 /Applications/Automnt.app、verify-signature.sh 5 项 PASS。
+- 真机抽查（-AppleLanguages 启动后读 AX）：
+  de：Automatisches Einbinden / Einbinden im Hintergrund / freigegebene Ordner /
+      Freigegebenen Ordner hinzufügen…（无 geteilte、无 gemountet、无 Kommandozeile）
+  ja：自動マウントと自動復旧が実行中です。/ 自動復旧
+  pt-BR：Ajustes de Automnt / Ajustes do servidor / Ao iniciar a sessão, apenas o ícone …

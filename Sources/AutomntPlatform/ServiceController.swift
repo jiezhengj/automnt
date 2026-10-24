@@ -9,6 +9,7 @@ public final class ServiceController {
     public enum Mode: String, Sendable {
         case baseline, recovery
         public var plistName: String { "automnt.\(rawValue).plist" }
+        public var agent: BundledAgent { self == .baseline ? .baseline : .recovery }
     }
     public let mode: Mode
     public init(mode: Mode) {
@@ -40,16 +41,8 @@ public final class ServiceController {
     /// On this SDK a never-registered agent returns notFound (BTM record absent).
     /// Interpret that as stopped only for our exact, valid signed definition.
     private var hasVerifiedBundledDefinition: Bool {
-        let application = Bundle.main.bundleURL
-        let helper = application.appendingPathComponent("Contents/Helpers/AutomntHelper")
-        let definition = application.appendingPathComponent("Contents/Library/LaunchAgents/" + mode.plistName)
         do {
-            try BundledCodeVerifier.verifyHelper(applicationURL: application, helperURL: helper)
-            let data = try Data(contentsOf: definition)
-            guard let plist = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
-                  plist["Label"] as? String == "org.automnt.automnt." + mode.rawValue,
-                  plist["BundleProgram"] as? String == "Contents/Helpers/AutomntHelper",
-                  plist["Program"] == nil, plist["ProgramArguments"] == nil else { return false }
+            try BundledServiceDefinition.verify(applicationURL: Bundle.main.bundleURL, agent: mode.agent)
             return true
         } catch { return false }
     }

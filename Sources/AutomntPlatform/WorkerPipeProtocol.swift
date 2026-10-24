@@ -57,7 +57,10 @@ public enum WorkerPipeProtocol {
         guard metadata.count <= maximumMetadataBytes,
               username.count <= maximumCredentialBytes,
               credential.password.count <= maximumCredentialBytes,
-              request.operation == .mount ? (!username.isEmpty && !credential.password.isEmpty) : (username.isEmpty && credential.password.isEmpty) else { throw AutomntIssue.invalidConfiguration }
+              // A mount may carry no credential at all: NetFS then reuses the macOS-held
+              // sign-in (same as the CLI). A half credential is always a protocol error.
+              username.isEmpty == credential.password.isEmpty,
+              request.operation == .mount || (username.isEmpty && credential.password.isEmpty) else { throw AutomntIssue.invalidConfiguration }
         var body = Data()
         for part in [metadata, username, credential.password] {
             appendLength(part.count, to: &body)
@@ -79,7 +82,8 @@ public enum WorkerPipeProtocol {
         }
         let request = try JSONDecoder().decode(WorkerMountRequest.self, from: metadata)
         guard request.schema == 1, request.expiresAtUptime.isFinite,
-              request.operation == .mount ? (!username.isEmpty && !password.isEmpty) : (username.isEmpty && password.isEmpty) else { throw AutomntIssue.invalidConfiguration }
+              username.isEmpty == passwordText.isEmpty,
+              request.operation == .mount || (username.isEmpty && passwordText.isEmpty) else { throw AutomntIssue.invalidConfiguration }
         return (request, MemoryCredential(username: username, password: password))
     }
 

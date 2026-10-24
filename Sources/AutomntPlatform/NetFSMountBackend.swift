@@ -17,8 +17,17 @@ public enum NetFSWorkerOperation {
         guard ConfigurationValidation.problems(in: configuration).isEmpty,
               let url = URL(string: share.smbURL.hasPrefix("//") ? "smb:\(share.smbURL)" : share.smbURL),
               let identity = smbResourceIdentity(share.smbURL) else { throw AutomntIssue.invalidConfiguration }
-        guard !credential.username.isEmpty, let password = String(data: credential.password, encoding: .utf8),
-              !password.isEmpty else { throw AutomntIssue.credentialFailure }
+        // The product does not manage SMB passwords. An empty credential is not an error:
+        // NetFS then reuses the sign-in macOS already holds for this share (the same path
+        // the CLI takes). `kNAUIOptionNoUI` keeps a background miss from raising a dialog.
+        let user: CFString? = credential.username.isEmpty ? nil : credential.username as CFString
+        var password: CFString?
+        if !credential.username.isEmpty {
+            guard let text = String(data: credential.password, encoding: .utf8), !text.isEmpty else {
+                throw AutomntIssue.credentialFailure
+            }
+            password = text as CFString
+        }
         let openOptions = NSMutableDictionary(dictionary: [kNAUIOptionKey as String: kNAUIOptionNoUI])
         let mountOptions = NSMutableDictionary()
         let standard = deriveStandardMountPoint(from: share.smbURL)
@@ -27,7 +36,7 @@ public enum NetFSWorkerOperation {
         let mountDirectory = URL(fileURLWithPath: custom ? share.mountPoint : "/Volumes", isDirectory: true)
         var mounted: Unmanaged<CFArray>?
         let status = NetFSMountURLSync(url as CFURL, mountDirectory as CFURL,
-                                      credential.username as CFString, password as CFString,
+                                      user, password,
                                       openOptions, mountOptions, &mounted)
         let paths = mounted?.takeRetainedValue() as? [String] ?? []
         guard status == 0 else { throw issue(status) }

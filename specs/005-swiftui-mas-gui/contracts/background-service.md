@@ -14,9 +14,38 @@ GUI启用前只执行本地预检：核验App/helper的Apple锚、固定身份�
 
 当前SDK真机首次未登记服务可能返回notFound并记录BTM record not found。仅在App/helper严格签名验证通过、随包定义可解析、固定Label/BundleProgram匹配且无Program/ProgramArguments时，将该状态映射为stopped；定义缺失/签名无效/未知系统状态仍unavailable。enabled与requiresApproval保留互斥保护；原始SDK状态另供诊断，不以stopped证明进程收敛或注册成功。
 
+## 2026-10-23 helper 就绪判定修正
+
+- 实测事实：helper 进程内 `Bundle.main.bundleURL` 为 `/Applications/Automnt.app/Contents/Helpers/`，不在 app bundle 根；helper 内查询 `SMAppService.agent(plistName:)`（Sources/AutomntPlatform/ServiceController.swift:16）返回 error 22（Unable to find service status）。App 进程内同一查询正常（baseline=notFound、recovery=enabled）。因此 App 侧状态不能当作 helper 进程内的判定依据，也不能据此认为 helper 已获准运行。
+- helper 内禁用 SMAppService 状态查询：不得再把“服务非 enabled”映射成待批准后退出（现行路径见 Sources/AutomntPlatform/BackgroundEvaluationTrigger.swift:53）。helper 的就绪判定改由三组证据共同成立：
+  1. 解析后 app bundle 内固定 LaunchAgent 定义校验：Label、`BundleProgram = Contents/Helpers/AutomntHelper`、无 `Program`/`ProgramArguments`，且定义对应模式（基线/恢复）与配置期望一致。
+  2. launchd 期望身份：进程环境中的 `XPC_SERVICE_NAME` 与配置期望的服务标签一致，证明本次执行来自注册的固定服务，而非其他来源。
+  3. 已提交 backend-state：owner=app、phase=active、`lastVerifiedServiceStatus=enabled`、generation 与当前配置/状态一致。
+- 任一组证据缺失：helper 有界退出，写出结构化原因供 App 显示真实状态；不评估、不挂载、不后台索权，不把缺失证据记为已批准，也不伪造待批准结论。
+- 失败回退：三组证据无法同时满足时，前台 App 继续以 SMAppService 为权威显示“待批准/未运行/无法确认”，并提供系统设置与修复入口；界面显示成功不能代替 helper 可用。
+- App 侧仍以 SMAppService 为真实状态源，负责注册、批准判断与两服务互斥；本修正不改变注册定义、`BundleProgram` 取值、事件触发方式（RunAtLoad、固定 WatchPaths、StartOnMount）与单 owner 约束。
+- 状态（2026-10-23 第三轮）：该机制已在本地实现（Sources/AutomntPlatform/HelperBackgroundReadiness.swift 三组证据；apps/Automnt/Service/HelperEntry.swift:74-80 注入 readiness），签名构建已安装；真实 launchd `kickstart` 触发下 `XPC_SERVICE_NAME` 有值、helper 通过就绪并完成挂载（不再 error 22）。跨重启稳定性未验证（T138）。
+- 未验证项：真实重启/重新登录后的就绪稳定性、backend-state 提交时序、失败分类在真实系统的表现、失败通知端到端投递，均以 T140/T138 为准；本节记录的是当前实现与裁定，不表示全部验收通过。
+
+# 挂载执行位置
+
+App Sandbox 下 NetFS 挂载必须由沙盒 helper/App 自身进程执行，不能再派生 worker 子进程。三次子进程方案实测均失败：`inherit` 子进程（app-sandbox + inherit）无网络授权，NetFS 返回 authorizationRequired；`inherit` 子进程加入 `com.apple.security.network.client` 后内核/containermanager 初始化卡住或崩溃（secinit 报 container/persona，30s 后被杀）；子进程改为独立沙盒（app-sandbox + network.client + 固定目录例外）后内核报 `deny(1) forbidden-sandbox-reinit`，SIGTRAP 崩溃（崩溃报告 asiSignatures 记录）。因此“可强杀的子进程负责挂载”在 App Sandbox 下不可实现。
+
+现行为：挂载/弹出/健康/清理经 Sources/AutomntPlatform/MountExecutionService.swift 在调用进程内执行；Sources/AutomntPlatform/MountWorkerRunner.swift 不再 spawn 子进程，但仍以 BundledCodeVerifier 校验嵌套的 AutomntWorker 作为代码封印（MountWorkerRunner.swift:65），并在同一处保留 `WorkerOperationStore.begin`（:67）、响应校验（:71）、完成策略（:73）与 `store.complete`（:77）。AutomntWorker 二进制保留为嵌套封印、当前不被执行；清理它属于后续可选项，清理前必须同步修改封印校验与签名门禁。
+
+纪律不变：意图先落盘（WorkerOperationStore），执行前重读配置并核对 revision/generation/permit，只有通过校验的响应才允许 complete；超时或被杀留下 pending，由下一次 repair 处理。helper 启动时调用 `abandonPendingForRepair()`（apps/Automnt/Service/HelperEntry.swift:83），仅在能取得 evaluation.lock 时清除遗留 pending，取不到锁则保守失败。
+
+沙盒健康语义：Sources/AutomntPlatform/VolumeHealthWorkerOperation.swift:34-40 在挂载身份已核验、`opendir/readdir` 返回 EACCES/EPERM 且本进程带 app-sandbox 权限时判为 healthy——App Sandbox 不允许进程读取自己挂载的网络卷，内容可读性由用户自己的非沙盒应用验证。CLI 不在此路径，仍严格校验，不放宽。
+
+通知投递曾受同一限制：helper 曾经 AppNotificationDelivery 派生 App 主可执行文件投递（Sources/AutomntPlatform/NotificationChannel.swift:186），该“借用 App 身份”的子进程路径已被 `forbidden-sandbox-reinit` 实测拒绝；2026-10-23 第四轮起改为 helper 记录、常驻 App 投递（见“失败通知：记录与投递分离”）。2026-10-24 第七轮已实测端到端通过（真实 `shareRejected` → pending → 常驻 App 17–22 秒内 `delivered`），并修复两处阻塞：确定性挂载失败后 launch intent 必须清除（否则失败观测/通知被 `verifyIdle()` 的 `signalUnavailable` 吞掉，见 `Sources/AutomntPlatform/MountWorkerRunner.swift`）；常驻投递循环必须强引用引导实例并单 owner（否则 pending 永不被消费，见 `apps/Automnt/AutomntApp.swift` 的 `residentServicesOwner`）。
+
+已确认限制：沙盒 GUI/helper 只能核验挂载身份与内核挂载表，不能读取卷内容；用户自己的非沙盒应用可正常读取。该限制不是待修缺陷，不得写成“内容已由本应用验证”。
+
+更新（2026-10-24 第七轮）：真实重启后的自动挂载与会话抑制清除已通过（19:00 登录项启动、两卷自动挂载、观测 healthy）；GUI 运行期手动弹出/挂载与失败通知端到端已实测。仍未验证：真实注销/重新登录轮（不可由 Agent 执行，属已记录限制）、辅助功能实际朗读与较大文字矩阵（人工 T144）。
+
 # 系统 SMB 认证边界
 
-GUI/helper 复用系统 SMB 认证及已保存凭据，不增加独立密码管理。当前 CLI NetFS 传 nil user/password，sandbox/helper 的复用能力尚未验证。后台禁止认证 UI；认证失效留结构化失败，下次打开指引用户到 Finder 完成系统连接后重试。普通用户无应用密码录入、验证、删除入口，不以应用 Keychain 密码项或秘密管道兜底。主界面本地已挂载 SMB 发现是前台打开/挂载变化/重新激活时的呈现需求，不新增后台轮询或第二评估 owner。
+GUI/helper 复用系统 SMB 认证及已保存凭据，不增加独立密码管理。沙盒 helper 自身进程内的 NetFS 复用已实测成功（本轮连续 3 次 status:0，挂载 /Volumes/finalhome、/Volumes/personal_folder）；GUI 进程内与 CLI 的复用边界仍分别记录。当前 CLI NetFS 传 nil user/password。后台禁止认证 UI；认证失效留结构化失败，下次打开指引用户到 Finder 完成系统连接后重试。普通用户无应用密码录入、验证、删除入口，不以应用 Keychain 密码项或秘密管道兜底。主界面本地已挂载 SMB 发现是前台打开/挂载变化/重新激活时的呈现需求，不新增后台轮询或第二评估 owner。
 
 # 用户同意与停用
 
@@ -32,9 +61,20 @@ GUI/helper 复用系统 SMB 认证及已保存凭据，不增加独立密码管�
 
 当轮核对结果和核心通知限额先记录，再进行展示决策；GUI 本身不重复投递同一结果。投递前最后一次查询为 Automnt 时，只保留失败状态，不请求通知与声音；查到其他应用时可按限额投递。查询返回 nil、身份无法核对或系统能力受限时，本轮保守静默并记录脱敏诊断，不将未知当后台。切回后台不补发已消费事件。nil可能来自没有可识别前台应用，也可能来自系统能力限制，当前不能可靠区分，均不视为已确认后台；最新失败留在状态和脱敏诊断，下次打开显示检查/重试入口。首次用途说明不承诺失败通知必达；查询持续不可用属于T016机制门槛失败，需要修订方案后才进入实施。应用崩溃/退出后直接重新查询系统状态，不依赖需清理的磁盘前台标记。
 
-查询与投递不能构成原子操作：GUI 运行时设置 `UNUserNotificationCenterDelegate`，在 `willPresent` 中对到达前台的 GUI 失败通知返回空 presentation options，不显示横幅、不播放声音；若前台查询后 GUI 转入后台，此次已抑制提醒不补发，最新失败仍可查看。退出后 helper 独立投递的身份和系统前台路由仍须实证，不能仅凭 API 可编译宣布成立。
+查询与投递不能构成原子操作：GUI 运行时设置 `UNUserNotificationCenterDelegate`，在 `willPresent` 中对到达前台的 GUI 失败通知返回空 presentation options，不显示横幅、不播放声音；若前台查询后 GUI 转入后台，此次已抑制提醒不补发，最新失败仍可查看。2026-10-23 第四轮起，退出 GUI 后不再由 helper 独立投递：helper 只记录 pending，投递由常驻 App 负责（见下文“失败通知：记录与投递分离”），该链路已于 2026-10-24 第七轮实测：真实失败经 pending 由常驻 App 投递并记录 `notification-delivery.plist`；前台时记录 `suppressedForeground`。
 
-T016/T021 必须在签名 sandbox helper 的 launchd 身份下验证查询可用性，以及前台/后台/隐藏/菜单交互/退出/崩溃和投递竞态；验证 delegate 实际抑制横幅与声音、计数不重复且不补发。若目标系统无法提供所需查询或前台回调，停止此机制的通过结论并修订设计；不自行增加轮询或常驻服务作为兜底。
+T016/T021 的查询与投递验证随之移到常驻 App 进程：验证前台/后台/隐藏/菜单交互/退出/崩溃和投递竞态，delegate 实际抑制横幅与声音、计数不重复且不补发；helper 一侧只验证 pending 记录与探针语义（`helper-delivery=unsupported-by-design`）。若目标系统无法提供所需查询或前台回调，停止此机制的通过结论并修订设计；不自行增加轮询或常驻服务作为兜底（常驻 App 是维护者 2026-10-23 选定的投递 owner，不属于“新增轮询兜底”）。
+
+## 失败通知：记录与投递分离
+
+2026-10-23 第四轮，维护者选定方案 A：失败通知由常驻 App 投递，helper 只记录。沙盒下所有“借用 App 身份”的路径都不可用（与“挂载执行位置”同一根因：派生 App 主可执行文件会被 `forbidden-sandbox-reinit` 拒绝，实测崩溃），因此 helper 不得再派生 App、不得调用 `UNUserNotificationCenter`。
+
+- helper 侧：预算提交后写单槽位派生状态 `pending-notification.plist`（count、soundEnabled、soundPreferenceNeedsRepair、createdAt；Sources/AutomntPlatform/PendingNotificationStore.swift:39-62），有效期 600 秒（:16、:34），覆盖写、损坏或版本不符丢弃、读取后可删除；不重写业务配置、失败只写日志。`--probe-notification-channel` 只报告边界：`helper-delivery=unsupported-by-design`、`delivery-owner=app-when-running`，退出 0，不尝试投递。
+- App 侧：常驻进程启动投递循环（apps/Automnt/AutomntApp.swift:1424-1456，20 秒轮询），读取 pending → 删除 → 过期丢弃 → `AppNotificationDispatcher`（沿用前台抑制与声音偏好，Sources/AutomntPlatform/NotificationChannel.swift:295）→ 写 `notification-delivery.plist`。登录项启动会抑制主窗口，因此 bootstrap 必须在 App `init()`（:1632）执行，不能依赖窗口任务。
+- 单向依赖：要后台失败通知 ⇒ App 登录时运行 ⇒ 菜单栏图标常驻。反向不要求：菜单栏图标可常驻而通知关闭或被系统拒绝。App 未运行、被退出、未设为登录项或通知权限被拒/撤销时不发通知；这是明示限制，不是缺陷，界面必须把“意图 vs 实际”表达清楚（设置中的前置条件、禁用态、警示与关闭确认，见 T139）。
+- 过期与去重：10 分钟内未投递的记录在下次投递时丢弃，不补发历史失败；同一轮失败只保留最新 count，投递结果写入 `notification-delivery.plist` 供界面与诊断读取。
+- 未验证项：真实后台失败 → pending → 常驻 App 20 秒内投递的端到端链路（T140）、登录项启动后投递循环运行、系统拒绝/paused/前台抑制/过期丢弃在真实链路的行为、菜单栏常驻界面与辅助功能（T141）；App 身份单次 `--deliver-notification` 实测只证明 App 能投递，不证明该链路。
+
 
 # 所有权转换
 

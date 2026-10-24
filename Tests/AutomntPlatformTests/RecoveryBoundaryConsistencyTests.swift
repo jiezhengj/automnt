@@ -180,18 +180,23 @@ struct RecoveryBoundaryConsistencyTests {
                                                       previous: nil).combined
         #expect(!expectedBoundary.isEmpty)
 
-        // planner 在 nil 初值下（establishing 分支）仍以具体边界评估。
-        let action = planner(fixture, boundary: nil)
-        let shared = RecoveryVolumeDecisionPolicy.judge(
-            RecoveryVolumeFacts(identity: fixture.second.identity,
-                mountPoint: fixture.second.mountPoint, presentInMountTable: false,
-                hostReachable: true, health: .unavailable),
-            context: RecoveryVolumeContext(configuration: fixture.configuration,
-                state: peerFile(fixture, boundary: expectedBoundary),
-                stateReadable: true, boundary: expectedBoundary,
-                peers: RecoveryVolumeDecisionPolicy.peers(configuration: fixture.configuration),
-                manualRecovery: false, permitsMount: true))
-        #expect(action == RecoveryVolumeAction.planned(for: shared.decision),
-                "planner action=\(action) shared(concrete)=\(shared.decision)")
+        // planner 在 nil 初值下（establishing 分支）仍以具体边界评估；establishing 还会
+        // 把「`.attached` 但不在挂载表中」的陈旧记录改成 `.pendingRecovery`，因此共享判定
+        // 必须在同一份推进后的记录上比较。用户弹出记录（`.suppressed`）保持抑制。
+        for (initial, advanced) in [(MountRecoveryVolumeState.attached, MountRecoveryVolumeState.pendingRecovery),
+                                    (MountRecoveryVolumeState.suppressed, MountRecoveryVolumeState.suppressed)] {
+            let action = planner(fixture, boundary: nil, peerState: initial)
+            let shared = RecoveryVolumeDecisionPolicy.judge(
+                RecoveryVolumeFacts(identity: fixture.second.identity,
+                    mountPoint: fixture.second.mountPoint, presentInMountTable: false,
+                    hostReachable: true, health: .unavailable),
+                context: RecoveryVolumeContext(configuration: fixture.configuration,
+                    state: peerFile(fixture, boundary: expectedBoundary, peerState: advanced),
+                    stateReadable: true, boundary: expectedBoundary,
+                    peers: RecoveryVolumeDecisionPolicy.peers(configuration: fixture.configuration),
+                    manualRecovery: false, permitsMount: true))
+            #expect(action == RecoveryVolumeAction.planned(for: shared.decision),
+                    "peer=\(initial) planner action=\(action) shared(concrete)=\(shared.decision)")
+        }
     }
 }

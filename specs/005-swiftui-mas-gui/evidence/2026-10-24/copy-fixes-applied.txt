@@ -1,0 +1,21 @@
+# 已应用的九语文案修订（T144，2026-10-24 第八轮）
+
+来源：agy 九语全量审校（evidence/agy-nine-language-review.txt），本机逐条核对现值后应用，
+仅当 xcstrings 当前值与审校“现译文”完全一致才替换；未应用的条目见报告第二部分（人称/术语统一类，
+属于需要维护者裁定的风格统一，不在本轮静默改动）。
+
+应用 24 条：
+- pt-BR：Server settings → Ajustes do servidor；Open Automnt at Login → …ao Iniciar a Sessão；
+  自动恢复设置提示、SMB 地址提示的 Definições → Ajustes（3 处）。
+- fr：两处 “notifications fenêtre fermée” 补连词，改为 “notifications lorsque la fenêtre est fermée”。
+- de：The mount result… → Einbindungsergebnis/freigegebenen；
+  Mounted shared folders → Eingebundene freigegebene Ordner；
+  CLI 配置提示 Kommandozeile → Befehlszeile；Mount-Ordner → Einbindeordner。
+- ja：恢复通知与运行状态里的“復元”统一为“復旧”（2 处）；CLI 提示的“アプリ”改“App”。
+- es：两处 “con la ventana cerrada” 改为 “cuando la ventana esté cerrada”；Open Login Items Settings → “Ítems de inicio”。
+- zh-Hant：資料夾 → 檔案夾；隱藏選單列圖像 → 圖示；正在恢復 → 正在復原；打開 Automnt → 開啟 Automnt。
+- zh-Hans：登录时打开句式统一（“登录时不再打开 Automnt？” 等 2 处）。
+- ko：两处 하십시오 → 하세요；시스템 로그인 항목 → 로그인 항목。
+
+未应用（待维护者决定）：de 的 du/Sie 人称统一、pt-BR 登录动作的其余分裂、ja 剩余アプリ、ko 个别语气、
+zh-Hans App/应用、zh-Hant 其余 Windows 词汇、fr/es 登录项面板名称统一。

@@ -1,0 +1,35 @@
+# T143 可访问名称审计（2026-10-24 第八轮）
+
+工具：本机 AXUIElement 审计（AXIsProcessTrusted=true），不是 System Events 的 AXTitle 桥（后者对 SwiftUI 元素读不到 label，上一轮据此误判“无名”）。
+
+- 交互元素总数：225
+- 有名称元素：197
+- 无名元素：28（其中产品控件 0 个；其余为系统窗口按钮、滚动条箭头、菜单分隔项）
+
+## 产品控件（开关/按钮/链接）抽样
+
+- NAMED   AXButton title= desc=添加共享文件夹… help=添加共享文件夹… placeholder= value=
+- NAMED   AXButton title= desc=设置 help=设置 placeholder= value=
+- NAMED   AXButton title= desc=搜索 help= placeholder= value=
+- NAMED   AXCheckBox title= desc=此服务器参与自动挂载 help= placeholder= value=1
+- NAMED   AXButton title= desc=finalhome, 可用 help=打开此共享文件夹的详情。 placeholder= value=
+- NAMED   AXCheckBox title= desc=自动挂载此共享文件夹, finalhome help=自动挂载此共享文件夹 placeholder= value=1
+- NAMED   AXButton title= desc=personal_folder, 可用 help=打开此共享文件夹的详情。 placeholder= value=
+- NAMED   AXCheckBox title= desc=自动挂载此共享文件夹, personal_folder help=自动挂载此共享文件夹 placeholder= value=1
+- NAMED   AXButton title= desc=隐藏边栏 help=隐藏边栏 placeholder= value=
+- NAMED   AXButton title= desc=服务器设置 help=服务器设置 placeholder= value=
+- NAMED   AXButton title= desc=搜索 help= placeholder= value=
+- NAMED   AXButton title= desc= help=此按钮也可以执行缩放窗口的操作 placeholder= value=
+
+## 无名产品控件
+
+（无）
+
+## 修复项
+
+- 服务器页“此服务器参与自动挂载”开关原无 accessible name（仅 AXValue=1）；补 `.accessibilityLabel(Text("Include This Server in Automatic Mounting"))`。
+- 设置窗口 5 个开关（自动挂载、自动恢复、在菜单栏中显示、登录时打开、通知声音）原仅暴露 AXValue；全部补 `.accessibilityLabel`。
+- Spotlight 索引开关、每轮尝试次数 Stepper 补 `.accessibilityLabel`。
+- 搜索框的 accessible name 来自 `AXPlaceholderValue`（搜索服务器/搜索共享文件夹），已确认可读，未改。
+
+复测：修复后同一审计中产品控件无名数为 0；系统窗口按钮/滚动条/菜单分隔项仍为空，属系统控件，不冒充通过。

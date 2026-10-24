@@ -153,8 +153,8 @@ public enum NotificationCopy {
         }
         if language.hasPrefix("de") {
             return ("Automnt: Automatische Wiederherstellung unvollständig", number == 1 ?
-                "Ein freigegebener Ordner konnte nicht automatisch verbunden werden. Öffne Automnt, um die Details zu prüfen." :
-                "\(display) freigegebene Ordner konnten nicht automatisch verbunden werden. Öffne Automnt, um die Details zu prüfen.")
+                "Ein freigegebener Ordner konnte nicht automatisch eingebunden werden. Öffne Automnt, um die Details zu prüfen." :
+                "\(display) freigegebene Ordner konnten nicht automatisch eingebunden werden. Öffne Automnt, um die Details zu prüfen.")
         }
         if language.hasPrefix("fr") {
             return ("Automnt : Rétablissement automatique incomplet", number == 1 ?

@@ -514,6 +514,7 @@ menu.target.accessibility使用完整句“{server}，{share}，{result}”；�
 - 会话 → 用户动作：`Ejected` 替代 `Ejected for this session`。
 - 后台挂载 → 自动挂载状态（设置行），保留“后台服务”只在解释为何未生效时出现一次。
 - `Show the Menu Bar at Login` 改为 `Show Automnt in the Menu Bar at Login`，与“在菜单栏中显示 Automnt”区分“现在显示/登录时显示”。
+- 2026-10-24 文案收敛：该开关最终改名为 `Open Automnt at Login`（登录时打开 Automnt），因为“登录时显示菜单栏”在多种语言里字面荒谬；说明句改为“登录时只显示菜单栏图标，不打开主窗口”。通知卡片同时收敛为五态单动作。
 - 命令行接管时明确说明“目前由命令行版本管理自动挂载……请先在命令行中停止服务”，不再提供必然报错的修复按钮。
 
 ## 仍待修订

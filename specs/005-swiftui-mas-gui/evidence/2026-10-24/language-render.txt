@@ -1,0 +1,28 @@
+2026-10-24 九语真实启动（-AppleLanguages）后辅助功能文本首段
+
+## en
+Servers || DX4600, Managed: 2 · Available to add: 0, Checked this round || 100.113.52.52, Managed: 2 · Available to add: 0, 2 shared folders need attention || From top to bottom; stops at the first server that works. || DX4600._smb._tcp.local || Include This Server in Automatic Mounting || When th
+
+## zh-Hans
+服务器 || DX4600, 已管理 2 · 可添加 0, 本轮已检查 || 100.113.52.52, 已管理 2 · 可添加 0, 有 2 个共享文件夹需要处理 || 从上到下尝试，首个可用即停。 || DX4600._smb._tcp.local || 此服务器参与自动挂载 || 关闭后，不再自动挂载此服务器�
+
+## zh-Hant
+伺服器 || DX4600, 已管理 2 · 可加入 0, 本輪已檢查 || 100.113.52.52, 已管理 2 · 可加入 0, 有 2 個共享檔案夾需要處理 || 由上而下嘗試，首個可用即停。 || DX4600._smb._tcp.local || 此伺服器參與自動掛載 || 關閉後，不再自動掛載此伺服器�
+
+## ja
+サーバ || DX4600, 管理対象 2 · 追加可能 0, 今回の確認済み || 100.113.52.52, 管理対象 2 · 追加可能 0, 2 個の共有フォルダに対処が必要です || 上から順に試し、最初につながったサーバで停止します。 || DX4600._smb._tcp.local || このサ
+
+## ko
+서버 || DX4600, 관리 2 · 추가 가능 0, 이번 회차에서 확인함 || 100.113.52.52, 관리 2 · 추가 가능 0, 공유 폴더 2개를 확인해야 합니다 || 위에서 아래로 시도하고, 처음 연결된 서버에서 멈춥니다. || DX4600._smb._tcp.local || 이 서버를 자동 
+
+## de
+Server || DX4600, Verwaltet: 2 · Hinzufügbar: 0, In dieser Runde geprüft || 100.113.52.52, Verwaltet: 2 · Hinzufügbar: 0, 2 freigegebene Ordner benötigen Aufmerksamkeit || Von oben nach unten; stoppt beim ersten erreichbaren Server. || DX4600._smb._tcp.local || Diesen Server in das automatisch
+
+## fr
+Serveurs || DX4600, Gérés : 2 · À ajouter : 0, Vérifié lors de ce cycle || 100.113.52.52, Gérés : 2 · À ajouter : 0, 2 dossiers partagés nécessitent votre attention || De haut en bas ; s’arrête au premier serveur accessible. || DX4600._smb._tcp.local || Inclure ce serveur dans le mont
+
+## es
+Servidores || DX4600, Gestionados: 2 · Se pueden añadir: 0, Comprobado en esta ronda || 100.113.52.52, Gestionados: 2 · Se pueden añadir: 0, 2 carpetas compartidas necesitan atención || De arriba abajo; se detiene en el primer servidor disponible. || DX4600._smb._tcp.local || Incluir este servi
+
+## pt-BR
+Servidores || DX4600, Gerenciados: 2 · Disponíveis para adicionar: 0, Verificado nesta rodada || 100.113.52.52, Gerenciados: 2 · Disponíveis para adicionar: 0, 2 pastas compartilhadas precisam de atenção || De cima para baixo; para no primeiro servidor disponível. || DX4600._smb._tcp.local ||

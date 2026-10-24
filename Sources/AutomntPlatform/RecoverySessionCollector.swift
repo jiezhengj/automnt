@@ -39,11 +39,26 @@ public enum RecoverySessionCollector {
         return elements.sorted().joined(separator: ";")
     }
 
+    /// Boot time always changes on restart and stays readable inside the App Sandbox; the
+    /// console utmpx record additionally separates logout/login within one boot. The sandbox
+    /// denies the utmpx file (`getutxent` yields no console record), so the boot time alone
+    /// must remain a usable epoch: returning nil here would keep the session boundary
+    /// unestablished forever and a restart would look like the session that ejected a volume.
     public static func loginEpoch() -> String? {
+        guard let boot = bootTimeSeconds() else { return nil }
+        guard let console = consoleSessionStart() else { return "\(boot)-console-unreadable" }
+        return "\(boot)-\(console)"
+    }
+
+    private static func bootTimeSeconds() -> Int64? {
         var boot = timeval()
         var length = MemoryLayout<timeval>.stride
         var mib: [Int32] = [CTL_KERN, KERN_BOOTTIME]
         guard sysctl(&mib, 2, &boot, &length, nil, 0) == 0, boot.tv_sec > 0 else { return nil }
+        return Int64(boot.tv_sec)
+    }
+
+    private static func consoleSessionStart() -> Int64? {
         setutxent()
         defer { endutxent() }
         var latest: Int64 = 0
@@ -56,6 +71,6 @@ public enum RecoverySessionCollector {
             latest = max(latest, Int64(entry.pointee.ut_tv.tv_sec))
         }
         guard latest > 0 else { return nil }
-        return "\(boot.tv_sec)-\(latest)"
+        return latest
     }
 }

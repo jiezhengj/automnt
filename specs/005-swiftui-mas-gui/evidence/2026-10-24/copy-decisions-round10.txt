@@ -1,0 +1,228 @@
+第十轮（2026-10-24 深夜）德语 du 统一与完成收口证据
+====================================================
+
+一、维护者指示
+- 真实注销/登录等价标准：接受。
+- 动态字体：“这很奇怪，很少会用改系统 dpi 的形式去做这件事。那就不再支持这个需求好了。”→ 不再作为需求，不设替代。
+- 德语 du/Sie 语气统一：“需要你和 agy 一起完成。”
+- T133/T134 与 Status：按等价标准修订文档。
+
+二、德语 du 统一（Lead + agy）
+1. 从 apps/Automnt/Resources/Localizable.xcstrings 提取全部含 Sie/Ihre/Ihren/Ihrem/Ihrer/Ihnen/Ihres 的德语值：67 条。
+2. agy 按 Apple 当前德语语气（系统设置原文“Personalisiere den Mac so, wie es für dich am besten funktioniert …”
+   “Erlaube die Verwendung von Befehlszeilen-Werkzeugen …”）逐条改写，输出严格 JSON。
+3. 本机校验：67 个 key 全匹配、无缺失/重复；占位符集合逐条一致；改写后仅剩 3 处 Sie 为第三人称指代
+   （“Prüfe die Adresse. Sie muss …”“… die Reihenfolge … Sie ändert …”“… Einstellungen … Sie wurden nicht ersetzt.”）。
+4. 应用 65 条（2 条 agy 未改动）；本地化门禁 exit 0；Release 重建安装；签名 5 项 PASS。
+5. 真机抽查（-AppleLanguages de）：设置页“Automnt bei der Anmeldung öffnen”“Versuche pro Prüfung”
+   （原 Sie 形式已消失）。
+
+三、德语改写明细（65 条）
+- Automnt could not confirm that no CLI configuration exists. Your input is preserved. Resolve the CLI configuration before saving in the app.
+  ALT: Automnt konnte die Konfiguration der Befehlszeile nicht bestätigen. Ihre Eingaben bleiben erhalten. Klären Sie die Konfiguration der Befehlszeile, bevor Sie in der App sichern.
+  NEU: Automnt konnte die Konfiguration der Befehlszeile nicht bestätigen. Deine Eingaben bleiben erhalten. Kläre die Konfiguration der Befehlszeile, bevor du in der App sicherst.
+- Background mounting cannot access the configuration folder. Keep Automnt open to manage your configuration; the background service has not been changed.
+  ALT: Das automatische Einbinden kann Ihre Einstellungen derzeit nicht lesen. Lassen Sie Automnt geöffnet, um sie zu verwalten; der Hintergrunddienst wurde nicht geändert.
+  NEU: Das automatische Einbinden kann deine Einstellungen derzeit nicht lesen. Lass Automnt geöffnet, um sie zu verwalten; der Hintergrunddienst wurde nicht geändert.
+- An older command-line service is installed. Update or release it before enabling app background mounting.
+  ALT: Ein älterer Befehlszeilendienst ist installiert. Aktualisieren oder entfernen Sie ihn, bevor Sie die automatische Einbindung einschalten.
+  NEU: Ein älterer Befehlszeilendienst ist installiert. Aktualisiere oder entferne ihn, bevor du die automatische Einbindung einschaltest.
+- Automatic mounting is on. Check background mounting before continuing.
+  ALT: Die automatische Einbindung ist an, wirkt aber noch nicht. Versuchen Sie es gleich noch einmal.
+  NEU: Die automatische Einbindung ist an, wirkt aber noch nicht. Versuche es gleich noch einmal.
+- The license could not be loaded. Reinstall Automnt to restore its bundled resources.
+  ALT: Die Lizenz konnte nicht geladen werden. Installieren Sie Automnt erneut, um die enthaltenen Ressourcen wiederherzustellen.
+  NEU: Die Lizenz konnte nicht geladen werden. Installiere Automnt erneut, um die enthaltenen Ressourcen wiederherzustellen.
+- Enabled background mounting continues after you quit Automnt. Turn off automatic mounting in Settings to stop future automatic mounts; mounted shared folders remain available.
+  ALT: Die aktivierte Hintergrund-Einbindung läuft nach dem Beenden von Automnt weiter. Deaktivieren Sie die automatische Einbindung in den Einstellungen, um künftige Einbindungen zu stoppen. Eingebundene Freigaben bleiben verfügbar.
+  NEU: Die aktivierte Hintergrund-Einbindung läuft nach dem Beenden von Automnt weiter. Deaktiviere die automatische Einbindung in den Einstellungen, um künftige Einbindungen zu stoppen. Eingebundene Freigaben bleiben verfügbar.
+- Review the redacted diagnostics before exporting. Nothing is uploaded automatically.
+  ALT: Prüfen Sie die anonymisierten Diagnosedaten vor dem Export. Es wird nichts automatisch hochgeladen.
+  NEU: Prüfe die anonymisierten Diagnosedaten vor dem Export. Es wird nichts automatisch hochgeladen.
+- Diagnostics could not be exported. Choose another folder and try again.
+  ALT: Die Diagnose konnte nicht exportiert werden. Wählen Sie einen anderen Ordner und versuchen Sie es erneut.
+  NEU: Die Diagnose konnte nicht exportiert werden. Wähle einen anderen Ordner und versuche es erneut.
+- Diagnostics could not be prepared safely. Check folder access and try again.
+  ALT: Die Diagnose konnte nicht sicher erstellt werden. Prüfen Sie den Ordnerzugriff und versuchen Sie es erneut.
+  NEU: Die Diagnose konnte nicht sicher erstellt werden. Prüfe den Ordnerzugriff und versuche es erneut.
+- The login item is unavailable. Keep Automnt in its installed location and try again.
+  ALT: Das Anmeldeobjekt ist nicht verfügbar. Lassen Sie Automnt am Installationsort und versuchen Sie es erneut.
+  NEU: Das Anmeldeobjekt ist nicht verfügbar. Lass Automnt am Installationsort und versuche es erneut.
+- The login setting could not be changed. Check Login Items in System Settings and try again.
+  ALT: Das Anmeldeobjekt wurde nicht gesichert. Öffnen Sie „Anmeldeobjekte“ in den Systemeinstellungen, erlauben Sie Automnt und versuchen Sie es erneut.
+  NEU: Das Anmeldeobjekt wurde nicht gesichert. Öffne „Anmeldeobjekte“ in den Systemeinstellungen, erlaube Automnt und versuche es erneut.
+- Choose a different address to keep this server separate.
+  ALT: Wählen Sie eine andere Adresse, um diesen Server getrennt zu halten.
+  NEU: Wähle eine andere Adresse, um diesen Server getrennt zu halten.
+- The mount result could not be confirmed. Check the shared folder before trying again.
+  ALT: Das Einbindungsergebnis konnte nicht bestätigt werden. Prüfen Sie den freigegebenen Ordner vor einem erneuten Versuch.
+  NEU: Das Einbindungsergebnis konnte nicht bestätigt werden. Prüfe den freigegebenen Ordner vor einem erneuten Versuch.
+- Choose a different mount folder for this shared folder.
+  ALT: Wählen Sie einen anderen Einbindeordner für diesen freigegebenen Ordner.
+  NEU: Wähle einen anderen Einbindeordner für diesen freigegebenen Ordner.
+- Use an SMB address for this server and port.
+  ALT: Verwenden Sie eine SMB-Adresse für diesen Server und Port.
+  NEU: Verwende eine SMB-Adresse für diesen Server und Port.
+- Use an absolute folder path without . or .. components.
+  ALT: Verwenden Sie einen absoluten Ordnerpfad ohne . oder .. als Pfadbestandteile.
+  NEU: Verwende einen absoluten Ordnerpfad ohne . oder .. als Pfadbestandteile.
+- Select shared folders from one server to add them. This list contains currently mounted folders only.
+  ALT: Wählen Sie Ordner eines Servers zum Hinzufügen aus. Diese Liste enthält nur aktuell eingebundene Ordner.
+  NEU: Wähle Ordner eines Servers zum Hinzufügen aus. Diese Liste enthält nur aktuell eingebundene Ordner.
+- No mounted SMB shared folders were found. Enter an SMB address manually.
+  ALT: Keine eingebundenen SMB-Ordner gefunden. Geben Sie eine SMB-Adresse manuell ein.
+  NEU: Keine eingebundenen SMB-Ordner gefunden. Gib eine SMB-Adresse manuell ein.
+- Could not read mounted shared folders. Enter an SMB address manually.
+  ALT: Gemountete Ordner konnten nicht gelesen werden. Geben Sie eine SMB-Adresse manuell ein.
+  NEU: Gemountete Ordner konnten nicht gelesen werden. Gib eine SMB-Adresse manuell ein.
+- Background mounting could not be changed. Check the configuration and background service before continuing.
+  ALT: Das automatische Einbinden konnte nicht geändert werden. Versuchen Sie es später erneut.
+  NEU: Das automatische Einbinden konnte nicht geändert werden. Versuche es später erneut.
+- Background mounting could not be confirmed. Check the background state and try again.
+  ALT: Der Status des automatischen Einbindens ist derzeit nicht verfügbar. Versuchen Sie es später erneut.
+  NEU: Der Status des automatischen Einbindens ist derzeit nicht verfügbar. Versuche es später erneut.
+- Ejecting here needs app background mounting. Set it up in Settings first; you can still eject the folder in Finder.
+  ALT: Zum Auswerfen hier muss die automatische Einbindung an sein. Schalten Sie sie zuerst in den Einstellungen ein; Sie können den Ordner auch im Finder auswerfen.
+  NEU: Zum Auswerfen hier muss die automatische Einbindung an sein. Schalte sie zuerst in den Einstellungen ein; du kannst den Ordner auch im Finder auswerfen.
+- Mounting one shared folder needs app background mounting. Set it up in Settings first.
+  ALT: Das Einbinden eines freigegebenen Ordners erfordert die automatische Einbindung. Schalten Sie sie zuerst in den Einstellungen ein.
+  NEU: Das Einbinden eines freigegebenen Ordners erfordert die automatische Einbindung. Schalte sie zuerst in den Einstellungen ein.
+- The saved folder access could not be renewed. Allow access again to read your current configuration.
+  ALT: Automnt konnte seine Einstellungen nicht lesen. Versuchen Sie es erneut.
+  NEU: Automnt konnte seine Einstellungen nicht lesen. Versuche es erneut.
+- Automnt can no longer access the configuration folder. Allow access again. Your configuration has not been replaced.
+  ALT: Automnt konnte seine Einstellungen nicht lesen. Versuchen Sie es erneut. Ihre Einstellungen wurden nicht ersetzt.
+  NEU: Automnt konnte seine Einstellungen nicht lesen. Versuche es erneut. Deine Einstellungen wurden nicht ersetzt.
+- Access was not granted. Continue to allow access to Automnt’s settings.
+  ALT: Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut.
+  NEU: Automnt konnte seine Einstellungen nicht öffnen. Versuche es erneut.
+- Automnt could not access its settings. Allow access so it can prepare them for you.
+  ALT: Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut. Wenn das Problem weiterhin besteht, installieren Sie Automnt neu oder wenden Sie sich an den Support.
+  NEU: Automnt konnte seine Einstellungen nicht öffnen. Versuche es erneut. Wenn das Problem weiterhin besteht, installiere Automnt neu oder wende dich an den Support.
+- The saved access to your settings has expired. Allow access again to continue.
+  ALT: Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut.
+  NEU: Automnt konnte seine Einstellungen nicht öffnen. Versuche es erneut.
+- Automnt can no longer access its settings. Allow access again to continue.
+  ALT: Automnt konnte seine Einstellungen nicht öffnen. Versuchen Sie es erneut.
+  NEU: Automnt konnte seine Einstellungen nicht öffnen. Versuche es erneut.
+- Your saved settings could not be read. Try again, or allow access again to restore permission.
+  ALT: Automnt konnte Ihre Einstellungen nicht lesen. Versuchen Sie es erneut.
+  NEU: Automnt konnte deine Einstellungen nicht lesen. Versuche es erneut.
+- Enter a name for this shared folder.
+  ALT: Geben Sie einen Namen für diesen freigegebenen Ordner ein.
+  NEU: Gib einen Namen für diesen freigegebenen Ordner ein.
+- Enter a server address such as server.example, without a user name or password.
+  ALT: Geben Sie eine Serveradresse wie server.example ein, ohne Benutzernamen oder Passwort.
+  NEU: Gib eine Serveradresse wie server.example ein, ohne Benutzernamen oder Passwort.
+- Enter a port from 1 to 65535.
+  ALT: Geben Sie einen Port von 1 bis 65535 ein.
+  NEU: Gib einen Port von 1 bis 65535 ein.
+- Enter a probe timeout from 100 to 30000 ms.
+  ALT: Geben Sie ein Probe-Timeout von 100 bis 30000 ms ein.
+  NEU: Gib ein Probe-Timeout von 100 bis 30000 ms ein.
+- Your edits are not saved yet. Save them before Automnt quits, or discard them.
+  ALT: Ihre Änderungen sind noch nicht gesichert. Sichern Sie sie vor dem Beenden von Automnt oder verwerfen Sie sie.
+  NEU: Deine Änderungen sind noch nicht gesichert. Sichere sie vor dem Beenden von Automnt oder verwirf sie.
+- Your edits are not saved yet. Save them before closing the window, or discard them.
+  ALT: Ihre Änderungen sind noch nicht gesichert. Sichern Sie sie vor dem Schließen des Fensters oder verwerfen Sie sie.
+  NEU: Deine Änderungen sind noch nicht gesichert. Sichere sie vor dem Schließen des Fensters oder verwirf sie.
+- Automnt couldn’t read your settings. Try again. It has not replaced them.
+  ALT: Automnt konnte Ihre Einstellungen nicht lesen. Versuchen Sie es erneut. Sie wurden nicht ersetzt.
+  NEU: Automnt konnte deine Einstellungen nicht lesen. Versuche es erneut. Sie wurden nicht ersetzt.
+- Add a shared folder to get started. Automnt will mount it automatically when the server is available.
+  ALT: Fügen Sie einen freigegebenen Ordner hinzu, um zu beginnen. Automnt bindet ihn automatisch ein, sobald der Server verfügbar ist.
+  NEU: Füge einen freigegebenen Ordner hinzu, um zu beginnen. Automnt bindet ihn automatisch ein, sobald der Server verfügbar ist.
+- The login item didn’t load. Quit Automnt, reopen it from the Applications folder, then check again.
+  ALT: Das Anmeldeobjekt wurde nicht geladen. Beenden Sie Automnt, öffnen Sie es erneut aus dem Ordner „Programme“ und prüfen Sie dann erneut.
+  NEU: Das Anmeldeobjekt wurde nicht geladen. Beende Automnt, öffne es erneut aus dem Ordner „Programme“ und prüfe dann erneut.
+- The main automatic mounting switch is off. Turn it on to include this server.
+  ALT: Der Hauptschalter für automatisches Einbinden ist aus. Schalten Sie ihn ein, damit dieser Server einbezogen wird.
+  NEU: Der Hauptschalter für automatisches Einbinden ist aus. Schalte ihn ein, damit dieser Server einbezogen wird.
+- Shared folders are added. Turn on automatic mounting so Automnt mounts them after sign-in or network changes.
+  ALT: Freigegebene Ordner wurden hinzugefügt. Schalten Sie das automatische Einbinden ein, damit Automnt sie bei der Anmeldung oder bei Netzwerkänderungen einbindet.
+  NEU: Freigegebene Ordner wurden hinzugefügt. Schalte das automatische Einbinden ein, damit Automnt sie bei der Anmeldung oder bei Netzwerkänderungen einbindet.
+- Background mounting could not be changed. Check the service state and try again.
+  ALT: Das automatische Einbinden konnte nicht geändert werden. Prüfen Sie den Dienststatus und versuchen Sie es erneut.
+  NEU: Das automatische Einbinden konnte nicht geändert werden. Prüfe den Dienststatus und versuche es erneut.
+- The status will update automatically when this finishes. Don’t toggle the switch again.
+  ALT: Der Status wird nach Abschluss automatisch aktualisiert. Schalten Sie den Schalter nicht erneut um.
+  NEU: Der Status wird nach Abschluss automatisch aktualisiert. Schalte den Schalter nicht erneut um.
+- The background service state is not confirmed. Repair it before trying again.
+  ALT: Der Status des Hintergrunddienstes ist nicht bestätigt. Reparieren Sie ihn, bevor Sie es erneut versuchen.
+  NEU: Der Status des Hintergrunddienstes ist nicht bestätigt. Repariere ihn, bevor du es erneut versuchst.
+- Repair the background service so shared folders can mount after sign-in or network changes.
+  ALT: Reparieren Sie den Hintergrunddienst, damit freigegebene Ordner bei der Anmeldung oder bei Netzwerkänderungen automatisch eingebunden werden.
+  NEU: Repariere den Hintergrunddienst, damit freigegebene Ordner bei der Anmeldung oder bei Netzwerkänderungen automatisch eingebunden werden.
+- Allow Automnt in Login Items; automatic mounting takes effect after that.
+  ALT: Erlauben Sie Automnt in den Anmeldeobjekten; danach wird das automatische Einbinden wirksam.
+  NEU: Erlaube Automnt in den Anmeldeobjekten; danach wird das automatische Einbinden wirksam.
+- This app doesn’t take over the background service. Check status in Settings.
+  ALT: Diese App übernimmt den Hintergrunddienst nicht. Prüfen Sie den Status in den Einstellungen.
+  NEU: Diese App übernimmt den Hintergrunddienst nicht. Prüfe den Status in den Einstellungen.
+- Automatic mounting didn’t finish. Repair the background service and try again.
+  ALT: Automatisches Einbinden wurde nicht abgeschlossen. Reparieren Sie den Hintergrunddienst und versuchen Sie es erneut.
+  NEU: Automatisches Einbinden wurde nicht abgeschlossen. Repariere den Hintergrunddienst und versuche es erneut.
+- A previous mount attempt didn’t finish. Repair background mounting, then try the round again.
+  ALT: Ein vorheriger Einbindungsversuch wurde nicht abgeschlossen. Reparieren Sie die Hintergrund-Einbindung und versuchen Sie es erneut.
+  NEU: Ein vorheriger Einbindungsversuch wurde nicht abgeschlossen. Repariere die Hintergrund-Einbindung und versuche es erneut.
+- Another volume occupies the configured location. Automnt will not replace it. Show it in Finder, or choose a different location for this shared folder.
+  ALT: Ein anderes Volume belegt den konfigurierten Ort. Automnt ersetzt es nicht. Zeigen Sie es im Finder oder wählen Sie einen anderen Ort für diesen freigegebenen Ordner.
+  NEU: Ein anderes Volume belegt den konfigurierten Ort. Automnt ersetzt es nicht. Zeige es im Finder oder wähle einen anderen Ort für diesen freigegebenen Ordner.
+- Clear the search to change the order.
+  ALT: Löschen Sie die Suche, um die Reihenfolge zu ändern.
+  NEU: Lösche die Suche, um die Reihenfolge zu ändern.
+- Drag a row by its handle to change the order. A round stops at the first reachable server; later servers wait.
+  ALT: Ziehen Sie eine Zeile am Griff, um die Reihenfolge zu ändern. Automnt prüft in dieser Reihenfolge und hält beim ersten verfügbaren Server an.
+  NEU: Ziehe eine Zeile am Griff, um die Reihenfolge zu ändern. Automnt prüft in dieser Reihenfolge und hält beim ersten verfügbaren Server an.
+- Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted.
+  ALT: Ziehen Sie eine Zeile am Griff, um die Reihenfolge zu ändern. Alle verfügbaren Server werden in dieser Reihenfolge geprüft und eingebunden.
+  NEU: Ziehe eine Zeile am Griff, um die Reihenfolge zu ändern. Alle verfügbaren Server werden in dieser Reihenfolge geprüft und eingebunden.
+- Reloaded the latest settings. Your input is kept; check it before saving.
+  ALT: Die neuesten Einstellungen wurden neu geladen. Ihre Eingaben bleiben erhalten; prüfen Sie sie vor dem Speichern.
+  NEU: Die neuesten Einstellungen wurden neu geladen. Deine Eingaben bleiben erhalten; prüfe sie vor dem Speichern.
+- Reloading does not mount, eject or overwrite what you typed.
+  ALT: Neu laden bindet nichts ein, wirft nichts aus und überschreibt Ihre Eingaben nicht.
+  NEU: Neu laden bindet nichts ein, wirft nichts aus und überschreibt deine Eingaben nicht.
+- That folder is no longer available. Refresh the list and check the current location.
+  ALT: Dieser Ordner ist nicht mehr verfügbar. Aktualisieren Sie die Liste und prüfen Sie den aktuellen Ort.
+  NEU: Dieser Ordner ist nicht mehr verfügbar. Aktualisiere die Liste und prüfe den aktuellen Ort.
+- The configuration changed in another window or from the command line. Reload the latest settings; your input is kept.
+  ALT: Die Konfiguration wurde in einem anderen Fenster oder über die Befehlszeile geändert. Laden Sie die neuesten Einstellungen neu; Ihre Eingaben bleiben erhalten.
+  NEU: Die Konfiguration wurde in einem anderen Fenster oder über die Befehlszeile geändert. Lade die neuesten Einstellungen neu; deine Eingaben bleiben erhalten.
+- This shared folder is already mounted at another location, so tasks that use the configured location may not find it. Open it there or use that location.
+  ALT: Dieser freigegebene Ordner ist bereits an einem anderen Ort eingebunden; Aufgaben, die den konfigurierten Ort verwenden, finden ihn möglicherweise nicht. Öffnen Sie ihn dort oder verwenden Sie diesen Ort.
+  NEU: Dieser freigegebene Ordner ist bereits an einem anderen Ort eingebunden; Aufgaben, die den konfigurierten Ort verwenden, finden ihn möglicherweise nicht. Öffne ihn dort oder verwende diesen Ort.
+- Your settings were updated elsewhere. Use the latest settings to refresh this window; what you typed is kept.
+  ALT: Die Einstellungen wurden an anderer Stelle aktualisiert. Mit den neuesten Einstellungen wird dieses Fenster aktualisiert; Ihre Eingaben bleiben erhalten.
+  NEU: Die Einstellungen wurden an anderer Stelle aktualisiert. Mit den neuesten Einstellungen wird dieses Fenster aktualisiert; deine Eingaben bleiben erhalten.
+- Refreshing mounts or ejects nothing and does not overwrite what you typed.
+  ALT: Aktualisieren bindet nichts ein, wirft nichts aus und überschreibt Ihre Eingaben nicht.
+  NEU: Aktualisieren bindet nichts ein, wirft nichts aus und überschreibt deine Eingaben nicht.
+- These settings were updated elsewhere. Close this window and open it again.
+  ALT: Diese Einstellungen wurden an anderer Stelle aktualisiert. Schließen Sie dieses Fenster und öffnen Sie es erneut.
+  NEU: Diese Einstellungen wurden an anderer Stelle aktualisiert. Schließe dieses Fenster und öffne es erneut.
+- The command-line version is managing automatic mounting right now. To use the app instead, stop the command-line service first.
+  ALT: Derzeit verwaltet die Befehlszeilenversion die automatische Einbindung. Um die App zu verwenden, beenden Sie zuerst den Befehlszeilendienst.
+  NEU: Derzeit verwaltet die Befehlszeilenversion die automatische Einbindung. Um die App zu verwenden, beende zuerst den Befehlszeilendienst.
+- You can look at the servers on the left, but adding, changing and mounting stay unavailable until access is restored.
+  ALT: Sie können die Server links ansehen, aber Hinzufügen, Ändern und Einbinden bleiben nicht verfügbar, bis der Zugriff wiederhergestellt ist.
+  NEU: Du kannst die Server links ansehen, aber Hinzufügen, Ändern und Einbinden bleiben nicht verfügbar, bis der Zugriff wiederhergestellt ist.
+- Turn this off to stop mounting this shared folder automatically. It stays available while it is connected.
+  ALT: Wenn Sie dies ausschalten, wird dieser freigegebene Ordner nicht mehr automatisch eingebunden. Solange er verbunden ist, bleibt er verfügbar.
+  NEU: Wenn du dies ausschaltest, wird dieser freigegebene Ordner nicht mehr automatisch eingebunden. Solange er verbunden ist, bleibt er verfügbar.
+- The shared folder is connected. You can open it.
+  ALT: Der freigegebene Ordner ist verbunden. Sie können ihn öffnen.
+  NEU: Der freigegebene Ordner ist verbunden. Du kannst ihn öffnen.
+
+四、动态字体
+维护者确认不再支持：不再列为改进项、不设替代方案（不使用修改显示器分辨率伪装支持）。
+known-limitations.zh/en 与 spec.md 已按“已记录边界、非已支持”改写；不再保留“用显示器缩放替代”的建议。
+
+五、T133/T134 收口
+- T133 通过标准修订为“真实重启 + 端到端失败通知 + 运行期界面 + 等价注销证据 + 单 owner”，已勾选。
+- T134 文档收敛（Status/完成结论、known-limitations、AGENTS.md、任务记录、CLI 审计）已勾选。
+- spec.md 增加“完成结论（2026-10-24，第十轮）”，保留全部未验证/不支持项。
+
+六、门禁
+verify-localization.py exit 0；swift test 339 项；CLI --self-test 302 项；Swift 6 门禁通过；
+Release 构建成功、/Applications/Automnt.app 已安装、verify-signature.sh 5 项 PASS。

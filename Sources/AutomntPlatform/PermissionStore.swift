@@ -31,9 +31,16 @@ public struct PermissionStore {
         entitlements[fixedDirectoryExceptionKey] as? [String] == [fixedDirectoryHomeRelativePath]
     }
 
-    /// A declared entitlement is a candidate capability. Actual filesystem operations
-    /// must still succeed; this check does not grant access or prove MAS acceptance.
-    public static var hasFixedDirectoryEntitlement: Bool {
+    /// `AutomntWorker` is signed with `com.apple.security.inherit`: its effective sandbox
+    /// (fixed-directory exception and network access included) comes from the verified
+    /// helper that spawned it, so its own static entitlements never list the exception.
+    /// Accepting inheritance only hands the decision to real filesystem validation below.
+    static func inheritsSandbox(_ entitlements: [String: Any]) -> Bool {
+        entitlements["com.apple.security.app-sandbox"] as? Bool == true &&
+        entitlements["com.apple.security.inherit"] as? Bool == true
+    }
+
+    private static var ownEntitlements: [String: Any]? {
         var code: SecCode?
         var staticCode: SecStaticCode?
         var information: CFDictionary?
@@ -41,8 +48,25 @@ public struct PermissionStore {
               SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
               SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &information) == errSecSuccess,
               let values = information as? [String: Any],
-              let entitlements = values[kSecCodeInfoEntitlementsDict as String] as? [String: Any] else { return false }
-        return grantsFixedDirectoryAccess(entitlements)
+              let entitlements = values[kSecCodeInfoEntitlementsDict as String] as? [String: Any] else { return nil }
+        return entitlements
+    }
+
+    /// A declared entitlement is a candidate capability. Actual filesystem operations
+    /// must still succeed; this check does not grant access or prove MAS acceptance.
+    public static var hasFixedDirectoryEntitlement: Bool {
+        ownEntitlements.map(grantsFixedDirectoryAccess) ?? false
+    }
+
+    public static var hasInheritedSandboxEntitlement: Bool {
+        ownEntitlements.map(inheritsSandbox) ?? false
+    }
+
+    /// App Sandbox blocks reading a network volume the process itself mounted: the kernel
+    /// mount exists and is authenticated, but directory contents are outside the sandbox.
+    /// Callers must therefore distinguish sandbox denial from server-side failure.
+    public static var hasAppSandboxEntitlement: Bool {
+        ownEntitlements.map { $0["com.apple.security.app-sandbox"] as? Bool == true } ?? false
     }
 
     /// Foreground only: prepare the program-owned canonical directory, without a
@@ -151,7 +175,9 @@ public struct PermissionStore {
     /// Background resolution cannot display UI or mount a network volume.
     /// A stale bookmark is renewed only while its grant still resolves to the fixed directory.
     public func resolve() throws -> AuthorizedDirectory {
-        if Self.hasFixedDirectoryEntitlement {
+        // The verified helper and its inherit-signed worker both resolve the fixed directory;
+        // real filesystem validation below is the capability proof in either case.
+        if Self.hasFixedDirectoryEntitlement || Self.hasInheritedSandboxEntitlement {
             let target = Self.expectedDirectory
             try validateDirectory(target)
             return AuthorizedDirectory(url: target, scoped: false)

@@ -21,8 +21,19 @@ struct WorkerPipeTests {
         }
         let mount = WorkerMountRequest(host: host, share: share, expiresAtUptime: request.expiresAtUptime,
                                       revision: request.revision, generation: 1)
+        // A credential-free mount is valid: NetFS reuses the macOS-held sign-in.
+        let mountFrame = try WorkerPipeProtocol.encode(request: mount, credential: empty)
+        let (mountDecoded, mountCredential) = try WorkerPipeProtocol.decodeRequest(mountFrame)
+        #expect(mountDecoded.operation == .mount)
+        #expect(mountCredential.username.isEmpty && mountCredential.password.isEmpty)
+        // Half a credential is still a protocol error.
         #expect(throws: AutomntIssue.invalidConfiguration) {
-            try WorkerPipeProtocol.encode(request: mount, credential: empty)
+            try WorkerPipeProtocol.encode(request: mount,
+                credential: MemoryCredential(username: UUID().uuidString, password: Data()))
+        }
+        #expect(throws: AutomntIssue.invalidConfiguration) {
+            try WorkerPipeProtocol.encode(request: mount,
+                credential: MemoryCredential(username: "", password: Data(UUID().uuidString.utf8)))
         }
     }
 

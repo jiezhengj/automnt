@@ -12,7 +12,7 @@
 
 **Created**：2026-10-07
 
-**Status**：2026-10-22 已完成（Feature 完成；GUI 工程与本地构建完成，GitHub CLI 3.5.0 已发布；App Store 渠道未启动）。最终交付以从零重写的交互架构为准：侧栏头部全局动作、服务器页总/共享开关、共享原位展开、服务器设置 sheet、反馈按 window/sidebar/settings/menuBar 归属；宽窗 1100×700 与窄窗 620×700 的启动、实时缩放、推送/返回、sheet 与设置窗口已在 macOS 27 真实窗口验证（截图 39–44）。tasks.md 全部 137 条勾选项闭合（T001–T128 及子任务）；`swift test` 321 项、CLI `--self-test` 302 项、本地化/签名/Swift 6 门通过。GUI 不随 GitHub Release 分发，源码按 MIT 开源、任何人可自行编译（见 [release/RELEASE_POLICY.md](../../release/RELEASE_POLICY.md)）。**未验证/不在完成范围**：浅色外观、较大文字、VoiceOver 实际朗读、九语母语审校、真实后台跨登录/重启矩阵、App Store 沙盒/helper 与商店提交；这些不阻塞 Feature 工程完成，但不得表述为已通过。
+**Status**：2026-10-24 完成收口（本地实现 + 按维护者批准等价标准的验收）。核心能力均已实测：重启后自动挂载、端到端失败通知、运行期界面与菜单栏、可访问名称与 VoiceOver、九语与德语 du 文案。边界：真实“注销再登录”不可执行（以真实重启轮 + 同 boot 边界为等价标准，见 `release/offline/known-limitations.zh.md`/`.en.md`）；动态字体明确不支持；App Store 沙盒/商店提交、推送/Release/版本递增未授权。逐轮修复与验收原文见 [CHANGELOG.md](CHANGELOG.md)，证据见 [evidence/2026-10-24/](evidence/2026-10-24/)。
 
 **Input**：维护者要求售价仅 US$1.99；同项目免费开源 CLI 与开源 GUI 高度复用、共同演进。商店文案在政策允许时介绍开源、无溢价，并推荐有编译能力的用户自行编译、喜欢 CLI 的用户下载免费 CLI。低价不降低品质：交互、视觉必须优雅精美，100% 原生 SwiftUI；开发默认 macOS 27 和最新 API/SDK，临发布才依据实际 API 与实测倒推最低系统。整个 Feature 目标为达到可发布标准，付费开发者账号为临发布外部前置；系统沙盒/helper 持久访问等核心门槛未验证，必须如实报告，不预设仅账号阻塞；Task 必须合理排序、可以在现实环境完成，并覆盖视觉与交互。来源：[Assessment 决策](../../.specify/assessments/cli-gui-commercialization/decision.md)、本轮直接指令；后者覆盖 Assessment 的价格测试及有限原型范围建议。
 
@@ -37,7 +37,7 @@
 - 自动发现范围是本机当前已挂载 SMB 共享，按服务器分组；打开、卷变化及窗口重新激活时刷新，不承诺扫描所有网络服务器。
 - 已管理共享与可添加共享同屏；每行“添加”立即持久化管理成员，不再用多选或“添加所选共享”。开关仅控制自动挂载，不替代添加。
 - 零结果先说明通过 Finder 连接服务器再返回；手动完整 SMB 地址是次级入口。无地址、无共享名、无有效挂载位置或重复身份不能保存。
-- 默认使用系统 SMB 认证及系统已保存凭据，不加入独立用户名/密码录入、验证和删除功能。沙盒/helper 的实际复用能力仍未验证，不能把当前 Keychain 错误当作保留额外密码功能的理由。
+- 默认使用系统 SMB 认证及系统已保存凭据，不加入独立用户名/密码录入、验证和删除功能。沙盒 helper 进程内复用系统 SMB 登录完成挂载已由 2026-10-23 第三轮实测（连续 3 次 status:0），但跨重启/凭据变更后的复用仍待验收（T138）；不能把当前 Keychain 错误当作保留额外密码功能的理由。
 - 既有 CLI 配置自动呈现，正常首次和恢复无内部目录选择或导入检查；程序确定固定位置，必要系统许可由用户决定允许或拒绝，访问来源须证明；唯一配置及后台所有权不变。
 - 编辑成功保存后关闭或重设已保存基线；之后取消/关闭不重复提示保存。失败、冲突保留草稿。字段层级清楚，非活动窗口可先激活再正常编辑。
 
@@ -279,3 +279,22 @@ Tasks 已生成并经历本地实施，历史完成状态保留；本轮只修�
 # 首次交互的资料与复验边界
 
 当前依据及边界见 [research.md](research.md) 与 [体验契约](contracts/experience-design.md#官方资料与证据限度)。当前 App Sandbox、user-selected entitlement、helper、App Groups、书签文档和 macOS 27 SDK 用于核查真实访问来源，未证实通用免目录选择的文件允许/拒绝 API。2018 归档指南、NSOpenPanel 筛选 API 和 Alfred 高级同步示例只保留历史范围，不裁定新方案可行性。[方案 A 证据](../../release/evidence/option-a-authorization.md) 的 290 项测试、构建、签名与首次窗口不证明新要求通过；系统许可、独立 helper 生命周期与九语原生交互仍待实测。
+
+# 2026-10-23 重开与验收修正（摘要）
+
+2026-10-23 维护者要求重开 Feature 005，修复后台自动挂载并做完整收敛与验收。逐轮现场记录、根因分析与实测细节已迁至 [CHANGELOG.md](CHANGELOG.md)，本节只保留当前结论。
+
+- 缺陷 A/B（helper 就绪判定）：helper 改为从自身可执行文件绝对路径向上定位并校验 `.app`；就绪判定改为“固定 LaunchAgent 定义校验 + launchd 期望身份 `XPC_SERVICE_NAME` + 已提交 backend-state（owner=app、phase=active、status=enabled、generation）”，App 仍以 SMAppService 为真实状态源，两服务互斥。
+- 缺陷 C（沙盒挂载）：worker 子进程无法执行 NetFS，改为调用进程内 `MountExecutionService` 执行挂载/弹出/健康/清理，意图与 revision-generation 响应校验保留。
+- 会话边界（重启后不挂载）：沙盒读不到 utmpx 时退回 `KERN_BOOTTIME` 返回 `<boot>-console-unreadable`；establishing 分支把陈旧 attached 改为 pendingRecovery 并清零计数，`.suppressed` 保留并绑定新边界。
+- 失败通知：helper 只写 `pending-notification.plist`，常驻 App 20 秒内投递；依赖菜单栏常驻 + 登录项（单向依赖，已记录）。
+- Dock/窗口：`LSUIElement` + 按可见 titled 窗口在 regular/accessory 间切换；菜单栏常驻时关最后一个窗口不退出。
+- 可访问名称与文案：8 个控件补 `accessibilityLabel`；九语两批 87 处修正与德语 du 统一（明细见 CHANGELOG）。
+- 仍不得表述为已通过：真实“注销再登录”（等价标准）、动态字体（不支持）、App Store 沙盒/商店提交与发布（未授权）。
+
+### 完成结论（2026-10-24，第十轮）
+
+- 维护者确认本轮为 Feature 005 的完成收口，并按维护者指示修订 T133/T134 与 Status；完成范围为“本地实现 + 按批准等价标准的验收”，不含商店与对外发布。
+- 已通过的真实证据：①2026-10-24 19:00 真实重启后，登录项启动 App（0 窗口、无 Dock 图标、菜单栏 1 个），无人工操作两卷自动挂载，19:02:11 观测 healthy，`session_boundary=<network>|1792839587-console-unreadable`；②真实 `shareRejected` 失败 → helper 记录 → 常驻 App 17–22 秒投递系统横幅，`notification-delivery.plist` delivered/count=1；③菜单栏真实点击（打开/设置/立即检查）、浅深色、九语真实启动、GUI 内弹出/挂载、Dock 按窗口出现/消失；④可访问名称审计纠正并补齐 8 个控件，复测产品控件无名数 0；VoiceOver 真实开启并以字幕面板存证；⑤九语文案 agy 全量审校 + 本机核对共两批 87 处修正（24 + 63），德语 du 统一 65 条，简体中文不改；本地化门禁 267×9 通过。
+- 明确不在完成范围：真实“注销再登录”轮（注销终止会话，物理不可执行；等价标准为真实重启轮 + 同 boot 边界不刷新 + 幂等重触发，已文档化）；动态字体（维护者确认不再支持，不设替代）；App Store 沙盒/商店提交、GitHub 推送与 Release、版本号递增（均未授权、未执行）。
+- 收口动作：T133 按等价标准改为通过并勾选（真实重启+失败通知+运行期界面+单 owner），T134 文档收敛并勾选（Status、known-limitations、AGENTS.md、任务记录一致；CLI `--self-test` 302 项通过）；门禁：`swift test` 339、本地化 267×9、Swift 6、签名 5 项、Release 构建安装。本轮未提交、未推送、未发布、未递增版本号。

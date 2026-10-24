@@ -1,0 +1,270 @@
+# 第一部分：问题清单（按严重度排序）
+
+1. **语言**：pt-BR
+   **key**：`Stop Opening Automnt at Login?`
+   **现译文**：`Parar de abrir o Automnt ao entrar na sessão?`
+   **建议译文**：`Não Abrir o Automnt ao Iniciar a Sessão?`
+   **问题原因**：对话框标题机翻生硬，且“entrar na sessão”违背 macOS 官方登录规范术语（应为“iniciar a sessão”）。
+
+2. **语言**：pt-BR
+   **key**：`Server settings`
+   **现译文**：`Definições do servidor`
+   **建议译文**：`Ajustes do servidor`
+   **问题原因**：严重泄漏欧洲葡萄牙语（pt-PT）术语，巴西 macOS 官方统一使用“Ajustes”。
+
+3. **语言**：fr
+   **key**：`Quitting stops notifications while the window is closed. Automatic mounting continues.`
+   **现译文**：`Quitter arrête les notifications fenêtre fermée. Le montage automatique continue.`
+   **建议译文**：`Quitter arrête les notifications lorsque la fenêtre est fermée. Le montage automatique continue.`
+   **问题原因**：“notifications fenêtre fermée”缺少必要连词结构，系字面直译造成的语法脱落病句。
+
+4. **语言**：fr
+   **key**：`Automnt will no longer open at login. Failure notifications while the window is closed stop once you quit. Automatic mounting continues.`
+   **现译文**：`Automnt ne s’ouvrira plus à l’ouverture de session. Après avoir quitté, les notifications fenêtre fermée s’arrêtent. Le montage automatique continue.`
+   **建议译文**：`Automnt ne s’ouvrira plus à l’ouverture de session. Après avoir quitté, les notifications lorsque la fenêtre est fermée s’arrêtent. Le montage automatique continue.`
+   **问题原因**：正文中存在结构残缺的机翻短语“notifications fenêtre fermée”。
+
+5. **语言**：de
+   **key**：`Mount`
+   **现译文**：`Mounten`
+   **建议译文**：`Verbinden`
+   **问题原因**：直接使用未经本地化的英文生造词“Mounten”，违背 macOS 德语卷宗标准动词规范。
+
+6. **语言**：de
+   **key**：`The mount result could not be confirmed. Check the shared folder before trying again.`
+   **现译文**：`Das Mount-Ergebnis konnte nicht bestätigt werden. Prüfen Sie den geteilten Ordner vor einem erneuten Versuch.`
+   **建议译文**：`Das Einbindungsergebnis konnte nicht bestätigt werden. Prüfen Sie den freigegebenen Ordner vor einem erneuten Versuch.`
+   **问题原因**：同时存在英文直译生词“Mount-Ergebnis”及非规范用词“geteilten Ordner”。
+
+7. **语言**：es
+   **key**：`Open Login Items Settings`
+   **现译文**：`Abrir ajustes de inicio de sesión`
+   **建议译文**：`Abrir ajustes de «Ítems de inicio»`
+   **问题原因**：“inicio de sesión”易被误解为系统账户登录或密码设置，macOS 登录项标准术语为“Ítems de inicio”。
+
+8. **语言**：ko
+   **key**：`Stop Opening Automnt at Login?`
+   **现译文**：`로그인 시 Automnt를 실행하지 않을까요?`
+   **建议译文**：`로그인 시 Automnt 열기를 중단하겠습니까?`
+   **问题原因**：对话框标题误用商量/推测语气的“~실행하지 않을까요?”，macOS 对话框必须使用确认疑问句。
+
+9. **语言**：ja
+   **key**：`Notifications are off. Allow Automnt notifications in System Settings to receive recovery alerts.`
+   **现译文**：`通知はオフです。復元の通知を受け取るには、システム設定で Automnt の通知を許可してください。`
+   **建议译文**：`通知はオフです。復旧の通知を受け取るには、システム設定で Automnt の通知を許可してください。`
+   **问题原因**：将网络挂载恢复写成了数据备份类的“復元”，与前文的“自動復旧”产生严重术语分裂。
+
+10. **语言**：zh-Hant
+    **key**：`The login item didn’t load. Quit Automnt, reopen it from the Applications folder, then check again.`
+    **现译文**：`登入項目暫時沒有載入。請結束 Automnt，從「應用程式」資料夾重新開啟，然後再檢查。`
+    **建议译文**：`登入項目暫時沒有載入。請結束 Automnt，從「應用程式」檔案夾重新開啟，然後再檢查。`
+    **问题原因**：错误泄漏 Windows 术语“資料夾”，macOS 繁中（台湾）标准为“檔案夾”。
+
+11. **语言**：pt-BR
+    **key**：`Open Automnt at Login`
+    **现译文**：`Abrir o Automnt ao entrar na sessão`
+    **建议译文**：`Abrir o Automnt ao Iniciar a Sessão`
+    **问题原因**：未采用 macOS 官方登录动作规范术语“iniciar a sessão”。
+
+12. **语言**：pt-BR
+    **key**：`Automatic recovery settings were saved. Check background mounting to apply the change.`
+    **现译文**：`As definições de recuperação automática foram salvas. Verifique a montagem em segundo plano para aplicar a alteração.`
+    **建议译文**：`Os ajustes de recuperação automática foram salvos. Verifique a montagem em segundo plano para aplicar a alteração.`
+    **问题原因**：混用欧洲葡萄牙语词汇“definições”，巴西 macOS 统称为“ajustes”。
+
+13. **语言**：pt-BR
+    **key**：`Check the SMB address in the shared folder settings.`
+    **现译文**：`Verifique o endereço SMB nas definições da pasta compartilhada.`
+    **建议译文**：`Verifique o endereço SMB nos ajustes da pasta compartilhada.`
+    **问题原因**：误用欧洲葡语“definições”，应修正为“ajustes”。
+
+14. **语言**：de
+    **key**：`Mounted shared folders`
+    **现译文**：`Gemountete geteilte Ordner`
+    **建议译文**：`Eingebundene freigegebene Ordner`
+    **问题原因**：使用非正式生造词“Gemountete”，未符合 macOS 德语对网络卷的规范。
+
+15. **语言**：de
+    **key**：`Automnt could not confirm that no CLI configuration exists. Your input is preserved. Resolve the CLI configuration before saving in the app.`
+    **现译文**：`Automnt konnte die Konfiguration der Kommandozeile nicht bestätigen. Deine Eingaben bleiben erhalten. Kläre die Kommandozeilen-Konfiguration, bevor du in der App sicherst.`
+    **建议译文**：`Automnt konnte die Konfiguration der Befehlszeile nicht bestätigen. Ihre Eingaben bleiben erhalten. Klären Sie die Konfiguration der Befehlszeile, bevor Sie in der App sichern.`
+    **问题原因**：混入非正式人称“du/Deine”，且误用非标准词“Kommandozeile”（macOS 规范为 Befehlszeile）。
+
+16. **语言**：de
+    **key**：`Allow notifications to receive alerts when automatic recovery is incomplete.`
+    **现译文**：`Erlaube Mitteilungen, um Hinweise zu erhalten, wenn die automatische Wiederherstellung unvollständig ist.`
+    **建议译文**：`Erlauben Sie Mitteilungen, um Hinweise zu erhalten, wenn die automatische Wiederherstellung unvollständig ist.`
+    **问题原因**：采用非正式“du”祈使句“Erlaube”，与设置面板整体的礼貌“Sie”风格冲突。
+
+17. **语言**：de
+    **key**：`Add servers and shared folders to mount automatically.`
+    **现译文**：`Füge Server und geteilte Ordner hinzu, die automatisch verbunden werden sollen.`
+    **建议译文**：`Fügen Sie Server und freigegebene Ordner hinzu, die automatisch eingebunden werden sollen.`
+    **问题原因**：混用“du”命令式并错误使用云盘网盘词“geteilte Ordner”（SMB 应为 freigegebene Ordner）。
+
+18. **语言**：ja
+    **key**：`Automnt could not confirm that no CLI configuration exists. Your input is preserved. Resolve the CLI configuration before saving in the app.`
+    **现译文**：`Automnt はコマンドライン設定を確認できませんでした。入力内容は保持されています。アプリで保存する前にコマンドライン設定を解決してください。`
+    **建议译文**：`Automnt はコマンドライン設定を確認できませんでした。入力内容は保持されています。App で保存する前にコマンドライン設定を解決してください。`
+    **问题原因**：违背 macOS 官方文案指南（Apple 日语规范统一使用拉丁大写“App”，避免片假名“アプリ”）。
+
+19. **语言**：ja
+    **key**：`Automatic mounting and recovery are running.`
+    **现译文**：`自動マウントと復元が実行中です。`
+    **建议译文**：`自動マウントと自動復旧が実行中です。`
+    **问题原因**：网络挂载恢复应统一为“自動復旧”，避免使用备份术语“復元”。
+
+20. **语言**：ko
+    **key**：`Automatic mounting is on. Check background mounting before continuing.`
+    **现译文**：`자동 마운트가 켜져 있지만 아직 적용되지 않았습니다. 잠시 후 다시 시도하십시오.`
+    **建议译文**：`자동 마운트가 켜져 있지만 아직 적용되지 않았습니다. 잠시 후 다시 시도하세요.`
+    **问题原因**：混用生硬严肃的“~하십시오”体，破坏了现代 macOS 全面采用的“~하세요”亲和规范。
+
+21. **语言**：ko
+    **key**：`Enter a server address such as server.example, without a user name or password.`
+    **现译文**：`서버 주소(예: server.example)를 입력하십시오. 사용자 이름이나 암호는 포함하지 마십시오.`
+    **建议译文**：`서버 주소(예: server.example)를 입력하세요. 사용자 이름이나 암호는 포함하지 마세요.`
+    **问题原因**：混入格式体“~하십시오”，与全界面主导的“~하세요”语调不一致。
+
+22. **语言**：ko
+    **key**：`Open Login Items Settings`
+    **现译文**：`시스템 로그인 항목 설정 열기…`
+    **建议译文**：`로그인 항목 설정 열기…`
+    **问题原因**：冗余添加了“시스템”（系统），且与同义小写 key 产生分裂。
+
+23. **语言**：es
+    **key**：`Automnt will no longer open at login. Failure notifications while the window is closed stop once you quit. Automatic mounting continues.`
+    **现译文**：`Automnt dejará de abrirse al iniciar sesión. Al salir, se detendrán las notificaciones con la ventana cerrada. El montaje automático continúa.`
+    **建议译文**：`Automnt dejará de abrirse al iniciar sesión. Al salir, se detendrán las notificaciones cuando la ventana esté cerrada. El montaje automático continúa.`
+    **问题原因**：“con la ventana cerrada”为生硬字面直译，母语地道表述应采用从句。
+
+24. **语言**：es
+    **key**：`Quitting stops notifications while the window is closed. Automatic mounting continues.`
+    **现译文**：`Al salir se detienen las notificaciones con la ventana cerrada. El montaje automático continúa.`
+    **建议译文**：`Al salir, se detienen las notificaciones cuando la ventana esté cerrada. El montaje automático continúa.`
+    **问题原因**：首句缺少从句停顿逗号，且“con la ventana cerrada”带有明显机翻痕迹。
+
+25. **语言**：fr
+    **key**：`Open Login Items Settings`
+    **现译文**：`Ouvrir les réglages d’ouverture`
+    **建议译文**：`Ouvrir les réglages « Ouverture »`
+    **问题原因**：与现代 macOS 系统设置板块标题脱节，且与同名小写 key 译文冲突。
+
+26. **语言**：fr
+    **key**：`Turn On in Login Items`
+    **现译文**：`Activer dans les éléments d’ouverture`
+    **建议译文**：`Activer dans « Ouverture »`
+    **问题原因**：未对齐现代 macOS 系统设置中的官方分组名称。
+
+27. **语言**：zh-Hans
+    **key**：`Stop Opening Automnt at Login?`
+    **现译文**：`不再在登录时打开 Automnt？`
+    **建议译文**：`登录时不再打开 Automnt？`
+    **问题原因**：“不再在”双重叠字读感滞涩，时间状语前置更符合中文母语习惯。
+
+28. **语言**：zh-Hans
+    **key**：`Automnt will no longer open at login. Failure notifications while the window is closed stop once you quit. Automatic mounting continues.`
+    **现译文**：`Automnt 将不再随登录打开；退出后，窗口关闭期间不再收到挂载失败通知。自动挂载仍会继续。`
+    **建议译文**：`Automnt 将不再在登录时打开；退出后，窗口关闭期间不再收到挂载失败通知。自动挂载仍会继续。`
+    **问题原因**：“随登录打开”与首选项开关名称“登录时打开 Automnt”用词分裂。
+
+29. **语言**：zh-Hans
+    **key**：`Check every shared folder now and mount what is missing.`
+    **现译文**：`立即检查所有共享文件夹，把缺少的挂载起来。`
+    **建议译文**：`立即检查所有共享文件夹并挂载缺失项。`
+    **问题原因**：“把缺少的挂载起来”口语机翻感偏重，不够简洁规范。
+
+30. **语言**：zh-Hans
+    **key**：`Drag a row by its handle to change the order. Every reachable server is checked in this order and its shared folders are mounted.`
+    **现译文**：`拖动行的把手可调整顺序。所有可用的服务器都会按此顺序检查并挂载。`
+    **建议译文**：`拖移列表行可调整顺序。所有可用的服务器都会按此顺序检查并挂载。`
+    **问题原因**：“行的把手”把 handle 误译为门把手，应意译为“拖移列表行”。
+
+31. **语言**：zh-Hant
+    **key**：`Hide menu bar icon`
+    **现译文**：`隱藏選單列圖像`
+    **建议译文**：`隱藏選單列圖示`
+    **问题原因**：“圖像”通常指图片，macOS 繁中系统对界面图标的标准译词为“圖示”。
+
+32. **语言**：zh-Hant
+    **key**：`Recovering`
+    **现译文**：`正在恢復`
+    **建议译文**：`正在復原`
+    **问题原因**：与全应用统一采用的“復原”（自動復原、復原提醒）产生术语冲突。
+
+33. **语言**：zh-Hant
+    **key**：`Stop Opening Automnt at Login?`
+    **现译文**：`不要在登入時開啟 Automnt？`
+    **建议译文**：`不再於登入時開啟 Automnt？`
+    **问题原因**：“不要在”带有生硬祈使否定口吻，弹窗询问标题应更为典雅平实。
+
+34. **语言**：zh-Hant
+    **key**：`Open Automnt`
+    **现译文**：`打開 Automnt`
+    **建议译文**：`開啟 Automnt`
+    **问题原因**：macOS 繁中动作标准术语为“開啟”，避免简体习惯词“打開”。
+
+35. **语言**：de
+    **key**：`Choose a different mount folder for this shared folder.`
+    **现译文**：`Wählen Sie einen anderen Mount-Ordner für diesen geteilten Ordner.`
+    **建议译文**：`Wählen Sie einen anderen Einbindeordner für diesen freigegebenen Ordner.`
+    **问题原因**：混杂英语直译“Mount-Ordner”与网盘词“geteilten Ordner”。
+
+36. **语言**：ja
+    **key**：`The login item didn’t load. Quit Automnt, reopen it from the Applications folder, then check again.`
+    **现译文**：`ログイン項目を読み込めませんでした。Automnt を終了し、「アプリケーション」フォルダから開き直して、もう一度確認してください。`
+    **建议译文**：`ログイン項目を読み込めませんでした。Automnt を終了し、「アプリケーション」フォルダから再度開いて確認してください。`
+    **问题原因**：“開き直して”带有略微的口语色彩，书面指导语更宜用“再度開いて”。
+
+# 第二部分：不一致与术语分裂清单
+
+1. **德语（de）挂载动作四重分裂**：
+   - 全局同时混用 `Einbinden`（82 处）、`Verbinden`（35 处）、英文生造词 `Mounten`（8 处）以及动名词 `Gemountete`。建议统一挂载动作核心词为 `Einbinden`（动词）/ `Einbindung`（名词），并彻底清除所有 `mount` 残留。
+
+2. **德语（de）共享文件夹术语分裂**：
+   - 绝大多数地方使用正确的 `freigegebener Ordner`（100 处），但在 `Add servers...` 等 10 处文案中出现了指代网盘/云端协作的 `geteilter Ordner`。应统一为 `freigegebener Ordner` 或 `Freigabe`。
+
+3. **德语（de）人称与称谓撕裂**：
+   - 同一应用内同时存在非正式亲昵的 `du / deine / Kläre / Prüfe`（43 处）与正式礼貌的 `Sie / Ihre / Wählen Sie`（66 处）。在 macOS 官方德语体系中，必须统一采用规范礼貌的“Sie-Form”或中性不定式句式。
+
+4. **德语（de）命令行术语混用**：
+   - 大部分使用 `Befehlszeile`（10 处），但有 2 处写成了 `Kommandozeile`。macOS 规范统一为 `Befehlszeile`。
+
+5. **巴西葡萄牙语（pt-BR）欧洲葡语（pt-PT）泄漏**：
+   - 在 `Server settings` 及挂载设置提示等 5 处文案中，错误使用了葡萄牙本土词汇 `Definições`。巴西葡萄牙语 macOS 统一为 `Ajustes`。
+
+6. **巴西葡萄牙语（pt-BR）登录项与登录动作分裂**：
+   - 系统登录动作在 `iniciar a sessão` 与非标短语 `entrar na sessão` 之间混用；弹窗动作在 `Parar de abrir` 与 `Não abrir` 之间摇摆。
+
+7. **日语（ja）挂载自动恢复分裂**：
+   - 挂载恢复在 `自動復旧`（7 处）与数据备份类词汇 `復元`（5 处，如“復元の通知”、“自動マウントと復元”）之间混用。网络 SMB 卷恢复应严格统一为 `復旧`。
+
+8. **日语（ja）应用名称规范分裂**：
+   - 存在 15 处遵循 Apple 规范的拉丁大写 `App`，同时有 5 处混入了片假名 `アプリ`。应统一为 `App`。
+
+9. **法语（fr）系统设置“登录项”三重分裂**：
+   - 同指系统设置面板中的 Login Items，分别出现了 `« Ouverture »`、`éléments d’ouverture` 与 `éléments de connexion` 三种不同表述。
+
+10. **西班牙语（es）登录项概念混淆**：
+    - 将登录项设置按钮译为 `Abrir ajustes de inicio de sesión`（易混淆为用户账户登录密码），与其他界面的规范词 `Ítems de inicio` 产生冲突。
+
+11. **繁体中文（zh-Hant）系统术语与 Windows 词汇泄漏**：
+    - 文件夹出现 2 处 Windows 习惯的 `資料夾`，与全篇 100 多处的 macOS 规范词 `檔案夾` 冲突；Icon 出现了 `圖像` 与 `圖示` 的混用；Recovery 出现了 `正在恢復` 与 `復原` 的混用。
+
+12. **韩语（ko）终结敬语语气割裂**：
+    - 界面 163 处使用现代 macOS 标准亲和的 `~하세요` 体，但有 11 处突然切换为生硬严肃的 `~하십시오` 体；详情按钮存在 `세부 정보 보기` 与 `세부사항 보기` 的同义分裂。
+
+13. **简体中文（zh-Hans）应用称谓不一**：
+    - 同一设置上下文中，`App`（6 处）与 `应用`（23 处）频繁交替出现。
+
+14. **大小写重复 Key 造成的跨语言译文漂移**：
+    - `Open Login Items Settings` vs `Open Login Items settings`
+    - `Automatic mounting` vs `Automatic Mounting`
+    - `Automatic recovery` vs `Automatic Recovery`
+    - `View details` vs `View Details`
+    - `Server settings` vs `Server Settings`
+    以上重复或大小写微异的 key 在部分语言中绑定了完全不同的词汇（如法语、德语、韩语），形成了人为的界面文案不一致。
+
+# 第三部分：确认无需修改的方面
+
+所有九种语言的数字占位符格式与复数分支映射完整规范，品牌名「Automnt」在各语言中的大小写及边界留白统一，且挂载生命周期状态（Healthy、Paused、Suppressed）的产品逻辑语义对应精准，无需修改。

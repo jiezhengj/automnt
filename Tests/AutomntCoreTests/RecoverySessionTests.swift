@@ -105,4 +105,75 @@ struct RecoverySessionTests {
         #expect(RecoveryHealthPolicy.observation(identity: key, actualPath: path, hostReachable: false,
             health: .healthy, observedAt: now).status == .offline)
     }
+
+    /// 首次建立会话边界（没有旧 boundary，例如升级后第一次运行）时，`.attached` 只表示
+    /// 本项目曾挂载过该卷；挂载表里已不存在且没有弹出记录，说明它是上次会话遗留的陈旧
+    /// 状态，必须恢复而非按“健康弹出”抑制。用户弹出记录仍保持抑制。
+    @Test func firstBaselineRecoversStaleAttachedWithoutCancellingEject() {
+        let stale = UUID().uuidString
+        let ejected = UUID().uuidString
+        let identity = RecoverySessionIdentity(network: "network", loginEpoch: "boot-1-console-unreadable",
+            previous: nil)
+        var state = MountRecoveryStateFile(volumes: [
+            stale: MountRecoveryVolumeRecord(volumeKey: stale, state: .attached,
+                everHealthyMounted: true, attemptCount: 2),
+            ejected: MountRecoveryVolumeRecord(volumeKey: ejected, state: .suppressed,
+                suppressionBoundary: "old|boot-0", everHealthyMounted: true, notificationCount: 1)
+        ])
+        RecoverySessionPolicy.advance(&state, to: identity, mountedKeys: [])
+        #expect(state.sessionBoundary == identity.combined)
+        #expect(state.volumes[stale]?.state == .pendingRecovery)
+        #expect(state.volumes[stale]?.attemptCount == 0)
+        #expect(state.volumes[stale]?.everHealthyMounted == true)
+        #expect(state.volumes[ejected]?.state == .suppressed)
+        #expect(state.volumes[ejected]?.suppressionBoundary == identity.combined)
+        #expect(state.volumes[ejected]?.notificationCount == 1)
+    }
+
+    /// 首次建立边界时仍在挂载表中的卷不得被重置为待恢复。
+    @Test func firstBaselineKeepsAttachedVolumeThatIsStillMounted() {
+        let mounted = UUID().uuidString
+        let identity = RecoverySessionIdentity(network: "network", loginEpoch: "boot-1", previous: nil)
+        var state = MountRecoveryStateFile(volumes: [
+            mounted: MountRecoveryVolumeRecord(volumeKey: mounted, state: .attached, everHealthyMounted: true)
+        ])
+        RecoverySessionPolicy.advance(&state, to: identity, mountedKeys: [mounted])
+        #expect(state.volumes[mounted]?.state == .attached)
+        #expect(state.sessionBoundary == identity.combined)
+    }
+
+
+    /// 同一次启动、同一网络下，只有「能否读取 console 记录」不同（沙盒读不到 utmpx，
+    /// CLI 读得到）不构成新会话：不得改写边界，也不得清除本会话的弹出抑制。
+    @Test func consoleReadabilityDifferenceWithinOneBootKeepsSessionSuppression() {
+        let key = UUID().uuidString
+        let boot = "1792778275"
+        let previousBoundary = "network|\(boot)-console-unreadable"
+        var state = MountRecoveryStateFile(sessionBoundary: previousBoundary, volumes: [key:
+            MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed,
+                suppressionBoundary: previousBoundary, everHealthyMounted: true, notificationCount: 1)])
+        let readable = RecoverySessionIdentity(network: "network", loginEpoch: "\(boot)-1792779000",
+            previous: previousBoundary)
+        RecoverySessionPolicy.advance(&state, to: readable, mountedKeys: [])
+        #expect(state.sessionBoundary == previousBoundary)
+        #expect(state.volumes[key]?.state == .suppressed)
+        #expect(state.volumes[key]?.suppressionBoundary == previousBoundary)
+        #expect(state.volumes[key]?.notificationCount == 1)
+    }
+
+    /// 同一网络下换了启动时刻仍是新会话（真实重启路径），陈旧 `.attached` 必须恢复。
+    @Test func newBootOnSameNetworkResetsStaleAttachedState() {
+        let key = UUID().uuidString
+        let previousBoundary = "network|1792778275-console-unreadable"
+        var state = MountRecoveryStateFile(sessionBoundary: previousBoundary, volumes: [key:
+            MountRecoveryVolumeRecord(volumeKey: key, state: .attached, everHealthyMounted: true,
+                attemptCount: 2)])
+        let rebooted = RecoverySessionIdentity(network: "network", loginEpoch: "1792780000-console-unreadable",
+            previous: previousBoundary)
+        RecoverySessionPolicy.advance(&state, to: rebooted, mountedKeys: [])
+        #expect(state.sessionBoundary == rebooted.combined)
+        #expect(state.volumes[key]?.state == .pendingRecovery)
+        #expect(state.volumes[key]?.attemptCount == 0)
+    }
+
 }
