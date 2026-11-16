@@ -671,9 +671,42 @@ struct HostReachabilityProbe {
         set { testOverrideHook.set(newValue) }
     }
 
+    /// 单轮可达性判定：Bonjour 解析（仅服务实例名）+ TCP 连接 + 一次 SMB2 `NEGOTIATE` 应答校验。
+    ///
+    /// 只看 TCP 会被本机 fake-ip 代理误导：TUN 代理会接受任意地址的连接并在数毫秒内关闭，
+    /// 于是「TCP 连上」既不能证明对端是 SMB 服务器，也不能证明主机名解析到了真实地址。
+    /// 因此连接就绪后发送一次 `NEGOTIATE`，只要求收到合法的 SMB2 响应头；不认证、不建会话、不写状态。
+    /// 配置里写成 `<instance>._smb._tcp.local` 的服务器必须先经 DNS-SD 解析出 SRV 目标，
+    /// 因为 `getaddrinfo` 不解析服务实例名；解析失败即判定不可达，不回退到实例名的普通查询。
+    ///
+    /// 整轮共用 `timeoutMs` 预算，解析与握手不会被各自计时放大成两倍超时。
     static func canConnect(host: String, port: Int = 445, timeoutMs: Int = 1000) -> Bool {
         if let testOverride { return testOverride(host, port, timeoutMs) }
-        guard !host.isEmpty else { return false }
+        guard !host.isEmpty, !host.contains("\0"), (1...65535).contains(port), timeoutMs > 0 else {
+            return false
+        }
+        let deadline = Date().addingTimeInterval(Double(min(timeoutMs, 30_000)) / 1000)
+        var target = host
+        if let reference = BonjourServiceName.reference(for: host) {
+            let budget = remainingMilliseconds(until: deadline)
+            guard budget > 0,
+                  let resolved = BonjourServiceResolver().targetHostBlocking(
+                      for: reference, timeoutMilliseconds: budget) else {
+                return false
+            }
+            target = resolved
+        }
+        let budget = remainingMilliseconds(until: deadline)
+        guard budget > 0 else { return false }
+        return smbNegotiateReachable(host: target, port: port, timeoutMs: budget)
+    }
+
+    private static func remainingMilliseconds(until deadline: Date) -> Int {
+        Int(max(deadline.timeIntervalSinceNow * 1000, 0))
+    }
+
+    /// 逐地址尝试：连上后完成一次 `NEGOTIATE` 往返才算可达。
+    private static func smbNegotiateReachable(host: String, port: Int, timeoutMs: Int) -> Bool {
         var hints = addrinfo()
         hints.ai_family = AF_UNSPEC
         hints.ai_socktype = SOCK_STREAM
@@ -685,36 +718,100 @@ struct HostReachabilityProbe {
             return false
         }
         defer { freeaddrinfo(res) }
+        let deadline = Date().addingTimeInterval(Double(timeoutMs) / 1000)
 
         var curr: UnsafeMutablePointer<addrinfo>? = firstAddr
         while let ai = curr {
-            let sock = socket(ai.pointee.ai_family, ai.pointee.ai_socktype, ai.pointee.ai_protocol)
-            if sock >= 0 {
-                let flags = fcntl(sock, F_GETFL, 0)
-                _ = fcntl(sock, F_SETFL, flags | O_NONBLOCK)
-
-                let connRes = connect(sock, ai.pointee.ai_addr, ai.pointee.ai_addrlen)
-                if connRes == 0 {
-                    close(sock)
-                    return true
-                }
-                if errno == EINPROGRESS {
-                    var pfd = pollfd(fd: sock, events: Int16(POLLOUT), revents: 0)
-                    let pollRes = poll(&pfd, 1, Int32(max(timeoutMs, 10)))
-                    if pollRes > 0 && (pfd.revents & Int16(POLLOUT)) != 0 {
-                        var err: Int32 = 0
-                        var errLen = socklen_t(MemoryLayout<Int32>.size)
-                        if getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &errLen) == 0 && err == 0 {
-                            close(sock)
-                            return true
-                        }
-                    }
-                }
-                close(sock)
-            }
             curr = ai.pointee.ai_next
+            guard let sock = connectedSocket(ai, deadline: deadline) else { continue }
+            defer { close(sock) }
+            if negotiate(socket: sock, deadline: deadline) { return true }
         }
         return false
+    }
+
+    private static func connectedSocket(_ ai: UnsafeMutablePointer<addrinfo>,
+                                        deadline: Date) -> Int32? {
+        let sock = socket(ai.pointee.ai_family, ai.pointee.ai_socktype, ai.pointee.ai_protocol)
+        guard sock >= 0 else { return nil }
+        let flags = fcntl(sock, F_GETFL, 0)
+        _ = fcntl(sock, F_SETFL, flags | O_NONBLOCK)
+        if connect(sock, ai.pointee.ai_addr, ai.pointee.ai_addrlen) != 0 {
+            guard errno == EINPROGRESS, wait(for: sock, events: Int16(POLLOUT), deadline: deadline) else {
+                close(sock)
+                return nil
+            }
+            var err: Int32 = 0
+            var errLen = socklen_t(MemoryLayout<Int32>.size)
+            guard getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &errLen) == 0, err == 0 else {
+                close(sock)
+                return nil
+            }
+        }
+        return sock
+    }
+
+    private static func negotiate(socket: Int32, deadline: Date) -> Bool {
+        guard send(Array(SMB2NegotiateFrame.request()), socket: socket, deadline: deadline) else {
+            return false
+        }
+        guard let lengthPrefix = receive(count: SMB2NegotiateFrame.netBIOSHeaderLength,
+                                        socket: socket, deadline: deadline),
+              SMB2NegotiateFrame.payloadLength(fromNetBIOSHeader: Data(lengthPrefix)) != nil else {
+            return false
+        }
+        guard let magic = receive(count: SMB2NegotiateFrame.responseMagic.count,
+                                  socket: socket, deadline: deadline) else {
+            return false
+        }
+        return SMB2NegotiateFrame.isResponseHeader(Data(magic))
+    }
+
+    private static func wait(for sock: Int32, events: Int16, deadline: Date) -> Bool {
+        let milliseconds = Int32(min(max(deadline.timeIntervalSinceNow * 1000, 0), 30_000))
+        guard milliseconds > 0 else { return false }
+        var pfd = pollfd(fd: sock, events: events, revents: 0)
+        while true {
+            let ready = poll(&pfd, 1, milliseconds)
+            if ready > 0 { return (pfd.revents & events) != 0 }
+            if ready == 0 { return false }
+            if errno != EINTR { return false }
+        }
+    }
+
+    private static func send(_ bytes: [UInt8], socket: Int32, deadline: Date) -> Bool {
+        var offset = 0
+        while offset < bytes.count {
+            guard wait(for: socket, events: Int16(POLLOUT), deadline: deadline) else { return false }
+            let written = bytes.withUnsafeBytes { buffer -> Int in
+                Darwin.send(socket, buffer.baseAddress!.advanced(by: offset), bytes.count - offset, 0)
+            }
+            if written > 0 {
+                offset += written
+            } else if written < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR {
+                return false
+            }
+        }
+        return true
+    }
+
+    private static func receive(count: Int, socket: Int32, deadline: Date) -> [UInt8]? {
+        var collected: [UInt8] = []
+        var buffer = [UInt8](repeating: 0, count: count)
+        while collected.count < count {
+            guard wait(for: socket, events: Int16(POLLIN), deadline: deadline) else { return nil }
+            let read = buffer.withUnsafeMutableBytes { raw -> Int in
+                Darwin.recv(socket, raw.baseAddress, count - collected.count, 0)
+            }
+            if read > 0 {
+                collected.append(contentsOf: buffer.prefix(read))
+            } else if read == 0 {
+                return nil
+            } else if errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR {
+                return nil
+            }
+        }
+        return collected
     }
 }
 
@@ -905,16 +1002,17 @@ enum MountPointStatus {
 func ensureMountPointReady(target: MountTarget) -> MountPointStatus {
     let stdPath = URL(fileURLWithPath: target.mountPath).standardizedFileURL.path
     if let currentSource = getKernelMountSource(for: stdPath) {
-        if smbResourceIdentity(currentSource) == smbResourceIdentity(target.url) {
+        let currentIdentity = smbResourceIdentity(currentSource)
+        if currentIdentity == smbResourceIdentity(target.url) {
             return .alreadyMountedHealthy
-        } else {
-            let unmounted = forceUnmountWithTimeout(path: stdPath)
-            if unmounted {
-                return .readyToMount
-            } else {
-                return .unmountFailed
-            }
         }
+        // 同一共享已由另一条主机（同轮回退的另一顺位）挂载：这就是目标状态，
+        // 不得卸载后重挂到当前失败的路径上。
+        if HostFallbackPolicy.isSameShareMount(identity: currentIdentity, shareURL: target.url) {
+            return .alreadyMountedHealthy
+        }
+        let unmounted = forceUnmountWithTimeout(path: stdPath)
+        return unmounted ? .readyToMount : .unmountFailed
     }
     return .readyToMount
 }
@@ -1011,6 +1109,10 @@ enum MountExecutionBudget {
     }
 }
 
+/// `--internal-netfs-mount` 的失败退出码：父进程据此还原失败类别（不传递任意文本）。
+private let internalNetFSMountCredentialFailureExitCode: Int32 = 77
+private let internalNetFSMountConnectionFailureExitCode: Int32 = 78
+
 func silentMount(urlString: String, mountPath: String) -> Bool {
     // NetFS 同步调用隔离在短时子进程中，超时可终止，主进程无需常驻等待。
     let timeout = max(0, MountExecutionBudget.deadline?.timeIntervalSinceNow ?? 10)
@@ -1018,7 +1120,20 @@ func silentMount(urlString: String, mountPath: String) -> Bool {
     let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL.path
     let result = runCommandDiscardingOutputWithTimeout(executable: executable,
         arguments: ["--internal-netfs-mount", urlString, mountPath], timeout: timeout)
-    MountExecutionBudget.lastFailure = result.status == 77 ? .credentialFailure : .shareRejected
+    // 连接类失败（无路由/不应答/超时）换一条主机可能当场解决；共享被拒与凭据失败
+    // 换主机也解决不了。分类唯一实现在 `HostFallbackPolicy`。
+    if result.timedOut {
+        MountExecutionBudget.lastFailure = .hostUnreachable
+    } else {
+        switch result.status {
+        case .some(internalNetFSMountCredentialFailureExitCode):
+            MountExecutionBudget.lastFailure = .credentialFailure
+        case .some(internalNetFSMountConnectionFailureExitCode):
+            MountExecutionBudget.lastFailure = .hostUnreachable
+        default:
+            MountExecutionBudget.lastFailure = .shareRejected
+        }
+    }
     return result.status == 0 && !result.timedOut
 }
 
@@ -3537,6 +3652,15 @@ func runRecoveryRound(
         loginEpoch: boundaryIdentity.loginEpoch, previous: load.file.sessionBoundary)
     let volumes = RecoveryRoundPlanner.relevantVolumes(configuration: config,
         mountedIdentities: Set(mountTable.keys), probe: probe)
+    // 可挂载的拓扑不只有本轮参与判定的卷：同轮回退会改挂同一共享在另一条主机上的条目，
+    // 那些条目不参与本轮逐卷判定，但副作用必须能找到它们。
+    var mountable: [String: ConfiguredVolume] = [:]
+    for volume in configuredVolumes(from: config) { mountable[volume.identity] = volume }
+    for volume in volumes {
+        for fallback in HostFallbackPolicy.fallbackVolumes(for: volume, in: config) {
+            mountable[fallback.identity] = fallback
+        }
+    }
 
     let request = RecoveryRoundRequest(configuration: config, load: load,
         sessionNetwork: sessionIdentity.network, sessionLoginEpoch: sessionIdentity.loginEpoch,
@@ -3544,7 +3668,7 @@ func runRecoveryRound(
     let effects = RecoveryRoundEffects(
         cleanup: { path in cleanupVolume(path) },
         mount: { identity in
-            guard let volume = volumes.first(where: { $0.identity == identity }) else {
+            guard let volume = mountable[identity] else {
                 return RecoveryMountAttempt(succeeded: false, failure: MountExecutionBudget.lastFailure)
             }
             MountExecutionBudget.lastFailure = .shareRejected
@@ -5232,6 +5356,35 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
           "unreachable first host falls back exclusively to reachable second host")
     check(fallbackRound.notificationKeys.isEmpty && fallbackRound.failed.isEmpty,
           "successful priority fallback never reports the unavailable nonselected host as failed")
+    // 同轮回退：探活可达、但挂载阶段以连接类失败结束 → 同一轮改挂同名同挂载点的下一顺位主机。
+    let failoverConfig = AutomntConfig(retryPolicy: RetryPolicy(maxAttempts: 1, intervalMs: 100,
+                                                                maxTotalWindowMs: 1000), hosts: [
+        HostConfig(host: "lan.example", shares: [SMBShareConfig(name: "Shared",
+            smbURL: "smb://lan.example/Shared", mountPoint: "/Volumes/Shared")]),
+        HostConfig(host: "tail.example", shares: [SMBShareConfig(name: "Shared",
+            smbURL: "smb://tail.example/Shared", mountPoint: "/Volumes/Shared")])])
+    let failoverKeys = configuredVolumes(from: failoverConfig).map(\.key)
+    var failoverHosts: [String] = []
+    let failoverRound = runRecoveryRound(config: failoverConfig, mountTable: [:],
+        hostReachability: { _, _ in true },
+        stateURL: tempDir.appendingPathComponent("connection-failover-state.plist"),
+        applyRecovery: { volume, _ in
+            failoverHosts.append(volume.host)
+            // 顺位主机连接失败；另一条主机挂上同一共享。
+            MountExecutionBudget.lastFailure = volume.host == "lan.example" ? .hostUnreachable : .shareRejected
+            return volume.host != "lan.example"
+        })
+    check(failoverHosts == ["lan.example", "tail.example"] && failoverRound.recovered == [failoverKeys[1]],
+          "connection-class mount failure falls back to the same share on the next reachable host")
+    check(failoverRound.failed.isEmpty && failoverRound.notificationKeys.isEmpty,
+          "same-round fallback never reports the superseded host as a failure")
+    var rejectedHosts: [String] = []
+    let rejectedRound = runRecoveryRound(config: failoverConfig, mountTable: [:],
+        hostReachability: { _, _ in true },
+        stateURL: tempDir.appendingPathComponent("share-rejected-state.plist"),
+        applyRecovery: { volume, _ in rejectedHosts.append(volume.host); return false })
+    check(rejectedHosts == ["lan.example"] && rejectedRound.failed == [failoverKeys[0]],
+          "share-level mount failure never silently retries another host")
     var takeoverConfig = roundConfig
     takeoverConfig.hosts[1].shares[0].mountPoint = "/Volumes/A"
     let takeoverURL = tempDir.appendingPathComponent("priority-takeover-state.plist")
@@ -6256,8 +6409,13 @@ public func runAutomntCLI() {
 
     if args.count == 4 && args[1] == "--internal-netfs-mount" {
         let mounted = performNetFSMount(urlString: args[2], mountPath: args[3])
-        let credentialFailure = [Int32(EACCES), Int32(EAUTH), Int32(ENEEDAUTH), -5000, -5023].contains(MountExecutionBudget.netFSStatus)
-        exit(mounted ? 0 : (credentialFailure ? 77 : 1))
+        let status = MountExecutionBudget.netFSStatus
+        let credentialFailure = [Int32(EACCES), Int32(EAUTH), Int32(ENEEDAUTH), -5000, -5023].contains(status)
+        // 连接类失败单独一个码：父进程据此区分「换条主机还能试」和「共享本身被拒」。
+        if mounted { exit(0) }
+        if credentialFailure { exit(internalNetFSMountCredentialFailureExitCode) }
+        exit(HostFallbackPolicy.isConnectionFailure(netFSStatus: status)
+             ? internalNetFSMountConnectionFailureExitCode : 1)
     }
 
     // T077：单共享普通弹出的隔离子进程，自己持有 evaluation.lock。

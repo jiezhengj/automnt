@@ -209,8 +209,21 @@ public enum BackgroundEvaluator {
             let outcome = try await evaluateHost(host, directory: directory, snapshot: snapshot,
                 backend: backend, deadline: deadline, effects: effects)
             observations.append(contentsOf: outcome.observations)
-            if firstIssue == nil { firstIssue = outcome.issue }
+            var issue = outcome.issue
             retrySuggested = retrySuggested || outcome.retrySuggested
+            // 同轮回退（仅 first_reachable）：选中的主机在挂载阶段以连接类失败结束、且
+            // 仍有预算时，按保存顺序改试带同名同挂载点共享的其他启用主机。
+            // all_reachable 本来就逐个主机执行，无需回退，否则会在同一路径上重复尝试。
+            if policy == .firstReachable, let failed = issue,
+               HostFallbackPolicy.isConnectionFailure(failed) {
+                if let fallback = try await evaluateFallback(for: host, directory: directory,
+                    snapshot: snapshot, backend: backend, deadline: deadline, effects: effects) {
+                    observations.append(contentsOf: fallback.observations)
+                    retrySuggested = retrySuggested || fallback.retrySuggested
+                    issue = fallback.issue
+                }
+            }
+            if firstIssue == nil { firstIssue = issue }
         }
         // all_reachable records every configured target: an unreachable server's enabled
         // shares are reported as offline for their own identities instead of vanishing
@@ -230,6 +243,26 @@ public enum BackgroundEvaluator {
         let filtered = supersededFiltered(observations, configuration: configuration)
         return BackgroundEvaluationSummary(observations: filtered, issue: firstIssue,
             retrySuggested: retrySuggested)
+    }
+
+    /// 同轮回退：改试带同名同挂载点共享的其他启用主机，成功或得出非连接类结论即停。
+    ///
+    /// 未成功的候选主机不把其观测并入本轮：同一挂载点只保留失败主机的那份记录，
+    /// 避免同一目标在一轮里报出多份失败（多份失败会各自消耗通知额度）。
+    /// 成功候选的观测仍会进入本轮，并由 `RecoverySupersededPolicy` 剔除失败主机的同名记录。
+    private static func evaluateFallback(for host: HostConfig, directory: URL,
+                                         snapshot: ConfigSnapshot, backend: BackendState,
+                                         deadline: ContinuousClock.Instant,
+                                         effects: BackgroundVolumeEffects,
+                                         isolation: isolated (any Actor)? = #isolation) async throws -> HostEvaluation? {
+        for candidate in HostFallbackPolicy.candidates(for: host, in: snapshot.configuration) {
+            guard ContinuousClock.now < deadline else { return nil }
+            let outcome = try await evaluateHost(candidate, directory: directory, snapshot: snapshot,
+                backend: backend, deadline: deadline, effects: effects)
+            if let issue = outcome.issue, HostFallbackPolicy.isConnectionFailure(issue) { continue }
+            return outcome
+        }
+        return nil
     }
 
     /// One host's complete share pass. An early exit stops this host only; the caller
@@ -256,6 +289,15 @@ public enum BackgroundEvaluator {
             let recovery = RecoveryStateRepository(url: directory.appendingPathComponent("mount-recovery-state.plist")).read()
             let path = effects.mountPathState(share.mountPoint)
             let present = path == .smb(identity: identity)
+
+            // 同一共享已由另一条主机（同轮回退的另一顺位）挂载在同一个挂载点：
+            // 数据已经可用，不得报挂载点冲突、也不得卸载重挂到失败路径。
+            if case .smb(let actual) = path, actual != identity,
+               HostFallbackPolicy.isSameShareMount(identity: actual, shareURL: share.smbURL) {
+                observations.append(VolumeObservation(identity: identity, status: .healthy,
+                    actualPath: share.mountPoint, observedAt: Date()))
+                continue
+            }
 
             // 挂载点状态门（非恢复规则）：不可用/占用/其他身份一律阻断。
             if let blocked = BaselineMountDecision.block(path: path, identity: identity) {

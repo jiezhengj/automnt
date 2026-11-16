@@ -108,7 +108,6 @@ public struct RecoveryMountAttempt: Equatable, Sendable {
         self.failure = failure
     }
 }
-
 /// 注入副作用：挂载、清理与剩余预算。判定规则不在此层。
 public struct RecoveryRoundEffects {
     /// 清理死卷（入参为观测到的挂载路径）；返回是否清理成功。
@@ -343,6 +342,14 @@ public enum RecoveryRoundPlanner {
                 } else {
                     working.state = .pendingRecovery
                     result.failed.append(snapshot.identity)
+                    // 同轮回退：仅对**连接类**失败改试带同名同挂载点共享的其他启用主机。
+                    // 回退判定唯一实现在 `HostFallbackPolicy`；成功时本轮把回退身份记为已恢复，
+                    // 原身份的失败记录由下方 `RecoverySupersededPolicy` 剔除（保留账目、不再上报）。
+                    if HostFallbackPolicy.isConnectionFailure(attempts.last?.outcome ?? .shareRejected) {
+                        _ = attemptFallback(from: volume, request: request, boundary: boundary,
+                            peers: peers, stateReadable: stateReadable, observe: observe,
+                            effects: effects, result: &result)
+                    }
                 }
                 action = .planned(for: judgment.decision)
 
@@ -405,5 +412,94 @@ public enum RecoveryRoundPlanner {
             }
         }
         return result
+    }
+
+    /// 同轮回退：按保存顺序改试带同名同挂载点共享的其他启用主机。
+    ///
+    /// 候选的选择标准全部来自 `HostFallbackPolicy`（连接类失败、同名同挂载点、保存顺序）；
+    /// 本函数只负责观测、判定与记账，判定仍走 `RecoveryVolumeDecisionPolicy`。
+    /// 成功时返回被挂载的回退身份；失败或不满足条件的候选不写失败记录（原身份的失败已入账）。
+    private static func attemptFallback(from volume: RecoveryRoundConfiguredVolume,
+                                        request: RecoveryRoundRequest, boundary: String,
+                                        peers: [RecoveryPeer], stateReadable: Bool,
+                                        observe: (RecoveryRoundConfiguredVolume) -> RecoveryRoundVolumeSnapshot,
+                                        effects: RecoveryRoundEffects,
+                                        result: inout RecoveryRoundResult) -> String? {
+        let candidates = HostFallbackPolicy.fallbackVolumes(for: volume, in: request.configuration)
+        for candidate in candidates {
+            guard effects.budgetRemaining() > 0 else { return nil }
+            let snapshot = observe(candidate)
+            let judgment = RecoveryVolumeDecisionPolicy.judge(
+                RecoveryVolumeFacts(identity: snapshot.identity, mountPoint: snapshot.mountPoint,
+                    presentInMountTable: snapshot.presentInMountTable,
+                    hostReachable: snapshot.hostReachable, health: snapshot.health),
+                context: RecoveryVolumeContext(configuration: request.configuration,
+                    state: result.state, stateReadable: stateReadable, boundary: boundary,
+                    peers: peers, manualRecovery: request.manualRecovery,
+                    permitsMount: isPermitted(configuration: request.configuration),
+                    now: request.now()))
+            var record = result.state.volumes[candidate.identity]
+                ?? MountRecoveryVolumeRecord(volumeKey: candidate.identity)
+            switch judgment.decision {
+            case .attachHealthy, .recover:
+                break
+            case .cleanupThenRecover, .sessionSuppressed, .pendingUnreachable, .deferred:
+                // 回退不是用户动作：不得改写回退身份的抑制/待恢复结论，也不在回退里做破坏性清理。
+                continue
+            }
+            if snapshot.presentInMountTable {
+                // 同一共享已由该主机挂载：幂等成功。
+                record.state = .attached
+                record.repairEjectEvidence = false
+                record.everHealthyMounted = true
+                record.attemptCount = 0
+                record.notificationCount = 0
+                record.suppressionBoundary = nil
+                record.updatedAt = request.now().timeIntervalSince1970
+                result.state.volumes[candidate.identity] = record
+                result.recovered.append(candidate.identity)
+                result.plan.append(RecoveryVolumePlan(identity: candidate.identity,
+                    mountPoint: candidate.mountPoint, action: .attachHealthy))
+                return candidate.identity
+            }
+            guard effects.budgetRemaining() > 0 else { return nil }
+            record.state = .recovering
+            record.updatedAt = request.now().timeIntervalSince1970
+            result.state.volumes[candidate.identity] = record
+            var attempts: [RecoveryAttempt] = []
+            let mounted = EvaluationRetryRunner(policy: request.configuration.retryPolicy ?? RetryPolicy()).run {
+                guard effects.budgetRemaining() > 0 else { return false }
+                result.attempted += 1
+                let attempt = effects.mount(candidate.identity)
+                attempts.append(RecoveryAttempt(timestamp: request.now().timeIntervalSince1970,
+                    outcome: attempt.succeeded ? .mounted : attempt.failure, sequence: attempts.count + 1))
+                return attempt.succeeded
+            }
+            result.state.attempts[candidate.identity] = attempts
+            guard mounted else {
+                record.state = .pendingRecovery
+                record.attemptCount = attempts.count
+                result.state.volumes[candidate.identity] = record
+                result.failed.append(candidate.identity)
+                if !HostFallbackPolicy.isConnectionFailure(attempts.last?.outcome ?? .shareRejected) {
+                    // 非连接类失败说明这条主机给出了确定的共享级结论，继续换主机无意义。
+                    return nil
+                }
+                continue
+            }
+            record.state = .attached
+            record.repairEjectEvidence = false
+            record.everHealthyMounted = true
+            record.attemptCount = 0
+            record.notificationCount = 0
+            record.suppressionBoundary = nil
+            result.state.volumes[candidate.identity] = record
+            result.state.cleanupLedger.removeValue(forKey: candidate.identity)
+            result.recovered.append(candidate.identity)
+            result.plan.append(RecoveryVolumePlan(identity: candidate.identity,
+                mountPoint: candidate.mountPoint, action: .recover))
+            return candidate.identity
+        }
+        return nil
     }
 }

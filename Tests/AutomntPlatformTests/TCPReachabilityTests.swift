@@ -7,7 +7,12 @@ import AutomntCore
 private final class LocalListener: @unchecked Sendable {
     let listener: NWListener
     private let queue = DispatchQueue(label: "org.automnt.test-listener")
-    init() throws { listener = try NWListener(using: .tcp, on: .any) }
+    /// 连接建立后立即写回的字节；nil 表示像 fake-ip 代理那样立刻关闭连接。
+    private let reply: Data?
+    init(reply: Data? = nil) throws {
+        self.reply = reply
+        listener = try NWListener(using: .tcp, on: .any)
+    }
     func start() async throws -> UInt16 {
         try await withCheckedThrowingContinuation { continuation in
             listener.stateUpdateHandler = { [self] state in
@@ -21,9 +26,15 @@ private final class LocalListener: @unchecked Sendable {
                 default: break
                 }
             }
-            listener.newConnectionHandler = { connection in
+            listener.newConnectionHandler = { [self] connection in
                 connection.start(queue: self.queue)
-                connection.cancel()
+                guard let reply = self.reply else {
+                    connection.cancel()
+                    return
+                }
+                connection.send(content: reply, completion: .contentProcessed { _ in
+                    connection.cancel()
+                })
             }
             listener.start(queue: queue)
         }
@@ -31,12 +42,31 @@ private final class LocalListener: @unchecked Sendable {
     deinit { listener.cancel() }
 }
 
+/// 最小的 SMB2 `NEGOTIATE` 响应头（NetBIOS 长度 + `\xfeSMB`），用于证明「只连上 TCP」不足。
+private let smb2NegotiateResponseHeader = SMB2NegotiateFrame.netBIOSHeader(length: 4)
+    + SMB2NegotiateFrame.responseMagic
+
 struct TCPReachabilityTests {
-    @Test func localTCPConnectionAndCancellation() async throws {
+    /// 只接受 TCP 立即关闭的对端（fake-ip 代理的典型行为）不得算作可达。
+    @Test func tcpOnlyEndpointIsNotReachable() async throws {
         let listener = try LocalListener()
         let port = try await listener.start()
         let probe = TCPReachabilityProbe()
+        #expect(try await probe.isReachable(host: "localhost", port: Int(port), timeoutMilliseconds: 1000) == false)
+    }
+
+    /// 真正应答 SMB2 `NEGOTIATE` 的对端才算可达。
+    @Test func smb2NegotiateResponderIsReachable() async throws {
+        let listener = try LocalListener(reply: smb2NegotiateResponseHeader)
+        let port = try await listener.start()
+        let probe = TCPReachabilityProbe()
         #expect(try await probe.isReachable(host: "localhost", port: Int(port), timeoutMilliseconds: 1000))
+    }
+
+    @Test func cancelledProbeThrowsCancellation() async throws {
+        let listener = try LocalListener(reply: smb2NegotiateResponseHeader)
+        let port = try await listener.start()
+        let probe = TCPReachabilityProbe()
         listener.listener.cancel()
         let cancelled = Task {
             withUnsafeCurrentTask { $0?.cancel() }

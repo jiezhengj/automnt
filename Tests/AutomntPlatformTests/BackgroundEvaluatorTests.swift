@@ -340,4 +340,82 @@ struct BackgroundEvaluatorTests {
         #expect(!box.mounted.contains(firstIdentity))
         #expect(summary.issue == nil)
     }
+    /// 同轮回退：选中的主机在挂载阶段以连接类失败结束、且另有一台主机带同名同挂载点共享时，
+    /// 本轮直接改试后者；成功后只报一份健康记录，不再把失败主机报成离线。
+    @Test func connectionFailureAtMountFallsBackToSameShareOnNextHost() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("automnt-bg-fallback-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let lan = HostConfig(host: "lan-bg.example", shares: [SMBShareConfig(name: "Shared",
+            smbURL: "smb://lan-bg.example/Shared", mountPoint: "/Volumes/Shared")])
+        let tail = HostConfig(host: "tail-bg.example", shares: [SMBShareConfig(name: "Shared",
+            smbURL: "smb://tail-bg.example/Shared", mountPoint: "/Volumes/Shared")])
+        let repository = FileConfigRepository(authorizedDirectory: directory)
+        _ = try repository.create(AutomntConfig(retryPolicy: RetryPolicy(maxAttempts: 1, intervalMs: 100,
+                                                                        maxTotalWindowMs: 3000),
+            hosts: [lan, tail], autoMountRecovery: true, automationEnabled: true))
+        let snapshot = try repository.read()
+        let store = BackendStateStore(authorizedDirectory: directory)
+        _ = try store.initialize(revision: snapshot.revision)
+        let journal = try store.begin(desiredOwner: .app, expectedGeneration: 0, revision: snapshot.revision)
+        _ = try store.advance(id: journal.id, to: .activating, verifiedStatus: .stopped)
+        let backend = try store.advance(id: journal.id, to: .active, verifiedStatus: .enabled)
+
+        let lanIdentity = smbResourceIdentity(lan.shares[0].smbURL)!
+        let tailIdentity = smbResourceIdentity(tail.shares[0].smbURL)!
+        let box = Box()
+        // 顺位主机可达（探活成功），但挂载阶段连接失败——正是需要回退的场景。
+        box.mountResponse = { identity in
+            identity == tailIdentity
+                ? WorkerMountResponse(observation: VolumeObservation(identity: identity, status: .healthy,
+                    actualPath: "/Volumes/Shared", observedAt: Date()), postMount: .notRequested)
+                : WorkerMountResponse(issue: .offline)
+        }
+        box.inspectHealth[tailIdentity] = WorkerMountResponse(observation: VolumeObservation(
+            identity: tailIdentity, status: .healthy, actualPath: "/Volumes/Shared", observedAt: Date()),
+            postMount: .notRequested)
+        let summary = (try? await BackgroundEvaluator.evaluate(directory: directory, snapshot: snapshot,
+            backend: backend, deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+            probe: StubProbe(reachable: true), effects: effects(box, present: { _ in .absent })))
+            ?? BackgroundEvaluationSummary(issue: .signalUnavailable)
+        #expect(box.mounted == [lanIdentity, tailIdentity])
+        #expect(summary.issue == nil)
+        // 只有接管成功的那份记录；失败主机不额外留一条离线记录。
+        let shared = summary.observations.filter { $0.actualPath == "/Volumes/Shared" }
+        #expect(shared.map(\.identity) == [tailIdentity])
+        #expect(shared.allSatisfy { $0.status == .healthy })
+    }
+
+    /// 挂载阶段的非连接类失败（例如共享被拒）不触发回退：换主机不会改变结论。
+    @Test func shareRejectionAtMountDoesNotFallBack() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("automnt-bg-nofallback-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let lan = HostConfig(host: "lan-bg.example", shares: [SMBShareConfig(name: "Shared",
+            smbURL: "smb://lan-bg.example/Shared", mountPoint: "/Volumes/Shared")])
+        let tail = HostConfig(host: "tail-bg.example", shares: [SMBShareConfig(name: "Shared",
+            smbURL: "smb://tail-bg.example/Shared", mountPoint: "/Volumes/Shared")])
+        let repository = FileConfigRepository(authorizedDirectory: directory)
+        _ = try repository.create(AutomntConfig(retryPolicy: RetryPolicy(maxAttempts: 1, intervalMs: 100,
+                                                                        maxTotalWindowMs: 3000),
+            hosts: [lan, tail], autoMountRecovery: true, automationEnabled: true))
+        let snapshot = try repository.read()
+        let store = BackendStateStore(authorizedDirectory: directory)
+        _ = try store.initialize(revision: snapshot.revision)
+        let journal = try store.begin(desiredOwner: .app, expectedGeneration: 0, revision: snapshot.revision)
+        _ = try store.advance(id: journal.id, to: .activating, verifiedStatus: .stopped)
+        let backend = try store.advance(id: journal.id, to: .active, verifiedStatus: .enabled)
+
+        let lanIdentity = smbResourceIdentity(lan.shares[0].smbURL)!
+        let box = Box()
+        box.mountResponse = { _ in WorkerMountResponse(issue: .shareRejected) }
+        let summary = (try? await BackgroundEvaluator.evaluate(directory: directory, snapshot: snapshot,
+            backend: backend, deadline: ContinuousClock.now.advanced(by: .seconds(5)),
+            probe: StubProbe(reachable: true), effects: effects(box, present: { _ in .absent })))
+            ?? BackgroundEvaluationSummary(issue: .signalUnavailable)
+        #expect(box.mounted == [lanIdentity])
+        #expect(summary.issue == .shareRejected)
+    }
 }

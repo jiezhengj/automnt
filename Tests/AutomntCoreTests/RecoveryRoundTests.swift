@@ -633,4 +633,170 @@ struct RecoveryRoundTests {
         #expect(harness.mountCalls == [volume.identity])
         #expect(result.recovered == [volume.identity])
     }
+
+    // MARK: - 7. 同轮回退（连接类失败改试同一共享的其他主机）
+
+    /// 顺位主机以连接类失败结束后，同一轮改挂同一共享在下一顺位主机上的条目。
+    /// 失败身份的记录仍存在账本里作为证据，但不再作为本轮失败上报（superseded）。
+    @Test func connectionFailureFallsBackToNextHostInSameRound() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configuration = try productConfiguration(directory: directory, hosts: [
+            HostConfig(host: "lan.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://lan.example/Shared", mountPoint: "/Volumes/Shared")]),
+            HostConfig(host: "tail.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://tail.example/Shared", mountPoint: "/Volumes/Shared")])])
+        let volumes = configuredRecoveryVolumes(from: configuration)
+        let first = volumes[0].identity
+        let second = volumes[1].identity
+        var mountCalls: [String] = []
+        let effects = RecoveryRoundEffects(
+            cleanup: { _ in true },
+            mount: { identity in
+                mountCalls.append(identity)
+                // 只有另一条主机的身份能挂上：顺位主机以连接类失败结束。
+                return RecoveryMountAttempt(succeeded: identity == second,
+                    failure: identity == second ? .mounted : .hostUnreachable)
+            },
+            budgetRemaining: { 10 })
+        // `first_reachable` 只把选中主机的卷交给本轮，与 CLI 的 relevantVolumes 一致。
+        let request = RecoveryRoundRequest(configuration: configuration, load: .absent,
+            sessionNetwork: "round-network", sessionLoginEpoch: "round-login",
+            mountedIdentities: [], manualRecovery: false, volumes: [volumes[0]])
+        let result = RecoveryRoundPlanner.run(request: request,
+            observe: observe(reachable: { _ in true }), effects: effects)
+        #expect(mountCalls == [first, second])
+        #expect(result.recovered == [second])
+        // 旧主机的失败已由同一挂载点上的恢复者取代，不再作为失败或通知上报。
+        #expect(result.failed.isEmpty)
+        #expect(result.notificationIdentities.isEmpty)
+        #expect(result.state.volumes[first]?.state == .pendingRecovery)
+        #expect(result.state.volumes[second]?.state == .attached)
+    }
+
+    /// 共享被拒（非连接类）不得回退：换一条主机也不会成功，只会推迟真实结论。
+    @Test func shareRejectionDoesNotFallBack() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configuration = try productConfiguration(directory: directory, hosts: [
+            HostConfig(host: "lan.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://lan.example/Shared", mountPoint: "/Volumes/Shared")]),
+            HostConfig(host: "tail.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://tail.example/Shared", mountPoint: "/Volumes/Shared")])])
+        let volumes = configuredRecoveryVolumes(from: configuration)
+        var mountCalls: [String] = []
+        let effects = RecoveryRoundEffects(
+            cleanup: { _ in true },
+            mount: { identity in
+                mountCalls.append(identity)
+                return RecoveryMountAttempt(succeeded: false, failure: .shareRejected)
+            },
+            budgetRemaining: { 10 })
+        let request = RecoveryRoundRequest(configuration: configuration, load: .absent,
+            sessionNetwork: "round-network", sessionLoginEpoch: "round-login",
+            mountedIdentities: [], manualRecovery: false, volumes: [volumes[0]])
+        let result = RecoveryRoundPlanner.run(request: request,
+            observe: observe(reachable: { _ in true }), effects: effects)
+        #expect(mountCalls == [volumes[0].identity])
+        #expect(result.failed == [volumes[0].identity])
+        #expect(result.recovered.isEmpty)
+    }
+
+    /// 回退按保存顺序、成功即停，且预算耗尽后不再尝试后续候选。
+    @Test func fallbackStopsAtFirstSuccessAndRespectsBudget() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configuration = try productConfiguration(directory: directory, hosts: [
+            HostConfig(host: "lan.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://lan.example/Shared", mountPoint: "/Volumes/Shared")]),
+            HostConfig(host: "relay.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://relay.example/Shared", mountPoint: "/Volumes/Shared")]),
+            HostConfig(host: "backup.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://backup.example/Shared", mountPoint: "/Volumes/Shared")])])
+        let volumes = configuredRecoveryVolumes(from: configuration)
+        var mountCalls: [String] = []
+        final class BudgetBox: @unchecked Sendable { var remaining: TimeInterval = 10 }
+        let budget = BudgetBox()
+        let effects = RecoveryRoundEffects(
+            cleanup: { _ in true },
+            mount: { identity in
+                mountCalls.append(identity)
+                return RecoveryMountAttempt(succeeded: identity == volumes[2].identity,
+                    failure: identity == volumes[2].identity ? .mounted : .hostUnreachable)
+            },
+            budgetRemaining: { budget.remaining })
+        let request = RecoveryRoundRequest(configuration: configuration, load: .absent,
+            sessionNetwork: "round-network", sessionLoginEpoch: "round-login",
+            mountedIdentities: [], manualRecovery: false, volumes: [volumes[0]])
+        let result = RecoveryRoundPlanner.run(request: request,
+            observe: observe(reachable: { _ in true }), effects: effects)
+        // 顺位 → relay（同样连接类失败）→ backup（成功即停）。
+        #expect(mountCalls == [volumes[0].identity, volumes[1].identity, volumes[2].identity])
+        #expect(result.recovered == [volumes[2].identity])
+
+        // 预算耗尽：原身份仍失败，但不得再尝试任何候选。
+        let exhaustedDirectory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: exhaustedDirectory) }
+        let exhaustedConfig = try productConfiguration(directory: exhaustedDirectory, hosts: [
+            HostConfig(host: "lan.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://lan.example/Shared", mountPoint: "/Volumes/Shared")]),
+            HostConfig(host: "tail.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://tail.example/Shared", mountPoint: "/Volumes/Shared")])])
+        let exhaustedVolumes = configuredRecoveryVolumes(from: exhaustedConfig)
+        var exhaustedCalls: [String] = []
+        final class OnceBox: @unchecked Sendable { var count = 0 }
+        let once = OnceBox()
+        let exhaustedEffects = RecoveryRoundEffects(
+            cleanup: { _ in true },
+            mount: { identity in
+                exhaustedCalls.append(identity)
+                once.count += 1
+                return RecoveryMountAttempt(succeeded: false, failure: .hostUnreachable)
+            },
+            // 首次挂载消耗掉最后一个预算单位，回退前即应放弃。
+            budgetRemaining: { once.count == 0 ? 1 : 0 })
+        let exhaustedRequest = RecoveryRoundRequest(configuration: exhaustedConfig, load: .absent,
+            sessionNetwork: "round-network", sessionLoginEpoch: "round-login",
+            mountedIdentities: [], manualRecovery: false, volumes: [exhaustedVolumes[0]])
+        let exhausted = RecoveryRoundPlanner.run(request: exhaustedRequest,
+            observe: observe(reachable: { _ in true }), effects: exhaustedEffects)
+        #expect(exhaustedCalls == [exhaustedVolumes[0].identity])
+        #expect(exhausted.failed == [exhaustedVolumes[0].identity])
+    }
+
+    /// 回退目标已被 suppression 结论约束时不得改写它（回退不是用户动作）。
+    @Test func fallbackNeverOverridesSuppressedCandidate() throws {
+        let directory = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configuration = try productConfiguration(directory: directory, hosts: [
+            HostConfig(host: "lan.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://lan.example/Shared", mountPoint: "/Volumes/Shared")]),
+            HostConfig(host: "tail.example", shares: [SMBShareConfig(name: "Shared",
+                smbURL: "smb://tail.example/Shared", mountPoint: "/Volumes/Shared")])])
+        let volumes = configuredRecoveryVolumes(from: configuration)
+        let boundary = "round-network|round-login"
+        var state = MountRecoveryStateFile(sessionBoundary: boundary)
+        // 候选身份带一个更早会话留下的抑制记录：本轮不得因回退而被改写或清除。
+        state.volumes[volumes[1].identity] = MountRecoveryVolumeRecord(
+            volumeKey: volumes[1].identity, state: .suppressed,
+            suppressionBoundary: "older-network|older-login", everHealthyMounted: false)
+        var mountCalls: [String] = []
+        let effects = RecoveryRoundEffects(
+            cleanup: { _ in true },
+            mount: { identity in
+                mountCalls.append(identity)
+                return RecoveryMountAttempt(succeeded: identity == volumes[1].identity,
+                    failure: identity == volumes[1].identity ? .mounted : .hostUnreachable)
+            },
+            budgetRemaining: { 10 })
+        let request = RecoveryRoundRequest(configuration: configuration, load: .loaded(state),
+            sessionNetwork: "round-network", sessionLoginEpoch: "round-login",
+            mountedIdentities: [], manualRecovery: false, volumes: [volumes[0]])
+        let result = RecoveryRoundPlanner.run(request: request,
+            observe: observe(reachable: { _ in true }), effects: effects)
+        #expect(mountCalls == [volumes[0].identity])
+        #expect(result.recovered.isEmpty)
+        #expect(result.state.volumes[volumes[1].identity]?.state == .suppressed)
+        #expect(result.state.volumes[volumes[1].identity]?.suppressionBoundary == "older-network|older-login")
+    }
 }

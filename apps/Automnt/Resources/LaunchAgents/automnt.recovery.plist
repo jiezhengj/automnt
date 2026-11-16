@@ -7,6 +7,7 @@
     <key>StartOnMount</key><true/>
     <key>WatchPaths</key><array>
         <string>/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist</string>
+        <string>/Library/Preferences/SystemConfiguration</string>
         <string>/Library/Preferences/SystemConfiguration/com.apple.airport.preferences.plist</string>
         <string>/Volumes</string>
     </array>
