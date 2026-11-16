@@ -30,11 +30,16 @@
 - 自行编译需要 macOS 27、Xcode 27 和可用的签名身份；在仓库根目录运行：
 
 ```sh
+# 推荐：自动确定本仓唯一签名身份，并拒绝签名漂移
+bash scripts/build-app.sh
+
+# 等价的手写方式（必须指定**一张具体证书**或其 SHA-1，不能写 Apple Development 类型名）
 xcodebuild -project apps/Automnt/Automnt.xcodeproj -scheme Automnt \
   -configuration Release -derivedDataPath .build/xcode \
-  DEVELOPMENT_TEAM=<你的 Team ID> CODE_SIGN_IDENTITY="Apple Development" build
+  DEVELOPMENT_TEAM=<你的 Team ID> CODE_SIGN_IDENTITY=<证书 CN 或 SHA-1> build
 ```
 
+- 为什么要写具体证书：签名里的指定要求内嵌叶子证书 CN，macOS 用它匹配 TCC 授权与后台项目登记。本机若有多张 Apple Development 证书，写类型名会让每次构建换一张，应用因此被视为“另一个 App”，所有系统授权都要重新给（详见 `AGENTS.md` 的「本机构建与签名事实」）。`scripts/build-app.sh` 会把身份钉在 `.build/sign-identity` 并校验指定要求不变。
 - 生成的 App 在 `.build/xcode/Build/Products/Release/Automnt.app`。自行编译的产物由编译者自行签名、分发和承担支持责任；项目不为其提供公证或安装支持。
 - GUI 面向未来的 Mac App Store 收费版本，商店可行性、审核与定价仍未最终确认；未获维护者另行授权前，不得把 GUI 预构建产物上传到任何 Release。
 

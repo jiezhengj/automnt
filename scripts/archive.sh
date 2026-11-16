@@ -1,16 +1,33 @@
 #!/bin/bash
 # Reproducible offline archive for the GUI app and prebuilt CLI.
 # Requires a signing team via DEVELOPMENT_TEAM (no personal team is hardcoded).
+# When DEVELOPMENT_TEAM/CODE_SIGN_IDENTITY are not given explicitly, the pinned
+# identity from scripts/sign-identity.py is used so rebuilds stay the same
+# application identity instead of picking a random local certificate.
 set -euo pipefail
 
 TASK_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(sed -n 's/^let automntVersion = "\(.*\)"/\1/p' "$TASK_ROOT/automnt.swift")"
 TEAM="${DEVELOPMENT_TEAM:-}"
-IDENTITY="${CODE_SIGN_IDENTITY:-Apple Development}"
+IDENTITY="${CODE_SIGN_IDENTITY:-}"
 OUT="${1:-$TASK_ROOT/.build/offline/$VERSION}"
+
+if [[ -z "$TEAM" || -z "$IDENTITY" ]]; then
+  RESOLVED="$(python3 "$TASK_ROOT/scripts/sign-identity.py" "${AUTOMNT_SIGN_IDENTITY:-}")"
+  TEAM="${TEAM:-$(printf '%s\n' "$RESOLVED" | sed -n 's/^team=//p')}"
+  if [[ -z "$IDENTITY" ]]; then
+    PINNED_CN="$(printf '%s\n' "$RESOLVED" | sed -n 's/^identity=//p')"
+    IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+      | grep -F "\"$PINNED_CN\"" | head -1 | awk '{print $2}')"
+  fi
+fi
 
 if [[ -z "$TEAM" ]]; then
   echo "DEVELOPMENT_TEAM is required (the repository never hardcodes a personal team)." >&2
+  exit 2
+fi
+if [[ -z "$IDENTITY" ]]; then
+  echo "CODE_SIGN_IDENTITY must be one exact certificate; refusing to let xcodebuild pick one." >&2
   exit 2
 fi
 if [[ -z "$VERSION" ]]; then

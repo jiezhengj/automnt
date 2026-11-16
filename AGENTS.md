@@ -41,6 +41,28 @@
   - **推送/发布前强制本地构建与二进制同步**：在执行**推送**与创建 GitHub Release **之前**，必须在 macOS 27 环境下使用当前最新源码通过最高优化参数重新编译生成 `automnt` 可执行二进制（`/usr/bin/swiftc -O -sdk ...`），并通过全部内置自测（`--self-test`）。严禁仅更新源码而未重新构建可执行程序，Release 资源中必须包含与源码版本严格一致的预编译二进制。用户环境默认且只能基于预编译二进制运行、部署守护进程与同步，严禁在用户机器上现场动态编译源码。**纯本地 Git 提交不受此约束**：本地提交不产生对外交付物，无需为此重建二进制；但若已提交的源码二进制与源码不同步，推送/发布前仍必须先完成重建同步。
   - 代码推送至 `main` 之后，必须紧随执行 `gh release create vx.y.z` 打上正式发布 Tag 并附带 Release Notes，完成终端用户自动升级的发布流程。
   - **Release 产物边界（2026-10-22 维护者确认）**：GitHub Release 只提供预编译 CLI（`automnt`）与其 SHA-256 校验值；GUI 源代码按仓库 MIT 许可证公开，任何人可自行查看、修改和编译，但不得把构建好的 GUI App、含 GUI 的离线 zip/dmg 或商店产物作为 Release 资源上传。GUI 面向未来的 Mac App Store 收费版本；商店提交、审核与定价仍未授权。详细清单见 `release/RELEASE_POLICY.md`。
+- **本机构建与签名事实（2026-11-14 实测记录，不必重新排查）**：
+  - 本机已有可用签名身份，GUI 可本地构建，无需向维护者询问证书或团队。**构建 GUI 一律走 `bash scripts/build-app.sh`**，不要手写 xcodebuild 命令：
+
+    ```sh
+    bash scripts/build-app.sh                 # 构建 + 验签 + 校验指定要求未漂移
+    bash scripts/build-app.sh <derivedData>   # 指定 DerivedData 目录
+    ```
+
+    脚本自己完成取证：`scripts/sign-identity.py` 解析唯一签名身份（依次取 `AUTOMNT_SIGN_IDENTITY` → `.build/sign-identity` → 已安装 `/Applications/Automnt.app` → 仓库根 `automnt`，都拿不到就硬失败，绝不猜第一个）；身份解析出来后写回 `.build/sign-identity`，并把 `CODE_SIGN_IDENTITY` 传**证书 SHA-1** 而不是 `Apple Development` 类型名。
+  - **签名身份必须跨构建稳定（2026-11-15 实测教训）**：签名里的指定要求（designated requirement）内嵌叶子证书的 CN，例如 `certificate leaf[subject.CN] = "Apple Development: <邮箱> (<证书 ID>)"`；macOS 用这条要求匹配 TCC 授权、辅助功能、输入监控与后台项目登记。本机有三张 `Apple Development` 证书，`CODE_SIGN_IDENTITY="Apple Development"` 只是**类型**，codesign/xcodebuild 会挑当时排在最前的一张——于是下一次构建悄悄变成「另一个 App」，所有系统授权都要重新给。因此：不指定具体证书就无法保持授权，`scripts/build-app.sh` 会在换身份时直接拒绝构建（`AUTOMNT_ALLOW_IDENTITY_CHANGE=1` 才放行），并比对 `.build/sign-app-dr` 里记录的指定要求，漂移即失败。构建 CLI 走 `bash scripts/build.sh` 时同样复用已有二进制的身份。
+  - 替换 `/Applications/Automnt.app` 时若换了证书，用户会看到：登录项/后台项目需要重新允许、通知与辅助功能授权被清空、`--check-background-service-status` 显示 `baseline; system-status=notFound`，并且必须经界面重新登记后台服务。**这些现象不要当成 bug 排查，先核对 `codesign -d --verbose=4` 的 `Authority=` 是否与上一版一致。**
+
+  - **证书 CN 括号里的串不是 Team ID**。`Apple Development: <email> (<10 位串>)` 中的括号串是证书 ID；团队 ID 是证书的 `OU` 字段（两串通常不同）。把括号串当 `DEVELOPMENT_TEAM` 传入会报 `No "Mac Development" signing certificate matching team ID "..." with a private key was found`。**这条报错不代表缺证书**，含义是团队 ID 与证书不匹配（Xcode 于是去找另一种证书类型）；先按上面的命令核对 `OU`，不得据此判定无法构建或改口说没法验证。
+  - `CODE_SIGN_IDENTITY` 必须写到**具体一张证书**（完整 CN 或证书 SHA-1），**不再接受 `Apple Development` 这种类型名**（它会让每次构建换证书、丢授权，见上）。`apps/Automnt/Resources/Signing.xcconfig` 的 `CODE_SIGN_IDENTITY = Apple Development` 只是占位默认值，调用方必须覆盖。构建产物中的 `$(DEVELOPMENT_TEAM)` 展开位（如 App Group）也会随真实团队 ID 正确展开。
+  - CLI 构建签名走 `bash scripts/build.sh`，它自动复用现有二进制的身份或 `security find-identity` 的第一个身份，不需要传团队 ID。
+  - 验证到构建产物为止（含 `plutil -p <app>/Contents/Library/LaunchAgents/*.plist`、`scripts/verify-signature.py`、`bash scripts/build-app.sh` 的签名与指定要求校验）属于本地验证；替换已安装的 `/Applications/Automnt.app` 或重置 SMAppService 登记按下一节的本机授权执行。
+- **本机安装与登记权限（2026-11-14 维护者授权，不必逐次询问）**：维护者已给出本机全部权限，以下动作视为已授权，直接执行并在当前回合说明结果，不得再以「需要授权」「属于发布动作」为由停顿或反问：
+  - 本地构建、签名、自测与门禁；覆盖 `~/Applications`、`/Applications/Automnt.app`；`ditto` 替换前可先备份旧包到 `/tmp`。
+  - 注册 / 注销 / 重置 `SMAppService` 的 baseline 与 recovery agent（含通过界面切换自动挂载，以及 `launchctl kickstart`、`bootout` 临时任务做验证）。
+  - 为验证触发放开/关闭本机 Tailscale、弹出与重挂已配置的网络卷；除此之外不得改动维护者的真实网络与账号设置。
+  - 仍属「对外交付」、须逐次明确授权才可执行的动作：`git push` 到远端、`gh release create`、版本号递增、商店提交与定价。
+  - **操作事实：替换 App 包不会刷新 launchd 登记**。SMAppService 的 BTM 记录在重装后仍指向旧内容（`launchctl print gui/501/org.automnt.automnt.recovery` 的 `WatchPaths` 仍是旧值，而包内 plist 已是新值）。要生效必须经应用自己的路径重新登记（界面把「自动挂载」关闭再打开），然后回查 `launchctl print` 确认 `WatchPaths` 与包内 plist 一致；光重装不得宣称新触发源已生效。
 
 # 原生界面与产品文案原则
 
