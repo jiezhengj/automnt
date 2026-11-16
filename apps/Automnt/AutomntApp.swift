@@ -748,6 +748,9 @@ final class ApplicationModel {
         guard let identity = smbResourceIdentity(share.smbURL) else { return .failed }
         let path = mountObservations[identity]
         if path == .smb(identity: identity) { return .usable }
+        // The same share on another configured host already carries this mount point;
+        // the path is usable, and this entry must not be reported as a location conflict.
+        if peerIdentityProvidingSameShare(share) != nil { return .availableViaPeer }
         if suppressedIdentities.contains(identity) { return .suppressedForThisSession }
         // The same share is mounted somewhere else: usable, just not at the configured path.
         if actualMountPoint(of: share) != nil { return .locationMismatch }
@@ -782,12 +785,26 @@ final class ApplicationModel {
 
     /// True when the kernel reports a different volume (SMB or not) at the configured
     /// location. That is a location conflict, not "this share happens to be unmounted".
+    /// A configured sibling host carrying the same share at the same mount point is not
+    /// a conflict: it is the share itself, mounted through another of its own entries.
     func isLocationOccupied(_ share: SMBShareConfig) -> Bool {
         guard let identity = smbResourceIdentity(share.smbURL) else { return false }
         let path = mountObservations[identity]
         if path == .occupied { return true }
-        if case .smb(let mounted) = path { return mounted != identity }
+        if case .smb(let mounted) = path {
+            return mounted != identity && peerIdentityProvidingSameShare(share) == nil
+        }
         return false
+    }
+
+    /// The configured sibling entry whose identity currently carries this share's mount
+    /// point (fallback/peer mount). Reads the kernel table only; never contacts a server.
+    private func peerIdentityProvidingSameShare(_ share: SMBShareConfig) -> String? {
+        guard let identity = smbResourceIdentity(share.smbURL),
+              case .smb(let mounted)? = mountObservations[identity],
+              let configuration = snapshot?.configuration else { return nil }
+        return HostFallbackPolicy.peerIdentityProvidingSameShare(share, mountedIdentity: mounted,
+                                                                 in: configuration)
     }
 
     func hostOwning(_ share: SMBShareConfig) -> HostConfig? {
@@ -828,11 +845,14 @@ final class ApplicationModel {
         let identity = smbResourceIdentity(share.smbURL)
         let observed = identity.flatMap { roundObservations[$0] }
         let path = identity.flatMap { mountObservations[$0] } ?? .absent
-        let mounted = identity != nil && path == .smb(identity: identity!)
+        let mountedByIdentity = identity != nil && path == .smb(identity: identity!)
+        let peerIdentity = peerIdentityProvidingSameShare(share)
+        let mounted = mountedByIdentity || peerIdentity != nil
         let occupiedByAnotherVolume = isLocationOccupied(share)
         // The same share mounted at another path is a fact from the kernel table; the
         // configured path being taken is a different fact and must not read as failure.
-        let actual = actualMountPoint(of: share)
+        // A peer-carried mount is at the configured path itself, so it reports that path.
+        let actual = peerIdentity != nil ? share.mountPoint : actualMountPoint(of: share)
         let issue: AutomntIssue? = observed?.issue
         let selectedThisRound: Bool
         if let selection, let host {
@@ -854,7 +874,8 @@ final class ApplicationModel {
             recovering: identity.map { isWorking(.singleShareMount, target: $0) || isWorking(.normalEject, target: $0) } ?? false,
             locationOccupied: occupiedByAnotherVolume,
             recoveryFailed: observed?.status == .failed,
-            issue: issue)
+            issue: issue,
+            mountedByPeer: peerIdentity != nil)
     }
 
     // MARK: - Background and actions

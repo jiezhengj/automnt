@@ -9,12 +9,13 @@ struct ShareDetailTests {
                         selected: Bool = true, automation: Bool = true, serverEnabled: Bool = true,
                         shareEnabled: Bool = true, suppressed: Bool = false, recovering: Bool = false,
                         locationOccupied: Bool = false, recoveryFailed: Bool = false,
-                        issue: AutomntIssue? = nil) -> ShareDetail {
+                        issue: AutomntIssue? = nil, mountedByPeer: Bool = false) -> ShareDetail {
         ShareDetailBuilder.build(share: share, expectedMountPoint: "/Volumes/Docs", mounted: mounted,
             actualMountPoint: actual, observedAt: Date(), serverReachable: reachable,
             selectedThisRound: selected, automationEnabled: automation, serverEnabled: serverEnabled,
             shareEnabled: shareEnabled, suppressed: suppressed, recovering: recovering,
-            locationOccupied: locationOccupied, recoveryFailed: recoveryFailed, issue: issue)
+            locationOccupied: locationOccupied, recoveryFailed: recoveryFailed, issue: issue,
+            mountedByPeer: mountedByPeer)
     }
 
     @Test func healthyOnlyWhenMountedAtTheExpectedPath() {
@@ -59,6 +60,22 @@ struct ShareDetailTests {
         #expect(!actions.contains(.eject))
         #expect(!actions.contains(.mount))
         #expect(actions.contains(.editTarget))
+    }
+
+    /// 同一共享由配置内另一条主机承载时，配置路径可用；弹出/挂载仍属于承载条目。
+    @Test func peerCarriedMountIsAvailableWithoutEject() {
+        let peer = detail(mounted: true, actual: "/Volumes/Docs", mountedByPeer: true)
+        #expect(peer.status == .availableViaPeer)
+        #expect(peer.isUsableAtExpectedPath)
+        #expect(!peer.showsExpectedAndActualLocations)
+        #expect(peer.nextStep == .openInFinder)
+        let actions = DetailActionPolicy.available(peer, busy: false)
+        #expect(actions.contains(.openInFinder))
+        #expect(!actions.contains(.eject))
+        #expect(!actions.contains(.mount))
+        #expect(!actions.contains(.useActualLocation))
+        // 没有真实挂载时，兄弟标志不能把状态说成可用。
+        #expect(detail(mountedByPeer: true).status == .notMounted)
     }
 
     @Test func notSelectedThisRoundIsNotAFailure() {

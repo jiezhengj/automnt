@@ -67,6 +67,10 @@ public enum SettingOutcome: String, Codable, Sendable {
 
 public enum TargetAvailability: String, Codable, Sendable {
     case usable
+    /// The configured path is mounted, but by the same share's entry on another
+    /// configured host (the fallback/peer identity). Usable; not a location conflict.
+    /// Ordinary eject/mount stay with the entry that owns the mounted identity.
+    case availableViaPeer
     case notMounted
     case locationMismatch
     /// The configured location is taken by another volume; this share is not mounted.
@@ -76,6 +80,18 @@ public enum TargetAvailability: String, Codable, Sendable {
     case unreachable
     case authenticationRequired
     case failed
+
+    /// The configured path is usable: either this entry's own identity is mounted, or
+    /// a configured sibling host carries the same share at the same mount point.
+    public var isAvailableAtConfiguredPath: Bool {
+        self == .usable || self == .availableViaPeer
+    }
+
+    /// Ordinary eject targets the mounted identity, so it is only offered for the entry
+    /// whose own identity is mounted; a peer-carried mount is ejected from its own entry.
+    public var isMountedByIdentity: Bool {
+        self == .usable
+    }
 }
 
 public struct AvailabilityReport: Sendable {

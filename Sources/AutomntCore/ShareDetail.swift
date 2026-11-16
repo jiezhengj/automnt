@@ -38,6 +38,10 @@ public struct ShareDetail: Equatable, Sendable {
         case automatedMountingOff
         case serverUnreachable
         case authenticationRequired
+        /// The configured path is mounted by the same share's entry on another
+        /// configured host (fallback/peer identity). Usable; not a conflict and not a
+        /// failure of this entry. Eject/mount belong to the entry that is mounted.
+        case availableViaPeer
         /// The same SMB identity is mounted, but somewhere other than the configured
         /// path. It is usable; tasks that rely on the configured path may not find it.
         case locationMismatch
@@ -63,7 +67,7 @@ public struct ShareDetail: Equatable, Sendable {
     /// The user-facing next step. `nil` means the healthy primary action applies.
     public var nextStep: NextStep {
         switch status {
-        case .healthy: return .openInFinder
+        case .healthy, .availableViaPeer: return .openInFinder
         case .mounting, .recovering: return .wait
         case .ejectedForThisSession: return .mountThisShare
         case .notSelectedThisRound: return .explainRoundSelection
@@ -83,9 +87,10 @@ public struct ShareDetail: Equatable, Sendable {
     }
 
     /// A healthy share whose actual location differs from the configured one is not
-    /// healthy for tasks using the configured path.
+    /// healthy for tasks using the configured path. A peer-carried mount is usable at
+    /// the configured path, so it counts as usable there.
     public var isUsableAtExpectedPath: Bool {
-        status == .healthy && actualMountPoint == expectedMountPoint
+        (status == .healthy || status == .availableViaPeer) && actualMountPoint == expectedMountPoint
     }
 
     public var showsExpectedAndActualLocations: Bool {
@@ -116,12 +121,14 @@ public enum ShareDetailBuilder {
                              recovering: Bool,
                              locationOccupied: Bool,
                              recoveryFailed: Bool,
-                             issue: AutomntIssue?) -> ShareDetail {
+                             issue: AutomntIssue?,
+                             mountedByPeer: Bool = false) -> ShareDetail {
         let identity = smbResourceIdentity(share.smbURL) ?? share.smbURL
         let status: ShareDetail.Status
         let mountedElsewhere = actualMountPoint != nil && actualMountPoint != expectedMountPoint
         if recovering { status = .recovering }
         else if suppressed && !mounted { status = .ejectedForThisSession }
+        else if mountedByPeer && mounted { status = .availableViaPeer }
         else if !automationEnabled { status = mounted ? .automatedMountingOff : .notMounted }
         else if serverReachable == false && !mounted { status = .serverUnreachable }
         else if issue == .authorizationRequired || issue == .credentialFailure { status = .authenticationRequired }
@@ -175,6 +182,10 @@ public enum DetailActionPolicy {
         switch detail.status {
         case .healthy, .automatedMountingOff:
             actions.insert(.eject)
+            if detail.actualMountPoint != nil { actions.insert(.openInFinder) }
+        case .availableViaPeer:
+            // The path is usable, but the mounted identity belongs to another configured
+            // entry. Opening is safe; eject/mount stay with the entry that owns it.
             if detail.actualMountPoint != nil { actions.insert(.openInFinder) }
         case .locationMismatch:
             // Mounted somewhere else: usable, never a mount failure. Offer opening and

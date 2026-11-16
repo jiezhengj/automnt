@@ -1152,15 +1152,23 @@ struct AutomntMenuView: View {
                                         hostIdentity: managedServerIdentity(host), shareIdentity: identity)
                                     openWindow(id: "main")
                                 }
-                                Button("Open in Finder") { model.openInFinder(share, surface: .menuBar) }
-                                    .disabled(model.availability(of: share) != .usable)
+                                Button("Open in Finder") {
+                                    if model.availability(of: share) == .availableViaPeer {
+                                        // Mounted through another configured entry: open
+                                        // the path without verifying this entry's identity.
+                                        model.openPathInFinder(share.mountPoint)
+                                    } else {
+                                        model.openInFinder(share, surface: .menuBar)
+                                    }
+                                }
+                                    .disabled(!model.availability(of: share).isAvailableAtConfiguredPath)
                                 Button("Mount") {
                                     Task { await model.mount(host: host, share: share, surface: .menuBar) }
-                                }.disabled(model.busy || model.availability(of: share) == .usable)
+                                }.disabled(model.busy || model.availability(of: share).isAvailableAtConfiguredPath)
                                 // Ordinary eject runs directly, with no routine confirmation.
                                 Button("Eject") {
                                     Task { await model.eject(host: host, share: share, surface: .menuBar) }
-                                }.disabled(model.busy || model.availability(of: share) != .usable)
+                                }.disabled(model.busy || !model.availability(of: share).isMountedByIdentity)
                             }
                         }
                     }

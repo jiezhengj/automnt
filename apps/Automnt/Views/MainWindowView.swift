@@ -1071,7 +1071,11 @@ private struct ServerSharesView: View {
         }
         if actions.contains(.openInFinder) {
             return InlineAction(title: String(localized: "Open in Finder")) {
-                if detail.showsExpectedAndActualLocations, let actual = detail.actualMountPoint {
+                if detail.status == .availableViaPeer {
+                    // The configured identity is not the mounted one, so open the path
+                    // directly instead of verifying this entry's identity.
+                    model.openPathInFinder(detail.expectedMountPoint)
+                } else if detail.showsExpectedAndActualLocations, let actual = detail.actualMountPoint {
                     model.openPathInFinder(actual)
                 } else {
                     model.openInFinder(share)
@@ -1176,6 +1180,7 @@ struct ShareRowView: View {
     static func statusSymbol(_ availability: TargetAvailability) -> String {
         switch availability {
         case .usable: "checkmark.circle.fill"
+        case .availableViaPeer: "checkmark.circle.fill"
         case .locationMismatch: "checkmark.circle.fill"
         case .locationOccupied: "exclamationmark.circle.fill"
         case .notMounted, .suppressedForThisSession, .notEvaluatedThisRound: "circle.dashed"
@@ -1186,6 +1191,7 @@ struct ShareRowView: View {
     static func statusTint(_ availability: TargetAvailability) -> Color {
         switch availability {
         case .usable: .green
+        case .availableViaPeer: .green
         case .locationMismatch: .green
         case .locationOccupied: .orange
         case .notMounted, .suppressedForThisSession, .notEvaluatedThisRound: .secondary
@@ -1196,6 +1202,7 @@ struct ShareRowView: View {
     static func statusLabel(_ availability: TargetAvailability) -> String {
         switch availability {
         case .usable: String(localized: "Available")
+        case .availableViaPeer: String(localized: "Available")
         case .notMounted: String(localized: "Not mounted")
         case .locationMismatch: String(localized: "Available")
         case .locationOccupied: String(localized: "Location occupied")
@@ -1290,6 +1297,10 @@ struct ShareRowView: View {
             case .usable, .locationMismatch:
                 Button("Open in Finder") { model.openInFinder(config) }
                 Button("Eject") { Task { await model.eject(host: host, share: config) } }
+            case .availableViaPeer:
+                // Mounted through another configured entry: open the path, but leave
+                // eject/mount to the entry whose identity is actually mounted.
+                Button("Open in Finder") { model.openPathInFinder(config.mountPoint) }
             case .locationOccupied:
                 Button("Show the Occupying Folder in Finder") { model.openPathInFinder(config.mountPoint) }
             default:
