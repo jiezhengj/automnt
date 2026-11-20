@@ -1181,8 +1181,7 @@ struct AutomntMenuView: View {
             }
             Divider()
             if model.messageSurface == .menuBar, let notice = model.notice { Text(notice) }
-            Button("Check Now") { Task { await model.tryFullRound(surface: .menuBar) } }
-                .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+            quickMountSection
             Button("Open Automnt") { openWindow(id: "main") }
             SettingsLink()
             // Turning the resident app off belongs in Settings, where the consequence is
@@ -1203,6 +1202,38 @@ struct AutomntMenuView: View {
             if model.snapshot == nil { model.restore() }
             model.refreshLoginStatus()
             model.refreshStatus()
+        }
+    }
+
+    /// Mounts what is missing, using the same rules as a login or network round.
+    /// The menu closes the moment it is clicked, so the reason it is unavailable and
+    /// whatever the round could not mount both live here, where they can be read again.
+    @ViewBuilder
+    private var quickMountSection: some View {
+        let gate = model.quickMountGate
+        Button("Quick Mount") { Task { await model.tryFullRound(surface: .menuBar) } }
+            .disabled(!gate.isReady)
+        if let explanation = model.quickMountGateExplanation(gate) {
+            Text(explanation)
+        }
+        if let outcome = model.quickMountOutcome {
+            Text(model.quickMountSummaryText(outcome))
+            Menu("Shared Folders Not Mounted") {
+                ForEach(outcome.failures) { failure in
+                    // The name is user data and the reason is already localized, so this
+                    // composes verbatim text rather than a translatable literal.
+                    Button {
+                        guard let snapshot = model.snapshot,
+                              let host = model.hostIdentity(owningShare: failure.identity) else { return }
+                        model.requestedDetail = .init(revision: snapshot.revision,
+                            hostIdentity: host, shareIdentity: failure.identity)
+                        openWindow(id: "main")
+                    } label: {
+                        Text(verbatim: failure.name + " — "
+                             + ShareRowView.quickMountReasonLabel(failure.reason))
+                    }
+                }
+            }
         }
     }
 

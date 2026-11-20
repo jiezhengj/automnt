@@ -20,6 +20,7 @@
 | 菜单关闭动作 | 关闭自动挂载 | Turn Off Automatic Mounting | 动作，区别于开关名称与状态 |
 | 运行说明 | 退出 Automnt 后，已启用的自动挂载仍会继续运行。 | Enabled automatic mounting continues after you quit Automnt. | 退出结束界面/菜单，后台原状态不变 |
 | 手动连接 | 挂载 | Mount | 技术概念已熟悉，不加“快捷” |
+| 快捷挂载（全局一轮） | 快捷挂载 | Quick Mount | 2026-11-20 维护者指定的名称，本行是上一条"不加『快捷』"的显式例外：它修饰的不是单个共享的挂载动作，而是"不用挑对象、按配置一次挂回"的全局动作；不加前缀无法与逐共享的"挂载"区分 |
 | Finder 打开 | 在 Finder 中打开 | Open in Finder | 打开已核对挂载目录；不是在父目录中选中该项，不猜路径 |
 | 弹出动作 | 弹出 | Eject | 非强制；忙碌失败不转强制 |
 | 弹出失败 | 共享文件夹正在使用，无法弹出。请关闭相关文件后重试。 | The shared folder is in use and can’t be ejected. Close any files you’re using, then try again. | 可操作下一步，避免“普通卸载失败” |

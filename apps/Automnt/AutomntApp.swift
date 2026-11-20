@@ -215,6 +215,11 @@ final class ApplicationModel {
     var roundObservations: [String: VolumeObservation] = [:]
     var roundIssue: AutomntIssue?
     var roundObservedAt: Date?
+    /// What the last quick mount must tell the user. Only that action writes it, so the
+    /// menu never shows a summary for a round the user did not ask for.
+    var quickMountOutcome: QuickMountOutcome?
+    /// The exact sentence this action last put in `notice`, so clearing is limited to it.
+    private var quickMountNotice: String?
     var selection: EvaluationSelection?
     /// Shares the user ejected during this network/login session.
     var suppressedIdentities: Set<String> = []
@@ -993,6 +998,83 @@ final class ApplicationModel {
         } catch { show(error) }
     }
 
+    /// Why the menu item is unavailable right now. The menu bar and the window menu both
+    /// read this, so the two entry points cannot reach different conclusions.
+    var quickMountGate: QuickMountGate {
+        QuickMountGate.evaluate(
+            hasConfiguration: hasConfiguration,
+            automaticMountingEnabled: snapshot?.configuration.isAutomationEnabled ?? false,
+            backend: backend,
+            busy: busy)
+    }
+
+    /// One line under the disabled item: what is wrong and what to do next.
+    func quickMountGateExplanation(_ gate: QuickMountGate) -> String? {
+        switch gate {
+        case .ready:
+            return nil
+        case .noConfiguration:
+            return String(localized: "Add a shared folder before mounting everything.")
+        case .automaticMountingOff:
+            return String(localized: "Turn on automatic mounting to mount every shared folder at once.")
+        case .backgroundNotReady:
+            return String(localized: "Background mounting isn’t ready yet. Check it in Settings, then try again.")
+        case .busy:
+            return String(localized: "Something else is still running. Try again when it finishes.")
+        }
+    }
+
+    func quickMountSummaryText(_ outcome: QuickMountOutcome) -> String {
+        guard outcome.count > 1 else {
+            return String(localized: "One shared folder couldn’t be mounted.")
+        }
+        // An explicit format string rather than interpolation: a sentence with a count
+        // needs a plural form per language, and the catalog carries no plural variants.
+        return String(format: String(localized: "%lld shared folders couldn’t be mounted."),
+                      outcome.count)
+    }
+
+    /// The server a reported share belongs to, so its detail can be opened from the menu.
+    func hostIdentity(owningShare identity: String) -> String? {
+        guard let snapshot else { return nil }
+        for host in snapshot.configuration.hosts
+        where host.shares.contains(where: { smbResourceIdentity($0.smbURL) == identity }) {
+            return managedServerIdentity(host)
+        }
+        return nil
+    }
+
+    /// Turns this round's real observations into the one sentence the user should see.
+    /// Called only after a round actually ran, so a blocked or failed attempt cannot
+    /// manufacture a summary out of stale observations.
+    private func reportQuickMountOutcome() {
+        guard let snapshot else { quickMountOutcome = nil; return }
+        var targets: [QuickMountTarget] = []
+        for host in snapshot.configuration.hosts {
+            for share in host.shares {
+                guard let identity = smbResourceIdentity(share.smbURL) else { continue }
+                targets.append(QuickMountTarget(
+                    identity: identity,
+                    name: share.name.isEmpty ? (extractShareName(from: share.smbURL) ?? share.smbURL) : share.name,
+                    enabled: share.enabled && host.enabled,
+                    availability: availability(of: share),
+                    issue: roundObservations[identity]?.issue))
+            }
+        }
+        let outcome = QuickMountOutcome.make(from: targets)
+        quickMountOutcome = outcome
+        guard messageSurface == .window else { return }
+        if let outcome {
+            let text = quickMountSummaryText(outcome)
+            quickMountNotice = text
+            notice = text
+        } else if let previous = quickMountNotice, notice == previous {
+            // A later round succeeded: drop only the sentence this action wrote.
+            quickMountNotice = nil
+            notice = nil
+        }
+    }
+
     /// A full round runs the same bounded evaluation the background service uses and
     /// reports its real result; it does not simulate one.
     func tryFullRound(surface: FeedbackSurface = .window) async {
@@ -1003,8 +1085,18 @@ final class ApplicationModel {
         // only when the evaluation lock proves no worker is still alive.
         try? WorkerOperationStore(authorizedDirectory: authorization.url).abandonPendingForRepair()
         guard let operation = begin(.fullEvaluation, target: nil) else { return }
+        // A new attempt replaces the previous summary: showing an old one while this
+        // round runs would describe a state that is already being re-checked.
+        quickMountOutcome = nil
         busy = true
-        defer { busy = false; end(operation); refreshActionReadiness(); refreshStatus() }
+        var ranRound = false
+        defer {
+            busy = false
+            end(operation)
+            refreshActionReadiness()
+            refreshStatus()
+            if ranRound { reportQuickMountOutcome() }
+        }
         do {
             let store = BackendStateStore(authorizedDirectory: authorization.url)
             var state = try store.read()
@@ -1031,7 +1123,9 @@ final class ApplicationModel {
                 }
                 try await adapter.requestEvaluation(state: state, deadline: ContinuousClock.now.advanced(by: .seconds(30)))
             }
-            // Per-share status is the result; no success toast.
+            // Per-share status is the result; no success toast. Only a failure gets a
+            // sentence, and only here — after the round really committed its observations.
+            ranRound = true
         } catch let error as AutomntIssue where error == .signalUnavailable || error == .timeout {
             issue = String(localized: "A previous mount attempt didn’t finish. Repair background mounting, then try the round again.")
         } catch { show(error) }
@@ -1150,6 +1244,9 @@ final class ApplicationModel {
                 configuration, baseRevision: base.revision)
             snapshot = saved
             adoptBackendRevision(from: base.revision, to: saved.revision)
+            // The summary described the shares as they were; a saved change makes it
+            // describe a set that no longer exists.
+            quickMountOutcome = nil
             issue = nil
             refreshActionReadiness()
             refreshStatus()
@@ -1748,9 +1845,9 @@ struct AutomntApp: App {
             CommandMenu("Servers") {
                 // Manual evaluation is a recovery action, not a dashboard button: it lives
                 // here and in the menu bar, with ⌘R for people who look for it.
-                Button("Check Now") { Task { await model.tryFullRound() } }
+                Button("Quick Mount") { Task { await model.tryFullRound() } }
                     .keyboardShortcut("r", modifiers: .command)
-                    .disabled(!model.configurationChangesAllowed || !model.hasConfiguration)
+                    .disabled(!model.quickMountGate.isReady)
                 Divider()
                 // 不使用右键“上移/下移”，但保留可发现的菜单与 Option+方向键等价操作。
                 Button("Move Earlier") { model.moveSelectedServer(earlier: true) }

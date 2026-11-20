@@ -1214,6 +1214,18 @@ struct ShareRowView: View {
         }
     }
 
+    /// Why a quick mount could not mount this shared folder, in the words the menu uses.
+    /// Short on purpose: a menu item cannot wrap, so the name carries the detail.
+    static func quickMountReasonLabel(_ reason: QuickMountFailure.Reason) -> String {
+        switch reason {
+        case .credentials: String(localized: "Sign-in required")
+        case .locationBusy: String(localized: "Location occupied")
+        case .refused: String(localized: "Server refused it")
+        case .notFinished: String(localized: "Didn’t finish")
+        case .other: String(localized: "Couldn’t mount")
+        }
+    }
+
     var body: some View {
         if share.managed {
             HStack(spacing: 12) {
