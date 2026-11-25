@@ -11,7 +11,7 @@ struct ManualMountCommitTests {
         let identity = UUID().uuidString
         var state = MountRecoveryStateFile()
         state.volumes[identity] = MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed,
-            suppressionBoundary: "network|login", attemptCount: 3)
+            suppressionBoundary: "network|login", attemptCount: 3, suppressionHasEvidence: true)
         try repository.save(state)
         for path: MountPathState in [.absent, .occupied, .unavailable, .smb(identity: UUID().uuidString)] {
             #expect(throws: AutomntIssue.self) {

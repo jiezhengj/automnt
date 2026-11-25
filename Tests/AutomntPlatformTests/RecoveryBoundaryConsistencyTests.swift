@@ -39,12 +39,14 @@ struct RecoveryBoundaryConsistencyTests {
     }
 
     /// 对端（A）曾健康挂载或处于抑制状态；边界按参数设置。
+    /// 抑制一律带弹出证据：无证据的抑制只来自旧版误判，按丢失处理、不再保护对端。
     private func peerFile(_ fixture: Fixture, boundary: String?,
                           peerState: MountRecoveryVolumeState = .attached) -> MountRecoveryStateFile {
         MountRecoveryStateFile(sessionBoundary: boundary, volumes: [fixture.first.identity:
             MountRecoveryVolumeRecord(volumeKey: fixture.first.identity, state: peerState,
                 suppressionBoundary: peerState == .suppressed ? (boundary ?? "") : nil,
-                everHealthyMounted: true)])
+                everHealthyMounted: true,
+                suppressionHasEvidence: peerState == .suppressed)])
     }
 
     /// 路径 2：`BaselineMountDecision`（worker 子进程复核）。
@@ -108,20 +110,32 @@ struct RecoveryBoundaryConsistencyTests {
                 #expect(judgment.decision == .recover,
                         "peerState=\(peerState) boundary=\(String(describing: boundary)) → \(judgment.decision)")
             }
-            // 反证非真空：真实边界必须能触发抑制。
+            // 反证非真空：真实边界 + 弹出证据必须能触发抑制。
             let live = RecoverySessionIdentity(network: "live", loginEpoch: "epoch", previous: nil).combined
             let suppressed = RecoveryVolumeDecisionPolicy.judge(
                 RecoveryVolumeFacts(identity: fixture.second.identity,
                     mountPoint: fixture.second.mountPoint, presentInMountTable: false,
                     hostReachable: true, health: .unavailable),
                 context: RecoveryVolumeContext(configuration: fixture.configuration,
-                    state: peerFile(fixture, boundary: live, peerState: peerState),
+                    state: peerFile(fixture, boundary: live, peerState: .suppressed),
                     stateReadable: true, boundary: live,
                     peers: RecoveryVolumeDecisionPolicy.peers(configuration: fixture.configuration),
                     manualRecovery: false, permitsMount: true))
             #expect(suppressed.decision == .sessionSuppressed,
-                    "peerState=\(peerState): 真实边界必须触发对端抑制")
+                    "peerState=\(peerState): 真实边界 + 证据必须触发对端抑制")
         }
+        // 只有「曾健康」的历史不再保护对端：同一挂载点要能挂到当前可达的主机上。
+        let live = RecoverySessionIdentity(network: "live", loginEpoch: "epoch", previous: nil).combined
+        let historyOnly = RecoveryVolumeDecisionPolicy.judge(
+            RecoveryVolumeFacts(identity: fixture.second.identity,
+                mountPoint: fixture.second.mountPoint, presentInMountTable: false,
+                hostReachable: true, health: .unavailable),
+            context: RecoveryVolumeContext(configuration: fixture.configuration,
+                state: peerFile(fixture, boundary: live, peerState: .attached),
+                stateReadable: true, boundary: live,
+                peers: RecoveryVolumeDecisionPolicy.peers(configuration: fixture.configuration),
+                manualRecovery: false, permitsMount: true))
+        #expect(historyOnly.decision == .recover)
     }
 
     /// 路径 A（worker）：`BaselineMountDecision` 对 nil 与 "" 结论一致。
@@ -132,9 +146,10 @@ struct RecoveryBoundaryConsistencyTests {
             #expect(baseline(fixture, boundary: nil, peerState: peerState)
                     == baseline(fixture, boundary: "", peerState: peerState))
             #expect(baseline(fixture, boundary: nil, peerState: peerState) == .mount)
-            // 真实边界仍抑制（非真空）。
+            // 真实边界 + 弹出证据仍抑制（非真空）。
             let live = RecoverySessionIdentity(network: "live", loginEpoch: "epoch", previous: nil).combined
-            #expect(baseline(fixture, boundary: live, peerState: peerState) == .suppressed)
+            #expect(baseline(fixture, boundary: live, peerState: .suppressed) == .suppressed)
+            #expect(baseline(fixture, boundary: live, peerState: .attached) == .mount)
         }
     }
 
@@ -147,7 +162,8 @@ struct RecoveryBoundaryConsistencyTests {
                     == helper(fixture, boundary: "", peerState: peerState).decision)
             #expect(helper(fixture, boundary: nil, peerState: peerState).decision == .recover)
             let live = RecoverySessionIdentity(network: "live", loginEpoch: "epoch", previous: nil).combined
-            #expect(helper(fixture, boundary: live, peerState: peerState).decision == .sessionSuppressed)
+            #expect(helper(fixture, boundary: live, peerState: .suppressed).decision == .sessionSuppressed)
+            #expect(helper(fixture, boundary: live, peerState: .attached).decision == .recover)
         }
     }
 

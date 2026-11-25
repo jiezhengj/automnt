@@ -237,6 +237,8 @@ final class ApplicationModel {
     private var authorization: AuthorizedDirectory?
     /// The resident delivery loop for notices the background helper recorded.
     private var notificationPump: Task<Void, Never>?
+    /// Keeps watching the mount table after the window closes (eject evidence only).
+    private var unmountObserver: NSObjectProtocol?
     /// The instance that owns resident services must outlive SwiftUI's state installation;
     /// otherwise the delivery loop's weak reference dies and notices pile up undelivered.
     private static var residentServicesOwner: ApplicationModel?
@@ -1583,7 +1585,104 @@ final class ApplicationModel {
         Self.residentServicesOwner = self
         restore()
         startNotificationPump()
+        startUnmountObservation()
         NSLog("automnt resident notification pump started")
+    }
+
+    /// Observes volume unmounts for the whole resident app, not just while a window is open.
+    ///
+    /// An unmount while the server is reachable is direct evidence that the user ejected the
+    /// shared folder. Without this record the recovery rules only know "was mounted, is gone",
+    /// which is indistinguishable from a session that died — and that ambiguity is what made
+    /// the app stop mounting a lost shared folder back for the rest of the session.
+    private func startUnmountObservation() {
+        guard unmountObserver == nil else { return }
+        unmountObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didUnmountNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let url = notification.userInfo?[NSWorkspace.volumeURLUserInfoKey] as? URL else { return }
+            let path = url.standardizedFileURL.path
+            Task { @MainActor [weak self] in await self?.recordObservedEject(atPath: path) }
+        }
+    }
+
+    private func recordObservedEject(atPath path: String) async {
+        guard !busy, let authorization, let base = latestSnapshotForAction() else { return }
+        // One mount point can be declared under several servers (the reachable fallback
+        // host is chosen per round), so pick the identity the last round actually saw
+        // healthy instead of the first configured one.
+        // Only a shared folder the last round saw healthy is an "ejection": a volume the
+        // background is cleaning up is failure handling, not someone ejecting it.
+        // The summary is read from disk so a restart between the round and the unmount
+        // does not lose the evidence.
+        let candidates = configurationShares(atPath: path, in: base.configuration)
+            .compactMap { entry -> (host: HostConfig, identity: String)? in
+                guard let identity = smbResourceIdentity(entry.share.smbURL) else { return nil }
+                return (entry.host, identity)
+            }
+        let healthy = candidates.filter { lastRoundObservedHealthy($0.identity, in: authorization.url) }
+        guard !healthy.isEmpty else {
+            NSLog("automnt eject-observe skipped path=\(path) reason=no-healthy-observation")
+            return }
+        var chosen: (host: HostConfig, identity: String)?
+        for candidate in healthy {
+            let reachable = (try? await TCPReachabilityProbe().isReachable(
+                host: candidate.host.host, port: candidate.host.port,
+                timeoutMilliseconds: defaultProbeTimeoutMs)) ?? false
+            if reachable { chosen = candidate; break }
+        }
+        guard let match = chosen else {
+            NSLog("automnt eject-observe skipped path=\(path) reason=host-unreachable")
+            return }
+        let identity = match.identity
+        // A round in progress holds the evaluation lock; wait it out briefly instead of
+        // dropping the evidence. Past that the record is skipped rather than guessed.
+        var recorded = false
+        for _ in 0..<8 {
+            do {
+                let repository = FileConfigRepository(authorizedDirectory: authorization.url)
+                let store = BackendStateStore(authorizedDirectory: authorization.url)
+                let backend = try store.read()
+                let permit = try EvaluationPermit(directory: authorization.url, repository: repository,
+                    expected: base, owner: .app, generation: backend.generation, readBackend: store.read)
+                try permit.perform { _ in
+                    try UserEjectCommit.recordObservedUnmount(identity: identity,
+                        directory: authorization.url, observedAt: Date())
+                }
+                recorded = true
+                break
+            } catch let error as NSError where error.domain == NSPOSIXErrorDomain && error.code == EAGAIN {
+                try? await Task.sleep(for: .milliseconds(400))
+            } catch {
+                NSLog("automnt eject-observe commit failed: \(error)")
+                return
+            }
+        }
+        guard recorded else {
+            NSLog("automnt eject-observe skipped identity=\(identity) reason=evaluation-busy")
+            return
+        }
+        NSLog("automnt eject-observe recorded identity=\(identity)")
+        loadSessionSuppression()
+        refreshStatus()
+    }
+
+    private func configurationShares(atPath path: String, in configuration: AutomntConfig)
+        -> [(host: HostConfig, share: SMBShareConfig)] {
+        configuration.hosts.flatMap { host in
+            host.shares
+                .filter { URL(fileURLWithPath: $0.mountPoint).standardizedFileURL.path == path }
+                .map { (host, $0) }
+        }
+    }
+
+    /// Whether the last committed round observed this shared folder as mounted and reachable.
+    private func lastRoundObservedHealthy(_ identity: String, in directory: URL) -> Bool {
+        let url = directory.appendingPathComponent("background-observations.plist")
+        guard let data = try? PrivateAtomicFile.read(url),
+              let summary = try? PropertyListDecoder().decode(BackgroundEvaluationSummary.self, from: data)
+        else { return false }
+        return summary.observations.contains { $0.identity == identity && $0.status == .healthy }
     }
 
     /// The app is the only process with a notification identity, and the sandboxed helper may

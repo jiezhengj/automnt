@@ -11,7 +11,7 @@ struct MissingVolumeRecoveryTests {
         for initialNetwork: String? in [nil, UUID().uuidString] {
             var state = MountRecoveryStateFile(volumes: [key:
                 MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed,
-                    attemptCount: 3, notificationCount: 2)])
+                    attemptCount: 3, notificationCount: 2, suppressionHasEvidence: true)])
             let first = RecoverySessionIdentity(network: initialNetwork, loginEpoch: login, previous: nil)
             RecoverySessionPolicy.advance(&state, to: first, mountedKeys: [])
             #expect(state.volumes[key]?.state == .suppressed)
@@ -49,12 +49,17 @@ struct MissingVolumeRecoveryTests {
             #expect(BaselineMountDecision.decide(identity: identity, path: .absent, recovery: .loaded(state),
                 configuration: disabled, allowRecovery: true) == .suppressed)
         }
-        for record in [MountRecoveryVolumeRecord(volumeKey: identity, everHealthyMounted: true),
-            MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed, repairEjectEvidence: true)] {
-            #expect(BaselineMountDecision.decide(identity: identity, path: .absent,
-                recovery: .loaded(MountRecoveryStateFile(volumes: [identity: record])),
-                configuration: configuration, allowRecovery: true) == .suppressed)
-        }
+        // 仅「曾健康」的历史不再是抑制依据：缺失即按丢失纳入恢复。
+        #expect(BaselineMountDecision.decide(identity: identity, path: .absent,
+            recovery: .loaded(MountRecoveryStateFile(volumes: [identity:
+                MountRecoveryVolumeRecord(volumeKey: identity, everHealthyMounted: true)])),
+            configuration: configuration, allowRecovery: true) == .mount)
+        // 有证据的抑制（使用者弹出）仍保留。
+        #expect(BaselineMountDecision.decide(identity: identity, path: .absent,
+            recovery: .loaded(MountRecoveryStateFile(volumes: [identity:
+                MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed,
+                    repairEjectEvidence: true, suppressionHasEvidence: true)])),
+            configuration: configuration, allowRecovery: true) == .suppressed)
         #expect(BaselineMountDecision.decide(identity: identity, path: .absent, recovery: .corrupt(reason: "damaged"),
             configuration: configuration, allowRecovery: true) == .suppressed)
         configuration.autoMountRecovery = false
@@ -105,7 +110,7 @@ struct MissingVolumeRecoveryTests {
         let unknown = RecoverySessionIdentity(network: nil, loginEpoch: login, previous: nil)
         var state = MountRecoveryStateFile(sessionBoundary: unknown.combined, volumes: [key:
             MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed, suppressionBoundary: unknown.combined,
-                everHealthyMounted: true, attemptCount: 10, notificationCount: 2)])
+                everHealthyMounted: true, attemptCount: 10, notificationCount: 2, suppressionHasEvidence: true)])
         let first = RecoverySessionIdentity(network: UUID().uuidString, loginEpoch: login, previous: unknown.combined)
         RecoverySessionPolicy.advance(&state, to: first, mountedKeys: [])
         #expect(BaselineMountDecision.decide(identity: key, path: .absent, recovery: .loaded(state),

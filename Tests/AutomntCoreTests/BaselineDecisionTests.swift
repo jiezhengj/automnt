@@ -9,7 +9,7 @@ struct BaselineDecisionTests {
         #expect(BaselineMountDecision.decide(identity: identity, path: .absent,
             recovery: .corrupt(reason: "unreadable")) == .suppressed)
         for record in [
-            MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed),
+            MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed, suppressionHasEvidence: true),
             MountRecoveryVolumeRecord(volumeKey: identity, everHealthyMounted: true),
             MountRecoveryVolumeRecord(volumeKey: identity, repairEjectEvidence: true),
             MountRecoveryVolumeRecord(volumeKey: identity, state: .pendingRecovery)

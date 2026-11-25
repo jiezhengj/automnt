@@ -14,10 +14,11 @@ public struct MountRecoveryVolumeRecord: Codable, Equatable, Sendable {
     public init(volumeKey: String, state: MountRecoveryVolumeState = .attached,
                 suppressionBoundary: String? = nil, repairEjectEvidence: Bool = false,
                 everHealthyMounted: Bool = false, attemptCount: Int = 0, updatedAt: Double = 0,
-                notificationCount: Int = 0) {
+                notificationCount: Int = 0, suppressionHasEvidence: Bool = false) {
         self.volumeKey = volumeKey; self.state = state; self.suppressionBoundary = suppressionBoundary
         self.repairEjectEvidence = repairEjectEvidence; self.everHealthyMounted = everHealthyMounted
         self.attemptCount = attemptCount; self.updatedAt = updatedAt; self.notificationCount = notificationCount
+        self.suppressionHasEvidence = suppressionHasEvidence
     }
     public var volumeKey: String
     public var state: MountRecoveryVolumeState = .attached
@@ -30,6 +31,9 @@ public struct MountRecoveryVolumeRecord: Codable, Equatable, Sendable {
     public var updatedAt: Double = 0
     /// 同一可达会话内的通知计数（契约 §4 会话级上限：至多 2 条）。
     public var notificationCount: Int = 0
+    /// 该抑制是否有直接证据（产品弹出动作，或观察到卷在主机可达时消失）。
+    /// 无证据的抑制只可能来自旧版本误判，允许在网络恢复后重试一次。
+    public var suppressionHasEvidence: Bool = false
 
     public enum CodingKeys: String, CodingKey {
         case volumeKey = "volume_key"
@@ -42,6 +46,23 @@ public struct MountRecoveryVolumeRecord: Codable, Equatable, Sendable {
         case attemptCount = "attempt_count"
         case updatedAt = "updated_at"
         case notificationCount = "notification_count"
+        case suppressionHasEvidence = "suppression_has_evidence"
+    }
+
+    /// 新字段按缺省值解码，旧状态文件（schema 1）保持可读。
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        volumeKey = try container.decode(String.self, forKey: .volumeKey)
+        state = try container.decodeIfPresent(MountRecoveryVolumeState.self, forKey: .state) ?? .attached
+        suppressionBoundary = try container.decodeIfPresent(String.self, forKey: .suppressionBoundary)
+        repairEjectEvidence = try container.decodeIfPresent(Bool.self, forKey: .repairEjectEvidence) ?? false
+        everHealthyMounted = try container.decodeIfPresent(Bool.self, forKey: .everHealthyMounted) ?? false
+        lastAttemptAt = try container.decodeIfPresent(Double.self, forKey: .lastAttemptAt)
+        attemptOperationID = try container.decodeIfPresent(UUID.self, forKey: .attemptOperationID)
+        attemptCount = try container.decodeIfPresent(Int.self, forKey: .attemptCount) ?? 0
+        updatedAt = try container.decodeIfPresent(Double.self, forKey: .updatedAt) ?? 0
+        notificationCount = try container.decodeIfPresent(Int.self, forKey: .notificationCount) ?? 0
+        suppressionHasEvidence = try container.decodeIfPresent(Bool.self, forKey: .suppressionHasEvidence) ?? false
     }
 }
 
@@ -115,7 +136,10 @@ public enum RecoverySignal: String, Equatable, Sendable {
     case productCleanup
     /// ③ 卷缺失且有修复性弹出证据 → 使用者修复动作：纳入恢复。
     case repairEject
-    /// ④ 卷缺失且状态可读、曾健康挂载 → 使用者健康弹出：会话抑制。
+    /// ④ 卷缺失且状态可读、曾健康挂载、**且没有任何弹出证据** → 会话丢失：
+    /// 按失败处理并纳入恢复（修复前这里被并入 ⑤，导致会话内永不重挂）。
+    case lostWhileHealthy
+    /// ⑤ 卷缺失且有明确的弹出证据（产品弹出记录）→ 使用者健康弹出：会话抑制。
     case healthyEject
     /// ⑤ 卷缺失且状态可读、从未挂载 → 非弃用：按基线段挂载，不进抑制。
     case neverMounted
@@ -127,7 +151,7 @@ public enum RecoverySignal: String, Equatable, Sendable {
     /// 是否纳入自动恢复。
     public var isRecoverable: Bool {
         switch self {
-        case .deadButPresent, .productCleanup, .repairEject, .neverMounted: return true
+        case .deadButPresent, .productCleanup, .repairEject, .neverMounted, .lostWhileHealthy: return true
         case .healthyEject, .unknownConservative, .attachedHealthy: return false
         }
     }
@@ -160,6 +184,8 @@ public func judgeRecoverySignal(
     // 缺失：按 ② → ③ → ④/⑤ 顺序判别。
     if cleanupLedger[volumeKey] != nil { return .productCleanup }
     if record?.repairEjectEvidence == true || record?.state == .pendingRecovery { return .repairEject }
-    if record?.everHealthyMounted == true { return .healthyEject }
+    // 曾健康挂载只说明「这里本该有卷」，不构成使用者弹出的证据：
+    // 判定为丢失并纳入恢复，抑制只由显式弹出证据（判定的第 2 步）产生。
+    if record?.everHealthyMounted == true { return .lostWhileHealthy }
     return .neverMounted
 }

@@ -83,16 +83,20 @@ public struct RecoveryPeer: Sendable {
 
 public enum RecoverySuppressionPolicy {
     /// Only eject protection crosses a shared path; never transfer health or cleanup permission.
+    /// Protection needs proof of the eject: a mount point whose shared folder simply went
+    /// missing (no evidence) must still be mountable under the identity that reaches it.
     public static func protectedByPeer(identity: String, mountPoint: String, boundary: String,
                                        peers: [RecoveryPeer], state: MountRecoveryStoreLoad) -> Bool {
         let file = state.file
         return peers.contains { peer in
             guard peer.identity != identity, peer.mountPoint == mountPoint, !peer.present,
                   let record = file.volumes[peer.identity] else { return false }
-            if record.state == .suppressed && record.suppressionBoundary == boundary { return true }
-            return judgeRecoverySignal(volumeKey: peer.identity, presentInMountTable: false,
-                hostReachable: peer.hostReachable, record: record, cleanupLedger: file.cleanupLedger,
-                stateReadable: state.isReadable) == .healthyEject
+            // 只有**有证据**的同会话弹出才保护对端：把这个挂载点重新挂到另一台主机，
+            // 会让刚被使用者移走的同一位置重新出现。仅「曾健康」的历史不算证据。
+            if record.state == .suppressed && record.suppressionBoundary == boundary {
+                return record.suppressionHasEvidence
+            }
+            return false
         }
     }
 }

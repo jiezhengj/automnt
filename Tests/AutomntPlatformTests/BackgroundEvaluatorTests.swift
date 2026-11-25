@@ -232,7 +232,7 @@ struct BackgroundEvaluatorTests {
         defer { try? FileManager.default.removeItem(at: harness.directory) }
         let identity = harness.volumes[0].identity
         let record = MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed,
-            suppressionBoundary: boundary(), everHealthyMounted: false)
+            suppressionBoundary: boundary(), everHealthyMounted: false, suppressionHasEvidence: true)
         try writeState(harness, MountRecoveryStateFile(sessionBoundary: boundary(), volumes: [identity: record]))
         let box = Box()
         let summary = await evaluate(harness, box: box)

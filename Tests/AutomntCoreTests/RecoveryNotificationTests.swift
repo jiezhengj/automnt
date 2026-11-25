@@ -8,7 +8,7 @@ struct RecoveryNotificationTests {
         let recovered = UUID().uuidString
         let protected = UUID().uuidString
         var state = MountRecoveryStateFile(volumes: [protected:
-            MountRecoveryVolumeRecord(volumeKey: protected, state: .suppressed)])
+            MountRecoveryVolumeRecord(volumeKey: protected, state: .suppressed, suppressionHasEvidence: true)])
         for _ in 0..<2 {
             let notice = RecoveryNotificationPolicy.merge(failed: [failed, recovered, protected], recovered: [recovered], state: &state)
             #expect(notice?.count == 1)

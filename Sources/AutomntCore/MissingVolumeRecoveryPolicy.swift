@@ -5,7 +5,7 @@ public enum MissingVolumeRecoveryPolicy {
     public static func mayMount(signal: RecoverySignal, enabled: Bool) -> Bool {
         switch signal {
         case .neverMounted: return true
-        case .productCleanup, .repairEject: return enabled
+        case .productCleanup, .repairEject, .lostWhileHealthy: return enabled
         case .healthyEject, .unknownConservative, .attachedHealthy, .deadButPresent: return false
         }
     }

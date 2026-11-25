@@ -10,7 +10,7 @@ struct RecoverySessionTests {
         let unknown = RecoverySessionIdentity(network: nil, loginEpoch: login, previous: nil)
         var state = MountRecoveryStateFile(sessionBoundary: unknown.combined, volumes: [key:
             MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed, suppressionBoundary: unknown.combined,
-                                      everHealthyMounted: true, notificationCount: 2)])
+                                      everHealthyMounted: true, notificationCount: 2, suppressionHasEvidence: true)])
         RecoverySessionPolicy.advance(&state, to: unknown, mountedKeys: [])
         #expect(state.volumes[key]?.state == .suppressed)
         let readable = RecoverySessionIdentity(network: network, loginEpoch: login, previous: state.sessionBoundary)
@@ -33,7 +33,7 @@ struct RecoverySessionTests {
         let newVolume = UUID().uuidString
         var state = MountRecoveryStateFile(sessionBoundary: original.combined, volumes: [
             missing: MountRecoveryVolumeRecord(volumeKey: missing, state: .suppressed,
-                suppressionBoundary: original.combined, everHealthyMounted: true, notificationCount: 2),
+                suppressionBoundary: original.combined, everHealthyMounted: true, notificationCount: 2, suppressionHasEvidence: true),
             mounted: MountRecoveryVolumeRecord(volumeKey: mounted, everHealthyMounted: true, notificationCount: 2),
             newVolume: MountRecoveryVolumeRecord(volumeKey: newVolume)
         ], cleanupLedger: [missing: 1])
@@ -70,7 +70,7 @@ struct RecoverySessionTests {
         let boundary = UUID().uuidString
         var state = MountRecoveryStateFile(sessionBoundary: boundary, volumes: [first:
             MountRecoveryVolumeRecord(volumeKey: first, state: .suppressed, suppressionBoundary: boundary,
-                                      everHealthyMounted: true)])
+                                      everHealthyMounted: true, suppressionHasEvidence: true)])
         #expect(BaselineMountDecision.decide(identity: second, path: .absent, recovery: .loaded(state),
             configuration: configuration, mountPoint: path) == .suppressed)
         state.volumes[first]?.state = .pendingRecovery
@@ -118,7 +118,7 @@ struct RecoverySessionTests {
             stale: MountRecoveryVolumeRecord(volumeKey: stale, state: .attached,
                 everHealthyMounted: true, attemptCount: 2),
             ejected: MountRecoveryVolumeRecord(volumeKey: ejected, state: .suppressed,
-                suppressionBoundary: "old|boot-0", everHealthyMounted: true, notificationCount: 1)
+                suppressionBoundary: "old|boot-0", everHealthyMounted: true, notificationCount: 1, suppressionHasEvidence: true)
         ])
         RecoverySessionPolicy.advance(&state, to: identity, mountedKeys: [])
         #expect(state.sessionBoundary == identity.combined)
@@ -151,7 +151,7 @@ struct RecoverySessionTests {
         let previousBoundary = "network|\(boot)-console-unreadable"
         var state = MountRecoveryStateFile(sessionBoundary: previousBoundary, volumes: [key:
             MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed,
-                suppressionBoundary: previousBoundary, everHealthyMounted: true, notificationCount: 1)])
+                suppressionBoundary: previousBoundary, everHealthyMounted: true, notificationCount: 1, suppressionHasEvidence: true)])
         let readable = RecoverySessionIdentity(network: "network", loginEpoch: "\(boot)-1792779000",
             previous: previousBoundary)
         RecoverySessionPolicy.advance(&state, to: readable, mountedKeys: [])

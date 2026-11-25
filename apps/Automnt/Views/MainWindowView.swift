@@ -1222,6 +1222,7 @@ struct ShareRowView: View {
         case .locationBusy: String(localized: "Location occupied")
         case .refused: String(localized: "Server refused it")
         case .notFinished: String(localized: "Didn’t finish")
+        case .ejected: String(localized: "Ejected in this session")
         case .other: String(localized: "Couldn’t mount")
         }
     }

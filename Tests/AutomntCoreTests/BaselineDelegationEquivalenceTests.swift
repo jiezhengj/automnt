@@ -10,6 +10,10 @@ import Testing
 /// 注意：预言机只描述历史行为；产品规则的真实定义只有 `RecoveryVolumeDecisionPolicy`。
 /// 若将来有意变更规则，应同步更新本预言机并在此说明理由。
 ///
+/// 2026-11-25 有意变更（bug fix `mount-loss-misjudged-as-eject`）：抑制必须带弹出证据，
+/// 无证据的 `.suppressed` 不再等同于「使用者弹出」，`everHealthyMounted` 也不再单独
+/// 构成抑制依据。预言机随之下调为「`.suppressed` + `suppressionHasEvidence` 才抑制」。
+///
 /// R5 订正（V8 提示级）：矩阵新增 `peerKind` 维度，配置中加入**第二个主机/共享**，
 /// 使 `RecoverySuppressionPolicy.protectedByPeer` 的同路径对端抑制分支真正被触发
 /// （旧矩阵只有单一身份，`peer.identity != identity` 守卫使其恒为死代码）。
@@ -37,7 +41,7 @@ private enum LegacyBaselineDecide {
                 boundary: boundary, peers: peers, state: recovery) { return .suppressed }
         }
         let record = file.volumes[identity]
-        guard record?.state != .suppressed else { return .suppressed }
+        if let record, record.state == .suppressed, record.suppressionHasEvidence { return .suppressed }
         let signal = judgeRecoverySignal(volumeKey: identity, presentInMountTable: false,
             hostReachable: true, record: record, cleanupLedger: file.cleanupLedger, stateReadable: true)
         if signal != .neverMounted, let configuration,
@@ -133,7 +137,8 @@ struct BaselineDelegationEquivalenceTests {
                 let peerRecord = MountRecoveryVolumeRecord(volumeKey: peer,
                     state: item.peerKind == 0 ? .suppressed : .attached,
                     suppressionBoundary: item.peerKind == 0 ? (item.boundary ?? "") : nil,
-                    everHealthyMounted: true)
+                    everHealthyMounted: true,
+                    suppressionHasEvidence: item.peerKind == 0)
                 volumes[peer] = peerRecord
             }
             var file = MountRecoveryStateFile(sessionBoundary: item.boundary, volumes: volumes)

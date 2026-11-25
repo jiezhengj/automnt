@@ -21,9 +21,28 @@ public enum UserEjectCommit {
         record.state = .suppressed
         record.suppressionBoundary = state.sessionBoundary
         record.repairEjectEvidence = false
+        record.suppressionHasEvidence = true
         record.updatedAt = observation.observedAt.timeIntervalSince1970
         state.volumes[observation.identity] = record
         state.cleanupLedger.removeValue(forKey: observation.identity)
+        try repository.save(state)
+    }
+
+    /// 观测到的弹出：卷在主机可达时从挂载表消失，是使用者（Finder 或其他应用）
+    /// 弹出的直接证据，不需要在途 worker 意图。调用方持有评估锁。
+    public static func recordObservedUnmount(identity: String, directory: URL, observedAt: Date) throws {
+        let repository = repository(directory)
+        let loaded = repository.read()
+        guard loaded.isReadable else { throw AutomntIssue.signalUnavailable }
+        var state = loaded.file
+        var record = state.volumes[identity] ?? MountRecoveryVolumeRecord(volumeKey: identity)
+        record.state = .suppressed
+        record.suppressionBoundary = state.sessionBoundary
+        record.repairEjectEvidence = false
+        record.suppressionHasEvidence = true
+        record.updatedAt = observedAt.timeIntervalSince1970
+        state.volumes[identity] = record
+        state.cleanupLedger.removeValue(forKey: identity)
         try repository.save(state)
     }
 

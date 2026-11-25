@@ -143,4 +143,30 @@ struct ConfigurationContractTests {
         #expect(decoded.mountPolicy == nil)
         #expect(decoded.effectiveMountPolicy == .firstReachable)
     }
+
+    /// 探活超时：旧默认 1000 毫秒视为「未自定义」，读入时静默提升到 3000；
+    /// 缺失用当前默认；明确自定义的其他值（含更小值）原样保留。
+    /// 起因：1000 毫秒对经 DERP 中继的 Tailscale 路径必然超时（握手需约 2×RTT）。
+    @Test func legacyProbeTimeoutIsRaisedButExplicitValuesAreKept() throws {
+        func host(_ timeout: Any?) throws -> Int {
+            var entry: [String: Any] = ["host": "probe.example", "shares": [] as [[String: Any]]]
+            if let timeout { entry["timeout_ms"] = timeout }
+            let plist: [String: Any] = ["version": AutomntBuildVersion.value, "hosts": [entry]]
+            let data = try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+            return try PropertyListDecoder().decode(AutomntConfig.self, from: data).hosts[0].timeoutMs
+        }
+        #expect(try host(nil) == defaultProbeTimeoutMs)
+        #expect(try host(legacyProbeTimeoutMs) == defaultProbeTimeoutMs)
+        #expect(try host(5000) == 5000)
+        #expect(try host(500) == 500)
+        #expect(defaultProbeTimeoutMs > legacyProbeTimeoutMs)
+
+        // 网络配置档同样迁移。
+        let profile = NetworkProfile(id: "p", description: "Profile", host: "probe.example", port: 445,
+                                     timeoutMs: legacyProbeTimeoutMs, preventSpotlightIndex: true,
+                                     targets: [MountTarget(url: "smb://probe.example/s",
+                                                           mountPath: "/Volumes/s")])
+        let encoded = try JSONEncoder().encode(profile)
+        #expect(try JSONDecoder().decode(NetworkProfile.self, from: encoded).timeoutMs == defaultProbeTimeoutMs)
+    }
 }

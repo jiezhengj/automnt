@@ -158,8 +158,13 @@ public enum RecoveryVolumeDecisionPolicy {
         let record = context.state.volumes[facts.identity]
 
         // 2. 会话抑制优先：缺失卷的用户弹出记录（不依赖 everHealthyMounted）。
-        if !facts.presentInMountTable, record?.state == .suppressed {
-            return RecoveryVolumeJudgment(signal: .healthyEject, decision: .sessionSuppressed)
+        //    只有**有证据**的抑制（产品弹出动作，或观察到卷在主机可达时消失）才在此短路。
+        //    无证据的抑制只可能来自旧版本把「会话丢失」误判成「使用者弹出」：
+        //    主机再次可达时放行一次，失败则回到正常的尝试上限，不再永久粘住。
+        if !facts.presentInMountTable, let record, record.state == .suppressed {
+            if record.suppressionHasEvidence || !facts.hostReachable {
+                return RecoveryVolumeJudgment(signal: .healthyEject, decision: .sessionSuppressed)
+            }
         }
 
         var signal = judgeRecoverySignal(volumeKey: facts.identity,

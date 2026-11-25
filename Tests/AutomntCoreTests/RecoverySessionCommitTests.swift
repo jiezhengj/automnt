@@ -14,7 +14,7 @@ struct RecoverySessionCommitTests {
         let key = UUID().uuidString
         let initial = MountRecoveryStateFile(sessionBoundary: old.combined, volumes: [key:
             MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed, suppressionBoundary: old.combined,
-                                      everHealthyMounted: true, notificationCount: 2)])
+                                      everHealthyMounted: true, notificationCount: 2, suppressionHasEvidence: true)])
         try recovery.save(initial)
         let backend = BackendState(owner: .app, phase: .active, generation: 1, revision: snapshot.revision)
         let next = RecoverySessionIdentity(network: UUID().uuidString, loginEpoch: old.loginEpoch, previous: old.combined)
@@ -56,7 +56,7 @@ struct RecoverySessionCommitTests {
         let key = UUID().uuidString
         let boundary = UUID().uuidString
         let initial = MountRecoveryStateFile(sessionBoundary: boundary, volumes: [key:
-            MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed, suppressionBoundary: boundary)])
+            MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed, suppressionBoundary: boundary, suppressionHasEvidence: true)])
         try repository.save(initial)
         let lock = try StableFileLock(url: directory.appendingPathComponent("evaluation.lock"))
         try withExtendedLifetime(lock) {

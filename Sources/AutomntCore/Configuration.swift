@@ -78,11 +78,17 @@ public struct SMBShareConfig: Codable, Equatable, Sendable {
     }
 }
 
+/// 探活超时默认值。1 秒对经由中继（DERP）的 Tailscale 路径必然失败：
+/// TCP 握手需要约 2×RTT，中继往返可达 300–700 毫秒。3 秒覆盖该情形。
+public let defaultProbeTimeoutMs = 3000
+/// 旧默认值。存储里等于它的主机视为「未自定义」，读入时静默提升到当前默认。
+public let legacyProbeTimeoutMs = 1000
+
 public struct HostConfig: Codable, Equatable, Sendable {
     public var host: String
     public var alias: String?
     public var port: Int = 445
-    public var timeoutMs: Int = 1000
+    public var timeoutMs: Int = defaultProbeTimeoutMs
     public var preventSpotlightIndex: Bool = true
     public var enabled: Bool = true
     public var shares: [SMBShareConfig] = []
@@ -101,7 +107,7 @@ public struct HostConfig: Codable, Equatable, Sendable {
         host: String,
         alias: String? = nil,
         port: Int = 445,
-        timeoutMs: Int = 1000,
+        timeoutMs: Int = defaultProbeTimeoutMs,
         preventSpotlightIndex: Bool = true,
         enabled: Bool = true,
         shares: [SMBShareConfig] = []
@@ -120,7 +126,8 @@ public struct HostConfig: Codable, Equatable, Sendable {
         self.host = try container.decode(String.self, forKey: .host)
         self.alias = try container.decodeIfPresent(String.self, forKey: .alias)
         self.port = try container.decodeIfPresent(Int.self, forKey: .port) ?? 445
-        self.timeoutMs = try container.decodeIfPresent(Int.self, forKey: .timeoutMs) ?? 1000
+        self.timeoutMs = migratedProbeTimeout(
+            try container.decodeIfPresent(Int.self, forKey: .timeoutMs))
         self.preventSpotlightIndex = try container.decodeIfPresent(Bool.self, forKey: .preventSpotlightIndex) ?? true
         self.enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
         self.shares = try container.decodeIfPresent([SMBShareConfig].self, forKey: .shares) ?? []
@@ -192,7 +199,7 @@ public struct NetworkProfile: Codable, Equatable, Sendable {
         description: String? = nil,
         host: String,
         port: Int? = 445,
-        timeoutMs: Int? = 1000,
+        timeoutMs: Int? = defaultProbeTimeoutMs,
         preventSpotlightIndex: Bool? = true,
         targets: [MountTarget] = []
     ) {
@@ -221,7 +228,8 @@ public struct NetworkProfile: Codable, Equatable, Sendable {
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.host = try container.decodeIfPresent(String.self, forKey: .host) ?? "localhost"
         self.port = try container.decodeIfPresent(Int.self, forKey: .port) ?? 445
-        self.timeoutMs = try container.decodeIfPresent(Int.self, forKey: .timeoutMs) ?? 1000
+        self.timeoutMs = migratedProbeTimeout(
+            try container.decodeIfPresent(Int.self, forKey: .timeoutMs))
         self.preventSpotlightIndex = try container.decodeIfPresent(Bool.self, forKey: .preventSpotlightIndex) ?? true
         self.targets = try container.decodeIfPresent([MountTarget].self, forKey: .targets) ?? []
     }
@@ -345,3 +353,9 @@ public struct AutomntConfig: Codable, Equatable, Sendable {
     public var isMountAllEnabled: Bool { effectiveMountPolicy == .allReachable }
 }
 
+/// 旧默认值 1000 毫秒视为「未自定义」：静默提升到当前默认。
+/// 明确自定义的其他值（含更小值）保持原样。
+func migratedProbeTimeout(_ value: Int?) -> Int {
+    guard let value else { return defaultProbeTimeoutMs }
+    return value == legacyProbeTimeoutMs ? defaultProbeTimeoutMs : value
+}

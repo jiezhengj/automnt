@@ -18,7 +18,8 @@
 | `state` | 枚举：`attached` / `lost` / `pending-recovery` / `recovering` / `suppressed` | 与 §4 状态机逐一对应（`lost`=卷在表但失效；`recovering`=本轮正在尝试恢复）；信号缺失/状态损坏的缺失卷不引入独立枚举，一律归入 `suppressed`（保守方向，§4 守恒规则） |
 | `suppressionBoundary` | 会话边界引用（见 §3） | `suppressed` 时必填：解除条件 = 网络上下文或登录会话变化（先到者） |
 | `repairEjectEvidence` | 布尔 / 证据摘要 | 缺失前存在会话丢失证据 → 修复性弹出，禁止进入 `suppressed` |
-| `everHealthyMounted` | 布尔 | **挂载账的持久表示（FR-002③/④ 的判别字段）**：一旦观察到该卷处于健康挂载即置 `true`，此后**不再自动清除**（除配置删除）。缺失卷只有在此字段为 `true`（=“曾健康挂载过”）时才可进入 `suppressed`（FR-002③）；为 `false`（=从未挂载过）时按 FR-002④ 走基线段挂载并 MUST NOT 进入 `suppressed`。**该字段必须持久化**，不得仅由当前快照推导——卷已缺失时快照无法回溯历史 |
+| `everHealthyMounted` | 布尔 | **挂载账的持久表示（FR-002④/⑤ 的判别字段）**：一旦观察到该卷处于健康挂载即置 `true`，此后**不再自动清除**（除配置删除）。为 `true` 且卷缺失、又无弹出证据 → **按丢失处理**（信号 `.lostWhileHealthy`，FR-002④）；为 `false`（=从未挂载过）→ 按 FR-002⑤ 走基线段挂载。**该字段单独不构成弹出证据**（2026-11-25 修订）。**该字段必须持久化**，不得仅由当前快照推导——卷已缺失时快照无法回溯历史 |
+| `suppressionHasEvidence` | 布尔（缺省 false） | **弹出证据位（2026-11-25 新增，FR-002③）**：仅 `UserEjectCommit.apply`（产品自身弹出）与 `UserEjectCommit.recordObservedUnmount`（应用运行期间捕获的卸载事件）写 `true`。缺失卷只有在此位为 `true` 时才可进入 `suppressed`；旧状态文件缺该键按 `false` 读取 |
 | `attemptCount` | 整数 | 当前恢复判定轮已尝试次数；成功或边界解禁时归零；受有界重试上限约束 |
 | `updatedAt` | 时间戳 | 每次状态迁移刷新 |
 
@@ -70,7 +71,7 @@
 [lost 死卷滞留] ──使用者弹掉死卷（修复动作，repairEjectEvidence=true）──▶ [pending-recovery]
 ```
 
-- **守恒规则**：`recovering` 只由事件评估发起（无时钟/轮询路径）；`suppressed` **只能**由“健康时被弹出”进入，且**必须同时满足 `everHealthyMounted=true` 与状态可读**（FR-002③）——`everHealthyMounted=false` 的缺失卷按 FR-002④ 走基线段挂载，状态不可读者按 FR-010 走保守方向，二者均**绝不**进入 `suppressed`；信号缺失时缺失卷一律按 `suppressed` 处理（保守方向）。**任何原因导致的成功挂载都必须清除该卷的 `suppressed` 条目**，避免陈旧抑制在边界之前长期阻断后续恢复，并将 `everHealthyMounted` 置为 `true`。
+- **守恒规则**：`recovering` 只由事件评估发起（无时钟/轮询路径）；`suppressed` **只能**由“有证据的弹出”进入，且**必须同时满足 `suppressionHasEvidence=true` 与状态可读**（FR-002③，2026-11-25 修订：曾健康日后不再单独构成证据）——`suppressionHasEvidence=false` 的缺失卷按 FR-002④ 走丢失恢复，`everHealthyMounted=false` 者按 FR-002⑤ 走基线段挂载，状态不可读者按 FR-010 走保守方向，三者均**绝不**因“曾健康”进入 `suppressed`；信号缺失时缺失卷一律按 `suppressed` 处理（保守方向）；旧版遗留的无证据抑制在宿主可达时放行一次（FR-004 修订）。**任何原因导致的成功挂载都必须清除该卷的 `suppressed` 条目**，避免陈旧抑制在边界之前长期阻断后续恢复，并将 `everHealthyMounted` 置为 `true`。
 
 - **FR-002 信号 → 状态映射（逐条对应，消除歧义）**：
 
@@ -78,8 +79,9 @@
 | :--- | :--- | :--- | :--- |
 | ① 卷在表但失效 | 健康探测失败/会话丢失 | `lost` | → 清理（写清理账）→ `pending-recovery` |
 | ② 卷缺失 + 在清理账 | 产品自清记录命中 | `pending-recovery` | → 主机可达 → `recovering` |
-| ③ 卷缺失 + 健康弹出 | 状态可读 且 `everHealthyMounted=true` 且无修复证据 | `suppressed` | → 边界事件 → 清除抑制 → 重新评估 |
-| ④ 卷缺失 + 从未挂载 | 状态可读 且 `everHealthyMounted=false` | 不进状态机（无历史），按基线段挂载 | 挂载成功 → `attached` 且置 `everHealthyMounted=true` |
+| ③ 卷缺失 + 有弹出证据 | 状态可读 且 `suppressionHasEvidence=true` | `suppressed` | → 边界事件 → 清除抑制 → 重新评估 |
+| ④ 卷缺失 + 曾健康但无证据 | 状态可读 且 `everHealthyMounted=true` 且无证据位 | `pending-recovery`（信号 `.lostWhileHealthy`） | → 主机可达 → `recovering` |
+| ⑤ 卷缺失 + 从未挂载 | 状态可读 且 `everHealthyMounted=false` | 不进状态机（无历史），按基线段挂载 | 挂载成功 → `attached` 且置 `everHealthyMounted=true` |
 | 信号不可读/状态损坏 | 解析失败/schemaVersion 未知 | `suppressed`（保守） | → 边界事件或手动入口兜底 |
 
 - `unknown` 不是独立状态：信号不可读统一归入 `suppressed`，故枚举与 FR-002 全部分类一一覆盖、无遗漏、无命名冲突。

@@ -172,28 +172,31 @@ struct RecoveryRoundTests {
         #expect(harness.mountCalls.isEmpty)
 
         // 第二轮：同一账本转为可读；观测仍是「缺失且主机可达」。
-        // 若 everHealthyMounted 未保留，这里会得到 .neverMounted 并被真实挂载。
+        // 保守抑制没有弹出证据，因此按「丢失」处理：本轮恢复挂载。
+        // 这是维护者接受的取舍——宁可多挂一次，也不要因为状态文件一时读不出
+        // 就把共享文件夹在本会话里永久搁置。
         let persisted = corrupt.state
         let readable = RecoveryRoundPlanner.run(
             request: harness.request(configuration: configuration, load: .loaded(persisted)),
             observe: observe(), effects: harness.effects)
 
         #expect(readable.plan == [RecoveryVolumePlan(identity: volume.identity,
-                                                     mountPoint: volume.mountPoint, action: .suppress)])
-        #expect(readable.plan.contains { $0.action == .recover } == false)
-        #expect(readable.recovered.isEmpty)
-        #expect(readable.suppressed == [volume.identity])
-        #expect(harness.mountCalls.isEmpty)
-        #expect(readable.state.volumes[volume.identity]?.state == .suppressed)
-        #expect(readable.state.volumes[volume.identity]?.suppressionBoundary == boundary)
+                                                     mountPoint: volume.mountPoint, action: .recover)])
+        #expect(readable.suppressed.isEmpty)
+        #expect(readable.recovered == [volume.identity])
+        #expect(harness.mountCalls == [volume.identity])
+        // 挂载成功后回到健康凭据：everHealthyMounted 保留、抑制边界清空。
+        #expect(readable.state.volumes[volume.identity]?.state == .attached)
+        #expect(readable.state.volumes[volume.identity]?.everHealthyMounted == true)
+        #expect(readable.state.volumes[volume.identity]?.suppressionBoundary == nil)
         #expect(readable.notificationIdentities.isEmpty)
 
-        // 判定层复核：该记录必须被判为 healthyEject，且明确不具恢复资格。
+        // 判定层复核：无证据的抑制不再被判为「弹出」，而是「健康后丢失」。
         let signal = judgeRecoverySignal(volumeKey: volume.identity, presentInMountTable: false,
-            hostReachable: true, record: readable.state.volumes[volume.identity],
-            cleanupLedger: readable.state.cleanupLedger, stateReadable: true)
-        #expect(signal == .healthyEject)
-        #expect(!MissingVolumeRecoveryPolicy.mayMount(signal: signal, enabled: true))
+            hostReachable: true, record: persisted.volumes[volume.identity],
+            cleanupLedger: persisted.cleanupLedger, stateReadable: true)
+        #expect(signal == .lostWhileHealthy)
+        #expect(MissingVolumeRecoveryPolicy.mayMount(signal: signal, enabled: true))
     }
 
     // MARK: - 2. 同路径备用身份只传播抑制
@@ -217,7 +220,7 @@ struct RecoveryRoundTests {
         // 主身份在健康时被使用者弹出（本会话抑制）。
         var state = MountRecoveryStateFile(sessionBoundary: boundary, volumes: [first:
             MountRecoveryVolumeRecord(volumeKey: first, state: .suppressed,
-                                      suppressionBoundary: boundary, everHealthyMounted: true)])
+                                      suppressionBoundary: boundary, everHealthyMounted: true, suppressionHasEvidence: true)])
         let harness = RoundHarness(directory: directory)
         let result = RecoveryRoundPlanner.run(
             request: harness.request(configuration: configuration, load: .loaded(state)),
@@ -423,11 +426,13 @@ struct RecoveryRoundTests {
         #expect(recovered.state.volumes[volume.identity]?.notificationCount == 0)
         #expect(recovered.state.volumes[volume.identity]?.repairEjectEvidence == false)
 
-        // 抑制卷不进入通知集合，也不消耗额度。
-        var suppressed = MountRecoveryStateFile(sessionBoundary: RecoverySessionIdentity(
-            network: "round-network", loginEpoch: "round-login", previous: nil).combined,
+        // 有证据的弹出（本会话抑制）不进入通知集合，也不消耗额度。
+        let suppressBoundary = RecoverySessionIdentity(
+            network: "round-network", loginEpoch: "round-login", previous: nil).combined
+        var suppressed = MountRecoveryStateFile(sessionBoundary: suppressBoundary,
             volumes: [volume.identity: MountRecoveryVolumeRecord(volumeKey: volume.identity,
-                everHealthyMounted: true, notificationCount: 2)])
+                state: .suppressed, suppressionBoundary: suppressBoundary,
+                everHealthyMounted: true, notificationCount: 2, suppressionHasEvidence: true)])
         let suppressedHarness = RoundHarness(directory: directory)
         let suppressedResult = RecoveryRoundPlanner.run(
             request: suppressedHarness.request(configuration: configuration, load: .loaded(suppressed)),
@@ -779,7 +784,7 @@ struct RecoveryRoundTests {
         // 候选身份带一个更早会话留下的抑制记录：本轮不得因回退而被改写或清除。
         state.volumes[volumes[1].identity] = MountRecoveryVolumeRecord(
             volumeKey: volumes[1].identity, state: .suppressed,
-            suppressionBoundary: "older-network|older-login", everHealthyMounted: false)
+            suppressionBoundary: "older-network|older-login", everHealthyMounted: false, suppressionHasEvidence: true)
         var mountCalls: [String] = []
         let effects = RecoveryRoundEffects(
             cleanup: { _ in true },

@@ -35,6 +35,9 @@ public struct QuickMountFailure: Equatable, Sendable, Identifiable {
         case refused
         /// The attempt did not finish in time, or the background worker went quiet.
         case notFinished
+        /// The shared folder was ejected for this session, so quick mounting leaves it
+        /// alone by design. Reported so a click never looks like it did nothing.
+        case ejected
         case other
     }
 
@@ -54,9 +57,10 @@ public struct QuickMountFailure: Equatable, Sendable, Identifiable {
 /// The result of a quick mount, as the user needs to read it.
 ///
 /// Only outcomes this action can be held responsible for are reported. A shared
-/// folder whose server was unreachable, whose attempt never started, or which the
-/// user ejected for this session is left alone: telling someone "3 shared folders
-/// failed" when two were never attempted raises an alarm nobody can resolve.
+/// folder whose server was unreachable or whose attempt never started is left alone:
+/// telling someone "3 shared folders failed" when two were never attempted raises an
+/// alarm nobody can resolve. A folder the user ejected for this session is reported
+/// with its own reason, because silence would make the click look ineffective.
 public struct QuickMountOutcome: Equatable, Sendable {
     public let failures: [QuickMountFailure]
 
@@ -100,8 +104,10 @@ public struct QuickMountOutcome: Equatable, Sendable {
             default:
                 return .other
             }
+        case .suppressedForThisSession:
+            return .ejected
         case .usable, .availableViaPeer, .notMounted, .locationMismatch,
-             .suppressedForThisSession, .notEvaluatedThisRound, .unreachable:
+             .notEvaluatedThisRound, .unreachable:
             return nil
         }
     }

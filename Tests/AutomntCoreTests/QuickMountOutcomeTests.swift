@@ -9,19 +9,36 @@ struct QuickMountOutcomeTests {
     }
 
     @Test func sharesThisActionDidNotOwnAreNotFailures() {
-        // Unreachable, never checked, ejected for this session, never attempted: none of
-        // these are the quick mount's failure, and reporting them would blame the user
-        // for something the action never tried.
+        // Unreachable, never checked, never attempted: none of these are the quick mount's
+        // failure, and reporting them would blame the user for something it never tried.
         let targets = [
             target("a", .usable),
             target("b", .availableViaPeer),
             target("c", .notMounted),
             target("d", .locationMismatch),
-            target("e", .suppressedForThisSession),
             target("f", .notEvaluatedThisRound),
             target("g", .unreachable)
         ]
         #expect(QuickMountOutcome.make(from: targets) == nil)
+    }
+
+    @Test func sessionEjectIsExplainedRatherThanSilent() {
+        // A folder ejected in this session is skipped by design. Staying silent made the
+        // click look like it did nothing, so it is reported with its own reason.
+        let outcome = QuickMountOutcome.make(from: [
+            target("a", .usable),
+            target("e", .suppressedForThisSession)
+        ])
+        #expect(outcome?.failures.map(\.name) == ["e"])
+        #expect(outcome?.failures.map(\.reason) == [.ejected])
+        // 与真正的失败区分：混在一起时两者各自保留自己的原因。
+        let mixed = QuickMountOutcome.make(from: [
+            target("e", .suppressedForThisSession),
+            target("bad", .failed, issue: .shareRejected)
+        ])
+        #expect(mixed?.count == 2)
+        #expect(mixed?.failures.map(\.reason).contains(.ejected) == true)
+        #expect(mixed?.failures.map(\.reason).contains(.refused) == true)
     }
 
     @Test func attemptedFailuresAreReportedWithAUserFacingReason() {

@@ -100,7 +100,7 @@ struct RecoveryDecisionBindingTests {
                 volumes: record.map { [volume.identity: $0] } ?? [:]))
         }
         let suppressedRecord = MountRecoveryVolumeRecord(volumeKey: volume.identity, state: .suppressed,
-            suppressionBoundary: boundary, everHealthyMounted: false)
+            suppressionBoundary: boundary, everHealthyMounted: false, suppressionHasEvidence: true)
 
         let scenarios: [(name: String, load: MountRecoveryStoreLoad, present: Bool, reachable: Bool,
                          health: VolumeHealthEvidence, expected: RecoveryVolumeDecision)] = [

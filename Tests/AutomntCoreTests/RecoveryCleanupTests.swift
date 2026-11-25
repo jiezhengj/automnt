@@ -11,7 +11,7 @@ struct RecoveryCleanupTests {
             #expect(!RecoveryCleanupCommit.permits(configuration: config, recovery: .absent, identity: key, health: health))
         }
         #expect(!RecoveryCleanupCommit.permits(configuration: config, recovery: .corrupt(reason: "unreadable"), identity: key, health: .failed))
-        let protected = MountRecoveryStateFile(volumes: [key: MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed)])
+        let protected = MountRecoveryStateFile(volumes: [key: MountRecoveryVolumeRecord(volumeKey: key, state: .suppressed, suppressionHasEvidence: true)])
         #expect(!RecoveryCleanupCommit.permits(configuration: config, recovery: .loaded(protected), identity: key, health: .failed))
         config.autoMountRecovery = false
         #expect(!RecoveryCleanupCommit.permits(configuration: config, recovery: .absent, identity: key, health: .failed))

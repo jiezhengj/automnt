@@ -534,7 +534,7 @@ func migrateConfigIfNeeded(config: inout AutomntConfig, at configURL: URL) -> Bo
                 host: p.host,
                 alias: p.description,
                 port: p.port ?? 445,
-                timeoutMs: p.timeoutMs ?? 1000,
+                timeoutMs: p.timeoutMs ?? defaultProbeTimeoutMs,
                 preventSpotlightIndex: p.preventSpotlightIndex ?? true,
                 enabled: true,
                 shares: shares
@@ -680,7 +680,7 @@ struct HostReachabilityProbe {
     /// 因为 `getaddrinfo` 不解析服务实例名；解析失败即判定不可达，不回退到实例名的普通查询。
     ///
     /// 整轮共用 `timeoutMs` 预算，解析与握手不会被各自计时放大成两倍超时。
-    static func canConnect(host: String, port: Int = 445, timeoutMs: Int = 1000) -> Bool {
+    static func canConnect(host: String, port: Int = 445, timeoutMs: Int = defaultProbeTimeoutMs) -> Bool {
         if let testOverride { return testOverride(host, port, timeoutMs) }
         guard !host.isEmpty, !host.contains("\0"), (1...65535).contains(port), timeoutMs > 0 else {
             return false
@@ -2372,7 +2372,7 @@ func handleCandidateHostConfiguration(candidate: DiscoveredHostGroup) -> HostCon
         host: candidate.host,
         alias: alias,
         port: 445,
-        timeoutMs: 1000,
+        timeoutMs: defaultProbeTimeoutMs,
         preventSpotlightIndex: true,
         enabled: true,
         shares: shares
@@ -2470,7 +2470,7 @@ func handleManualHostEntry(existingHosts: [HostConfig]) -> HostConfig? {
         host: host,
         alias: alias,
         port: 445,
-        timeoutMs: 1000,
+        timeoutMs: defaultProbeTimeoutMs,
         preventSpotlightIndex: true,
         enabled: true,
         shares: shares
@@ -2927,7 +2927,7 @@ func manageConfiguration() {
                 if let key = smbResourceIdentity(entry.source) { mountTable[key] = entry.mountPoint }
             }
             let cache = ReachabilityCache(probe: { host, port in
-                let timeout = committedConfig.hosts.first(where: { $0.host == host })?.timeoutMs ?? 1000
+                let timeout = committedConfig.hosts.first(where: { $0.host == host })?.timeoutMs ?? defaultProbeTimeoutMs
                 return boundedHostReachability(host: host, port: port, timeoutMs: timeout)
             })
             if committedConfig.isAutoMountRecoveryEnabled {
@@ -3905,8 +3905,8 @@ func checkServiceStatus() {
         } else {
             print(tr("\n已配置策略流水线 (\(config.profiles.count) 个)：", "\nConfigured Profile Pipeline (\(config.profiles.count)):"))
             for (idx, p) in config.profiles.enumerated() {
-                print(tr("  [\(idx + 1)] '\(p.id)' (\(p.description ?? "")) -> 主机: \(p.host):\(p.port ?? 445), 超时: \(p.timeoutMs ?? 1000)ms, 挂载目标: \(p.targets.count) 个",
-                         "  [\(idx + 1)] '\(p.id)' (\(p.description ?? "")) -> Host: \(p.host):\(p.port ?? 445), Timeout: \(p.timeoutMs ?? 1000)ms, Targets: \(p.targets.count)"))
+                print(tr("  [\(idx + 1)] '\(p.id)' (\(p.description ?? "")) -> 主机: \(p.host):\(p.port ?? 445), 超时: \(p.timeoutMs ?? defaultProbeTimeoutMs)ms, 挂载目标: \(p.targets.count) 个",
+                         "  [\(idx + 1)] '\(p.id)' (\(p.description ?? "")) -> Host: \(p.host):\(p.port ?? 445), Timeout: \(p.timeoutMs ?? defaultProbeTimeoutMs)ms, Targets: \(p.targets.count)"))
                 for t in p.targets {
                     let mounted = getKernelMountSource(for: t.mountPath) != nil
                     let statusStr = mounted ? tr("已挂载", "Mounted") : tr("未挂载", "Unmounted")
@@ -4229,7 +4229,7 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
         description: "Test Profile",
         host: "nas.invalid",
         port: 445,
-        timeoutMs: 1000,
+        timeoutMs: defaultProbeTimeoutMs,
         preventSpotlightIndex: true,
         targets: [MountTarget(url: "smb://nas.invalid/share", mountPath: "/Volumes/share")]
     )
@@ -5145,8 +5145,8 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
                               record: repairRecord, cleanupLedger: [:], stateReadable: true) == .repairEject,
           "signal 3: repair ejection is recoverable")
     check(judgeRecoverySignal(volumeKey: ledgerKey, presentInMountTable: false, hostReachable: true,
-                              record: healthyRecord, cleanupLedger: [:], stateReadable: true) == .healthyEject,
-          "signal 4: healthy ejection enters session suppression")
+                              record: healthyRecord, cleanupLedger: [:], stateReadable: true) == .lostWhileHealthy,
+          "signal 4: a missing volume with only healthy history is treated as a loss, not as an ejection")
     check(judgeRecoverySignal(volumeKey: ledgerKey, presentInMountTable: false, hostReachable: true,
                               record: neverRecord, cleanupLedger: [:], stateReadable: true) == .neverMounted,
           "signal 5: never-mounted enabled volume is not treated as user intent to eject")
@@ -5204,9 +5204,13 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
           "unopenable recovery lock preserves safe deferral without false suppression")
     var historical = MountRecoveryStateFile(sessionBoundary: roundBoundary)
     historical.volumes[firstKey] = MountRecoveryVolumeRecord(volumeKey: firstKey, everHealthyMounted: true)
-    check(MountRecoveryStore.save(historical, to: roundURL), "round history is saved through state API")
+    var ejectedState = historical
+    ejectedState.volumes[firstKey]?.state = .suppressed
+    ejectedState.volumes[firstKey]?.suppressionBoundary = roundBoundary
+    ejectedState.volumes[firstKey]?.suppressionHasEvidence = true
+    check(MountRecoveryStore.save(ejectedState, to: roundURL), "round history is saved through state API")
     let ejected = round()
-    check(ejected.suppressed == [firstKey] && calls == 0, "healthy eject stays suppressed and other hosts are excluded")
+    check(ejected.suppressed == [firstKey] && calls == 0, "recorded ejection stays suppressed and other hosts are excluded")
     check(ejected.notificationKeys.isEmpty, "healthy eject produces no failure notification")
     check(round().notificationKeys.isEmpty && round().notificationKeys.isEmpty &&
           MountRecoveryStore.load(from: roundURL).file.volumes[firstKey]?.notificationCount == 0,
@@ -5304,7 +5308,12 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
           "healthy history remains sticky after boundary recovery")
     check(round([firstKey: "/Volumes/A"]).attempted == 0 && calls == 1,
           "self-generated mount event is idempotent and adds no attempt")
-    check(round().suppressed == [firstKey], "fresh healthy eject after recovery is suppressed again")
+    _ = MountRecoveryStore.save(historical, to: roundURL)
+    calls = 0
+    check(round().recovered == [firstKey] && calls == 1,
+          "a fresh loss without ejection evidence is recovered instead of being suppressed")
+    _ = MountRecoveryStore.save(ejectedState, to: roundURL)
+    calls = 0
     check(round(manual: true).recovered == [firstKey], "explicit Remount now restores a suppressed volume")
     check(round([firstKey: "/Volumes/A"]).notificationKeys.isEmpty, "healthy observation resets notification budget")
     historical.sessionBoundary = SessionBoundaryIdentity.current().combined
@@ -5399,6 +5408,12 @@ func runSelfTests(includeNetworkChecks: Bool = false) -> Bool {
     _ = runRecoveryRound(config: takeoverConfig, mountTable: [firstKey: "/Volumes/A"],
         hostReachability: { _, _ in true }, stateURL: peerEjectURL,
         applyRecovery: { _, _ in false }, volumeHealth: { _ in true })
+    var peerState = MountRecoveryStore.load(from: peerEjectURL).file
+    let peerBoundary = peerState.sessionBoundary
+    peerState.volumes[firstKey]?.state = .suppressed
+    peerState.volumes[firstKey]?.suppressionBoundary = peerBoundary
+    peerState.volumes[firstKey]?.suppressionHasEvidence = true
+    _ = MountRecoveryStore.save(peerState, to: peerEjectURL)
     var peerMountCalls = 0
     let peerEjectRound = runRecoveryRound(config: takeoverConfig, mountTable: [:],
         hostReachability: { host, _ in host == "second.example" }, stateURL: peerEjectURL,
@@ -6661,7 +6676,7 @@ public func runAutomntCLI() {
         }
         let reachabilityCache = ReachabilityCache(
             probe: { host, port in
-                let timeout = config.hosts.first(where: { $0.host == host })?.timeoutMs ?? 1000
+                let timeout = config.hosts.first(where: { $0.host == host })?.timeoutMs ?? defaultProbeTimeoutMs
                 return boundedHostReachability(host: host, port: port, timeoutMs: timeout)
             })
         let outcome = runRecoveryRound(

@@ -24,10 +24,12 @@ struct RecoverySuppressedRecordTests {
         return (configuration, configuredRecoveryVolumes(from: configuration)[0], directory)
     }
 
-    /// `UserEjectCommit.apply` 真实写出的记录形态：`.suppressed` + boundary，无 everHealthyMounted。
+    /// `UserEjectCommit.apply` 真实写出的记录形态：`.suppressed` + boundary + 弹出证据。
+    /// 证据位是「有证据的弹出」唯一凭据；没有它的抑制只可能来自旧版误判。
     private func userEjectRecord(_ identity: String, boundary: String) -> MountRecoveryVolumeRecord {
         MountRecoveryVolumeRecord(volumeKey: identity, state: .suppressed,
-                                  suppressionBoundary: boundary, everHealthyMounted: false)
+                                  suppressionBoundary: boundary, everHealthyMounted: false,
+                                  suppressionHasEvidence: true)
     }
 
     private func run(configuration: AutomntConfig, volume: RecoveryRoundConfiguredVolume,
@@ -169,5 +171,45 @@ struct RecoverySuppressedRecordTests {
         #expect(BaselineMountDecision.decide(identity: volume.identity, path: .absent,
             recovery: .loaded(state), configuration: configuration, mountPoint: volume.mountPoint,
             allowRecovery: true) == .suppressed)
+    }
+
+    /// 旧状态文件（schema 1）没有 `suppression_has_evidence`：缺省为 false，
+    /// 即「没有证据」，升级后按丢失处理、允许重挂一次（维护者已接受该取舍）。
+    @Test func legacyStateFileDecodesWithoutEvidenceFlag() throws {
+        let legacy = """
+        {"schema_version":1,"session_boundary":"n|l","volumes":{
+          "//eject.example/Shared":{"volume_key":"//eject.example/Shared","state":"suppressed",
+            "suppression_boundary":"n|l","ever_healthy_mounted":true,"attempt_count":0,
+            "updated_at":0,"notification_count":0}},"cleanup_ledger":{},"attempts":{}}
+        """
+        let file = try JSONDecoder().decode(MountRecoveryStateFile.self, from: Data(legacy.utf8))
+        let record = try #require(file.volumes["//eject.example/Shared"])
+        #expect(record.suppressionHasEvidence == false)
+        #expect(record.state == .suppressed)
+
+        // 新写入的弹出记录带证据位，重新读回仍为 true。
+        var withEvidence = file
+        withEvidence.volumes["//eject.example/Shared"]?.suppressionHasEvidence = true
+        let roundTripped = try JSONDecoder().decode(MountRecoveryStateFile.self,
+            from: JSONEncoder().encode(withEvidence))
+        #expect(roundTripped.volumes["//eject.example/Shared"]?.suppressionHasEvidence == true)
+    }
+
+    /// 无证据的抑制（旧版误判）在主机可达时不再抑制：这正是本次修复的目标行为。
+    @Test func suppressionWithoutEvidenceRecoversOnceTheHostIsReachable() throws {
+        let (configuration, volume, directory) = try makeConfiguration()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let boundary = RecoverySessionIdentity(network: "eject-network", loginEpoch: "eject-login",
+                                               previous: nil).combined
+        let legacy = MountRecoveryVolumeRecord(volumeKey: volume.identity, state: .suppressed,
+            suppressionBoundary: boundary, everHealthyMounted: true)
+        let state = MountRecoveryStateFile(sessionBoundary: boundary, volumes: [volume.identity: legacy])
+        var mounts = 0
+        let result = run(configuration: configuration, volume: volume, load: .loaded(state),
+                         network: "eject-network", login: "eject-login", manual: false,
+                         mount: { mounts += 1 })
+        #expect(result.recovered == [volume.identity])
+        #expect(result.suppressed.isEmpty)
+        #expect(mounts == 1)
     }
 }
